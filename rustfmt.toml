@@ -1,0 +1,22 @@
+
+# run "rustfmt --print-config default rustfmt-default.toml" for the default config
+max_width = 80
+chain_width = 60
+edition = "2024"
+style_edition = "2024"
+# force_multiline_blocks = true
+format_strings = true
+unstable_features = true
+hard_tabs = true                   # For AI compress code
+# indent_style = "Visual"
+match_arm_leading_pipes = "Always"
+group_imports = "StdExternalCrate"
+spaces_around_ranges = true
+# struct_field_align_threshold = 20
+where_single_line = true
+
+#blank_lines_lower_bound = 1
+#blank_lines_upper_bound = 1
+# blank_lines_within_block_expressions = 1 # Може бути корисно, якщо потрібно більше порожніх рядків у блоках
+# blank_lines_before_test_fn = 1 # Якщо ви хочете порожні рядки перед функціями тестів
+# group_imports = "StdExternalCrate" # Часто використовується для групування імпортів

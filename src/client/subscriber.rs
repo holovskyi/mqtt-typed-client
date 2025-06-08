@@ -1,0 +1,46 @@
+use std::marker::PhantomData;
+
+use bytes::Bytes;
+use string_cache::DefaultAtom as Topic;
+
+use super::error::MqttClientError;
+use crate::message_serializer::MessageSerializer;
+use crate::routing::Subscriber;
+
+pub struct TypedSubscriber<T, F> {
+	subscriber: Subscriber<Bytes>,
+	serializer: F,
+	_phantom: PhantomData<T>,
+}
+
+impl<T, F> TypedSubscriber<T, F>
+where
+	T: Send + Sync + 'static,
+	F: MessageSerializer<T>,
+{
+	pub fn new(subscriber: Subscriber<Bytes>, serializer: F) -> Self {
+		Self {
+			subscriber,
+			serializer,
+			_phantom: PhantomData,
+		}
+	}
+
+	pub async fn receive(
+		&mut self,
+	) -> Option<(Topic, Result<T, F::DeserializeError>)> {
+		if let Some((topic, bytes)) = self.subscriber.recv().await {
+			let message = self.serializer.deserialize(&bytes);
+			Some((topic, message))
+		} else {
+			None
+		}
+	}
+
+	pub async fn cancel(self) -> Result<(), MqttClientError> {
+		self.subscriber
+			.unsubscribe()
+			.await
+			.map_err(MqttClientError::Channel)
+	}
+}
