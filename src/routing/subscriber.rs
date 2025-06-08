@@ -1,4 +1,5 @@
 use tokio::sync::mpsc::{Receiver, Sender, error::TrySendError};
+use tracing::{debug, warn};
 
 use super::subscription_manager::{Command, MessageType};
 use crate::topic::SubscriptionId;
@@ -35,7 +36,7 @@ impl<T> Subscriber<T> {
 				.await
 				.map_err(|_| "Can't send unsubscribe command".to_string())
 		} else {
-			eprintln!("Warning: Sunscription {:?} already canceled.", self.id);
+			warn!(subscription_id = ?self.id, "Subscription already canceled");
 			Ok(())
 		}
 	}
@@ -47,15 +48,14 @@ impl<T> Subscriber<T> {
 			let err = cancel_tx.try_send(Command::Unsubscribe(self.id));
 			if err.is_err() {
 				self.cancel_tx = Some(cancel_tx);
-				eprintln!(
-					"Warning: Failed to send unsubscribe command for \
-					 subscription {:?}.",
-					self.id
+				warn!(
+					subscription_id = ?self.id,
+					"Failed to send unsubscribe command"
 				);
 			}
 			err
 		} else {
-			eprintln!("Warning: Subscription {:?} already canceled.", self.id);
+			warn!(subscription_id = ?self.id, "Subscription already canceled");
 			Ok(())
 		}
 	}
@@ -66,19 +66,19 @@ impl<T> Drop for Subscriber<T> {
 		if let Some(cancel_tx) = self.cancel_tx.take() {
 			match cancel_tx.try_send(Command::Unsubscribe(self.id)) {
 				| Ok(_) => {
-					eprintln!(
-						"Subscription {:?} unsubscribed in Drop",
-						self.id
+					debug!(
+						subscription_id = ?self.id,
+						"Subscription unsubscribed in Drop"
 					);
 				}
 				| Err(TrySendError::Closed(_)) => {
 					// The channel is closed, meaning the subscription manager has already
 					// processed the unsubscribe command, so we can just ignore this.
 				}
-				| Err(err) => eprintln!(
-					"Warning: Failed to unsubscribe in Drop for subscription \
-					 {:?}. Error: {err}",
-					self.id
+				| Err(err) => warn!(
+					subscription_id = ?self.id,
+					error = ?err,
+					"Failed to unsubscribe in Drop"
 				),
 			}
 		}

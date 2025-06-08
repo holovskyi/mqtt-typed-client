@@ -6,6 +6,7 @@ use rumqttc::{AsyncClient, EventLoop, MqttOptions, QoS};
 use rumqttc::{Event::Incoming, Event::Outgoing};
 use string_cache::DefaultAtom as Topic;
 use tokio::time;
+use tracing::{debug, error, info, warn};
 
 use super::error::MqttClientError;
 use super::publisher::TopicPublisher;
@@ -73,41 +74,39 @@ where F: Default + Clone + Send + Sync + 'static
 					// Reset error count on successful message
 					error_count = 0;
 
-					println!("INCOMING: {}", p.topic);
+					debug!(topic = %p.topic, payload_size = p.payload.len(), "Received MQTT message");
 
 					let topic = Topic::from(p.topic);
 					if let Err(err) =
 						subscription_manager.send_data(topic, p.payload).await
 					{
-						eprintln!(
-							"Failed to send data to subscription manager: \
-							 {err:?}"
-						)
+						error!(error = ?err, "Failed to send data to subscription manager");
 					}
 				}
 				| Ok(Incoming(Disconnect)) => {
-					println!("INCOMING Disconnect пакет");
-					// Server initiated disconnect - terminate gracefully
+					info!("Received MQTT Disconnect packet from server");
+					// Server initiated disconnect - terminate gracefully 
 					break;
 				}
 				| Ok(Outgoing(rumqttc::Outgoing::Disconnect)) => {
-					println!("OUTGOING Disconnect пакет");
+					info!("Sent MQTT Disconnect packet to server");
 					// Client initiated disconnect (via shutdown()) - terminate gracefully
 					break;
 				}
 				| Ok(notification) => {
 					// Reset error count on successful notification
 					error_count = 0;
-					eprintln!("Received = {notification:?}");
+					debug!(notification = ?notification, "Received MQTT notification");
 				}
 				| Err(err) => {
 					error_count += 1;
-					eprintln!("MQTT event loop error #{error_count}: {err:?}");
+					error!(error_count = error_count, error = %err, "MQTT event loop error");
 
 					if error_count >= MAX_CONSECUTIVE_ERRORS {
-						eprintln!(
-							"Too many consecutive errors ({error_count}), \
-							 terminating event loop"
+						error!(
+							error_count = error_count,
+							max_errors = MAX_CONSECUTIVE_ERRORS,
+							"Too many consecutive errors, terminating event loop"
 						);
 						break;
 					}
@@ -117,12 +116,12 @@ where F: Default + Clone + Send + Sync + 'static
 						* 2_u32.pow((error_count - 1).min(10));
 					let delay = delay.min(MAX_RETRY_DELAY);
 
-					eprintln!("Retrying in {delay:?}...");
+					warn!(delay = ?delay, error_count = error_count, "Retrying MQTT connection");
 					time::sleep(delay).await;
 				}
 			}
 		}
-		eprintln!("MQTT event loop terminated");
+		info!("MQTT event loop terminated gracefully");
 		// Event loop naturally terminated after receiving Disconnect packet
 		// This ensures all MQTT messages were properly processed before shutdown
 	}
@@ -174,32 +173,26 @@ where F: Default + Clone + Send + Sync + 'static
 		if let Some(controller) = self.subscription_manager_controller.take() {
 			// Ensure we have a controller to shutdown
 			if let Err(e) = controller.shutdown().await {
-				eprintln!(
-					"Warning: Failed to shutdown subscription manager: {}",
-					e
-				);
+				warn!(error = %e, "Failed to shutdown subscription manager");
 			}
 		} else {
-			eprintln!(
-				"Warning: No subscription manager controller available for \
-				 shutdown"
-			);
+			warn!("No subscription manager controller available for shutdown");
 		}
 
 		// Step 2: Send Disconnect packet to MQTT broker
 		// This will cause the event loop to receive Outgoing(Disconnect) and break
 		if let Err(e) = self.client.disconnect().await {
-			eprintln!("Warning: Failed to disconnect MQTT client: {}", e);
+			warn!(error = %e, "Failed to disconnect MQTT client");
 		}
 
 		// Step 3: Wait for event loop to terminate naturally after processing Disconnect
 		if let Some(handle) = self.event_loop_handle.take() {
 			// Ensure we have a handle to wait on
 			if let Err(e) = handle.await {
-				eprintln!("Warning: Event loop task failed: {}", e);
+				warn!(error = %e, "Event loop task failed");
 			}
 		} else {
-			eprintln!("Warning: No event loop handle available to await");
+			warn!("No event loop handle available to await");
 		}
 
 		Ok(())
@@ -209,15 +202,14 @@ where F: Default + Clone + Send + Sync + 'static
 // implement Drop for MqttAsyncClient to ensure graceful shutdown
 impl<F> Drop for MqttAsyncClient<F> {
 	fn drop(&mut self) {
-		if self.subscription_manager_controller.is_some()
-			|| self.event_loop_handle.is_some()
-		{
-			eprintln!(
-				"Warning: MqttAsyncClient dropped without calling shutdown(). \
-				 Please call shutdown() and await its completion before \
-				 dropping."
-			);
-		}
+	if self.subscription_manager_controller.is_some()
+	|| self.event_loop_handle.is_some()
+	{
+	warn!(
+	"MqttAsyncClient dropped without calling shutdown(). \
+	Please call shutdown() and await its completion before dropping."
+	);
+	}
 	}
 }
 fn validate_mqtt_topic(topic_str: &str) -> Result<(), TopicRouterError> {

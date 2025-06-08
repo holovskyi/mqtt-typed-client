@@ -12,6 +12,8 @@ use message_serializer::BincodeSerializer;
 //use mqtt_async_client::MqttAsyncClient;
 use serde::{Deserialize, Serialize};
 use tokio::time;
+use tracing::{debug, error, info, warn};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]
 struct MyData {
@@ -19,24 +21,28 @@ struct MyData {
 }
 
 pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
+	info!("Creating MQTT client");
 	let client = MqttAsyncClient::<BincodeSerializer>::new(
 		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async",
 	)
 	.await?;
+	info!("MQTT client created successfully");
 
+	info!("Setting up publisher and subscriber");
 	let publisher = client.get_publisher::<MyData>("hello/typed")?;
 	let mut subscriber = client.subscribe::<MyData>("hello/typed").await?;
+	info!("Publisher and subscriber ready");
 
 	tokio::spawn(async move {
 		for i in 0 .. 1000 {
-			println!("PUBLISH:{i}");
+			debug!(message_id = i, "Publishing message");
 
 			let data = MyData { id: i };
 
 			let res = publisher.publish(&data).await;
 			match res {
-				| Ok(()) => (),
-				| Err(err) => println!("PUBLISH ERROR:{err:?}"),
+				| Ok(()) => debug!(message_id = i, "Message published successfully"),
+				| Err(err) => error!(message_id = i, error = %err, "Failed to publish message"),
 			}
 			time::sleep(Duration::from_secs(1)).await;
 		}
@@ -44,25 +50,27 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut client_opt = Some(client);
 	let mut count = 0;
+	info!("Starting message reception loop");
 	while let Some((topic, data)) = subscriber.receive().await {
 		if count == 10 {
 			// if let Err(err) = subscriber.cancel().await {
-			//     eprintln!("Failed to cancel subscription: {err}");
+			//     warn!(error = %err, "Failed to cancel subscription");
 			// }
 			if let Some(client) = client_opt.take() {
+				info!("Shutting down client after receiving 10 messages");
 				let _res = client.shutdown().await;
-				eprintln!("Client shutdown res = {_res:?}");
+				info!(result = ?_res, "Client shutdown completed");
 			}
 			//break;
 		}
 		if let Ok(data) = data {
-			println!("XXXX Received on topic '{}': data={data:?}", topic);
+			info!(topic = %topic, data = ?data, count = count, "Received message");
 		} else {
-			println!("XXXX Failed to deserialize data");
+			error!(topic = %topic, count = count, "Failed to deserialize message data");
 		}
 		count += 1;
 	}
-	eprintln!("Exit from subscriber listen loop");
+	info!("Exited from subscriber listen loop");
 	//subscriber.cancel();
 	time::sleep(Duration::from_secs(20)).await;
 	Ok(())
@@ -70,5 +78,29 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	test_main().await
+	// Initialize tracing subscriber with compact formatting
+	tracing_subscriber::registry()
+		.with(
+			tracing_subscriber::EnvFilter::try_from_default_env()
+				.unwrap_or_else(|_| "mqtt_typed_client=debug,rumqttc=info".into()),
+		)
+		.with(
+			tracing_subscriber::fmt::layer()
+				.with_target(true) // Hide module target for cleaner output
+				.with_thread_ids(false) // Hide thread IDs
+				.with_thread_names(false) // Hide thread names
+				.with_file(false) // Hide file info
+				.with_line_number(false) // Hide line numbers
+				.compact() // More compact output
+		)
+		.init();
+
+	info!("Starting MQTT typed client application");
+	let result = test_main().await;
+	if let Err(ref e) = result {
+		error!(error = %e, "Application failed");
+	} else {
+		info!("Application completed successfully");
+	}
+	result
 }

@@ -13,6 +13,7 @@ use tokio::{
 	},
 	task::{JoinError, JoinHandle},
 };
+use tracing::{debug, error, info, warn};
 
 use super::error::{SendError, SubscriptionError};
 use super::subscriber::Subscriber;
@@ -75,11 +76,11 @@ where T: Send + Sync + 'static
 
 	async fn run(mut self) {
 		loop {
-			tokio::select! {
-				_ = &mut self.shutdown_rx => {
-					eprintln!("SubscriptionManagerActor: Shutdown signal received.");
-					break;
-				}
+		tokio::select! {
+		_ = &mut self.shutdown_rx => {
+		info!("SubscriptionManagerActor: Shutdown signal received");
+		break;
+		}
 				Some(slow_send_res) = self.slow_send_futures.next() => {
 					self.handle_slow_send(slow_send_res).await;
 				}
@@ -93,13 +94,13 @@ where T: Send + Sync + 'static
 						}
 					}
 					} else {
-						eprintln!("SubscriptionManagerActor: Command channel closed, exiting.");
+						info!("SubscriptionManagerActor: Command channel closed, exiting");
 						break;
 					}
 				}
 			}
 		}
-		eprintln!("SubscriptionManagerActor: Exiting run loop.");
+		info!("SubscriptionManagerActor: Exiting run loop");
 		// Cleanup remaining subscriptions
 		self.cleanup_active_subscriptions().await
 	}
@@ -112,13 +113,14 @@ where T: Send + Sync + 'static
 			| Ok((_, Ok(()))) => {}
 			| Ok((subs_id, Err(send_res))) => {
 				self.handle_unsubscribe(&subs_id).await;
-				eprintln!(
-					"Warning: Slow subscriber {subs_id:?} disconnected: \
-					 {send_res}"
+				warn!(
+					subscription_id = ?subs_id,
+					error = ?send_res,
+					"Slow subscriber disconnected"
 				);
 			}
 			| Err(err) => {
-				eprintln!("Error: Cant finish slow_send {err}");
+				error!(error = ?err, "Failed to complete slow_send task");
 			}
 		}
 	}
@@ -134,9 +136,10 @@ where T: Send + Sync + 'static
 
 		for topic in active_subscriptions {
 			if let Err(err) = self.client.unsubscribe(topic.to_string()).await {
-				eprintln!(
-					"Error: Can't unsubscribe from pattern {:?}. Error:{err}",
-					topic
+				error!(
+					topic_pattern = %topic,
+					error = ?err,
+					"Failed to unsubscribe from topic pattern"
 				);
 			}
 		}
@@ -154,10 +157,10 @@ where T: Send + Sync + 'static
 			process_slow_sends,
 		)
 		.await;
-		let _ = res.inspect_err(|err| {
-			eprintln!(
-				"Warning: SubscriptionManagerActor: Cleanup slow_send \
-				 timeout: {err}"
+		let _ = res.inspect_err(|_| {
+			warn!(
+				timeout_ms = 500,
+				"SubscriptionManagerActor: Cleanup slow_send timeout"
 			);
 		});
 
@@ -182,21 +185,24 @@ where T: Send + Sync + 'static
 				.await;
 			if let Err(err) = res {
 				if let Err(unsub_err) = self.topic_router.unsubscribe(&id) {
-					eprintln!(
-						"Warning: Failed to cleanup subscription {id:?}: \
-						 {unsub_err}"
+					warn!(
+						subscription_id = ?id,
+						error = ?unsub_err,
+						"Failed to cleanup subscription after subscribe error"
 					);
 				}
-				eprintln!(
-					"Error: can't subscribe to topic {topic_clone} Error:{err}"
+				error!(
+					topic = %topic_clone,
+					error = ?err,
+					"Failed to subscribe to MQTT topic"
 				);
 				if response_tx
 					.send(Err(SubscriptionError::SubscribeFailed))
 					.is_err()
 				{
-					eprintln!(
-						"Warning: Could not send subscribe response for \
-						 {topic_clone} (channel full/closed)"
+					warn!(
+						topic = %topic_clone,
+						"Could not send subscribe error response (channel full/closed)"
 					);
 				}
 				return;
@@ -205,8 +211,9 @@ where T: Send + Sync + 'static
 		let subscriber =
 			Subscriber::new(channel_rx, self.command_tx.clone(), id);
 		if response_tx.send(Ok(subscriber)).is_err() {
-			eprintln!(
-				"Warning: Could not Subscribe {id:#?} (channel full/closed)",
+			warn!(
+				subscription_id = ?id,
+				"Could not send successful subscribe response (channel full/closed)"
 			);
 			self.handle_unsubscribe(&id).await;
 		}
@@ -221,17 +228,17 @@ where T: Send + Sync + 'static
 						.unsubscribe(topic_pattern.to_string())
 						.await;
 					if let Err(err) = res {
-						eprintln!(
-							"Error: Can't unsubscribe from pattern {:?}. \
-							 Error:{err}",
-							topic_pattern
+						error!(
+							topic_pattern = %topic_pattern,
+							error = ?err,
+							"Failed to unsubscribe from MQTT topic pattern"
 						);
 					}
-					eprintln!("Topic pattern {:?} now empty", topic_pattern);
+					debug!(topic_pattern = %topic_pattern, "Topic pattern now empty");
 				}
 			}
 			| Err(err) => {
-				eprintln!("Error: Failed to unsubscribe {:?}: {}", id, err);
+				error!(subscription_id = ?id, error = ?err, "Failed to unsubscribe");
 			}
 		}
 	}
@@ -247,9 +254,10 @@ where T: Send + Sync + 'static
 				}
 				| Err(TrySendError::Full(msg)) => {
 					if self.slow_send_futures.len() >= 100 {
-						eprintln!(
-							"Warning: Too many slow sends in processing \
-							 queue: {topic}"
+						warn!(
+							topic = %topic,
+							queue_size = self.slow_send_futures.len(),
+							"Too many slow sends in processing queue"
 						);
 					}
 					let sender_clone = (*sender).clone();
@@ -277,15 +285,12 @@ pub struct SubscriptionManagerController {
 impl SubscriptionManagerController {
 	pub async fn shutdown(self) -> Result<(), JoinError> {
 		let _ = self.shutdown_tx.send(()).inspect_err(|_| {
-			eprintln!(
-				"Warning: SubscriptionManagerController: Shutdown signal \
-				 already sent."
-			);
+			warn!("SubscriptionManagerController: Shutdown signal already sent");
 		});
 		self.join_handler.await.inspect_err(|e| {
-			eprintln!(
-				"Warning: SubscriptionManagerController: Actor run failed \
-				 with error: {e}"
+			warn!(
+				error = ?e,
+				"SubscriptionManagerController: Actor run failed"
 			);
 		})
 	}
