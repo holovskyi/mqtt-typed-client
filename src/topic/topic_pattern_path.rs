@@ -100,6 +100,7 @@ impl TryFrom<&str> for TopicPatternItem {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TopicPatternPath {
 	segments: Vec<TopicPatternItem>,
+	//TODO cached_str: OnceCell<String>,
 }
 
 impl TopicPatternPath {
