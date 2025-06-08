@@ -87,7 +87,7 @@ where F: Default + Clone + Send + Sync + 'static
 				}
 				| Ok(Incoming(Disconnect)) => {
 					println!("INCOMING Disconnect пакет");
-					// Broker initiated disconnect - terminate gracefully
+					// Server initiated disconnect - terminate gracefully
 					break;
 				}
 				| Ok(Outgoing(rumqttc::Outgoing::Disconnect)) => {
@@ -165,12 +165,12 @@ where F: Default + Clone + Send + Sync + 'static
 	}
 
 	/// Gracefully shutdown the MQTT client by:
-	/// 1. Shutting down subscription manager (unsubscribes from all topics)
+	/// 1. Shutting down subscription manager (sends unsubscribe commands for all topics)
 	/// 2. Sending MQTT Disconnect packet (triggers event loop termination)
 	/// 3. Waiting for event loop to finish processing
 	pub async fn shutdown(mut self) -> Result<(), MqttClientError> {
 		// Step 1: Shutdown subscription manager first to clean up subscriptions
-		// This will unsubscribe from all active topics on the broker
+		// This will send unsubscribe commands to the broker for all active topics
 		if let Some(controller) = self.subscription_manager_controller.take() {
 			// Ensure we have a controller to shutdown
 			if let Err(e) = controller.shutdown().await {
@@ -186,7 +186,7 @@ where F: Default + Clone + Send + Sync + 'static
 			);
 		}
 
-		// Step 2: Send Disconnect packet to broker and event loop
+		// Step 2: Send Disconnect packet to MQTT broker
 		// This will cause the event loop to receive Outgoing(Disconnect) and break
 		if let Err(e) = self.client.disconnect().await {
 			eprintln!("Warning: Failed to disconnect MQTT client: {}", e);

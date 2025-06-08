@@ -19,13 +19,13 @@ struct MyData {
 }
 
 pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
-	let broker = MqttAsyncClient::<BincodeSerializer>::new(
+	let client = MqttAsyncClient::<BincodeSerializer>::new(
 		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async",
 	)
 	.await?;
 
-	let publisher = broker.get_publisher::<MyData>("hello/typed")?;
-	let mut subscriber = broker.subscribe::<MyData>("hello/typed").await?;
+	let publisher = client.get_publisher::<MyData>("hello/typed")?;
+	let mut subscriber = client.subscribe::<MyData>("hello/typed").await?;
 
 	tokio::spawn(async move {
 		for i in 0 .. 1000 {
@@ -42,16 +42,16 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 	});
 
-	let mut broker_opt = Some(broker);
+	let mut client_opt = Some(client);
 	let mut count = 0;
 	while let Some((topic, data)) = subscriber.receive().await {
 		if count == 10 {
 			// if let Err(err) = subscriber.cancel().await {
 			//     eprintln!("Failed to cancel subscription: {err}");
 			// }
-			if let Some(broker) = broker_opt.take() {
-				let _res = broker.shutdown().await;
-				eprintln!("Broker shutdown res = {_res:?}");
+			if let Some(client) = client_opt.take() {
+				let _res = client.shutdown().await;
+				eprintln!("Client shutdown res = {_res:?}");
 			}
 			//break;
 		}

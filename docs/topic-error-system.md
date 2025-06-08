@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the comprehensive error handling system implemented for the MQTT broker's topic module. The system follows Rust best practices using `thiserror` for structured error handling while maintaining type safety and clear error propagation.
+This document describes the comprehensive error handling system implemented for the MQTT typed client's topic module. The system follows Rust best practices using `thiserror` for structured error handling while maintaining type safety and clear error propagation.
 
 ## What Was Implemented
 
@@ -289,7 +289,7 @@ mod error_tests {
 #### 5.2 Usage Examples
 ```rust
 // Example of proper error handling
-use mqtt_broker::topic::*;
+use mqtt_typed_client::topic::*;
 
 fn handle_subscription(router: &mut TopicRouter<String>, pattern: &str) -> TopicResult<SubscriptionId> {
     let topic_pattern = TopicPatternPath::try_from(pattern)?;

@@ -124,11 +124,11 @@ where T: Send + Sync + 'static
 	}
 	/// Cleanup all active subscriptions and resources during shutdown
 	/// Order of operations is important for graceful cleanup:
-	/// 1. Unsubscribe from MQTT broker topics
+	/// 1. Send unsubscribe commands to MQTT broker for all topics
 	/// 2. Process remaining slow sends with timeout
 	/// 3. Cleanup internal data structures
 	async fn cleanup_active_subscriptions(&mut self) {
-		// Step 1: Unsubscribe from all active topics on the MQTT broker
+		// Step 1: Send unsubscribe commands to MQTT broker for all active topics
 		// This prevents new messages from being received
 		let active_subscriptions = self.topic_router.get_active_subscriptions();
 
