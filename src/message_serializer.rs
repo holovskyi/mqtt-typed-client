@@ -2,7 +2,9 @@ use std::fmt::Debug;
 
 use bincode::{Decode, Encode};
 
-pub trait MessageSerializer<T>: Default + Clone + Send + Sync + 'static {
+pub trait MessageSerializer<T>:
+	Default + Clone + Send + Sync + 'static
+{
 	type SerializeError: Debug + Send + Sync + 'static;
 	type DeserializeError: Debug + Send + Sync + 'static;
 

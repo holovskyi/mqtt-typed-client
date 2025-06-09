@@ -15,6 +15,7 @@ use tokio::time;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+
 #[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]
 struct MyData {
 	id: u32,
@@ -30,7 +31,9 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 
 	info!("Setting up publisher and subscriber");
 	let publisher = client.get_publisher::<MyData>("hello/typed")?;
-	let mut subscriber = client.subscribe::<MyData>("hello/typed").await?;
+	let mut subscriber = client
+		.subscribe::<MyData>("hello/typed")
+		.await?;
 	info!("Publisher and subscriber ready");
 
 	tokio::spawn(async move {
@@ -41,8 +44,12 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 
 			let res = publisher.publish(&data).await;
 			match res {
-				| Ok(()) => debug!(message_id = i, "Message published successfully"),
-				| Err(err) => error!(message_id = i, error = %err, "Failed to publish message"),
+				| Ok(()) => {
+					debug!(message_id = i, "Message published successfully")
+				}
+				| Err(err) => {
+					error!(message_id = i, error = %err, "Failed to publish message")
+				}
 			}
 			time::sleep(Duration::from_secs(1)).await;
 		}
@@ -82,7 +89,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	tracing_subscriber::registry()
 		.with(
 			tracing_subscriber::EnvFilter::try_from_default_env()
-				.unwrap_or_else(|_| "mqtt_typed_client=debug,rumqttc=info".into()),
+				.unwrap_or_else(|_| {
+					"mqtt_typed_client=debug,rumqttc=info".into()
+				}),
 		)
 		.with(
 			tracing_subscriber::fmt::layer()
@@ -91,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				.with_thread_names(false) // Hide thread names
 				.with_file(false) // Hide file info
 				.with_line_number(false) // Hide line numbers
-				.compact() // More compact output
+				.compact(), // More compact output
 		)
 		.init();
 

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bytes::Bytes;
 use rumqttc::Packet::{Disconnect, Publish};
-use rumqttc::{AsyncClient, EventLoop, MqttOptions, QoS};
+use rumqttc::{AsyncClient, EventLoop, MqttOptions};
 use rumqttc::{Event::Incoming, Event::Outgoing};
 use string_cache::DefaultAtom as Topic;
 use tokio::time;
@@ -12,6 +12,7 @@ use super::error::MqttClientError;
 use super::publisher::TopicPublisher;
 use super::subscriber::TypedSubscriber;
 use crate::message_serializer::MessageSerializer;
+use crate::routing::subscription_manager::SubscriptionConfig;
 use crate::routing::{
 	SubscriptionManagerActor, SubscriptionManagerController,
 	SubscriptionManagerHandler,
@@ -85,7 +86,7 @@ where F: Default + Clone + Send + Sync + 'static
 				}
 				| Ok(Incoming(Disconnect)) => {
 					info!("Received MQTT Disconnect packet from server");
-					// Server initiated disconnect - terminate gracefully 
+					// Server initiated disconnect - terminate gracefully
 					break;
 				}
 				| Ok(Outgoing(rumqttc::Outgoing::Disconnect)) => {
@@ -106,7 +107,8 @@ where F: Default + Clone + Send + Sync + 'static
 						error!(
 							error_count = error_count,
 							max_errors = MAX_CONSECUTIVE_ERRORS,
-							"Too many consecutive errors, terminating event loop"
+							"Too many consecutive errors, terminating event \
+							 loop"
 						);
 						break;
 					}
@@ -150,6 +152,19 @@ where F: Default + Clone + Send + Sync + 'static
 		T: 'static + Send + Sync,
 		F: MessageSerializer<T>,
 	{
+		self.subscribe_with_config(topic, SubscriptionConfig::default())
+			.await
+	}
+
+	pub async fn subscribe_with_config<T>(
+		&self,
+		topic: &str,
+		config: SubscriptionConfig,
+	) -> Result<TypedSubscriber<T, F>, MqttClientError>
+	where
+		T: 'static + Send + Sync,
+		F: MessageSerializer<T>,
+	{
 		let topic_pattern = TopicPatternPath::try_from(topic).map_err(|e| {
 			MqttClientError::TopicPattern(format!(
 				"Invalid topic pattern '{}': {:?}",
@@ -158,7 +173,7 @@ where F: Default + Clone + Send + Sync + 'static
 		})?;
 		let subscriber = self
 			.subscription_manager_handler
-			.subscribe(topic_pattern)
+			.subscribe(topic_pattern, config)
 			.await?;
 		Ok(TypedSubscriber::new(subscriber, self.serializer.clone()))
 	}
@@ -202,14 +217,14 @@ where F: Default + Clone + Send + Sync + 'static
 // implement Drop for MqttAsyncClient to ensure graceful shutdown
 impl<F> Drop for MqttAsyncClient<F> {
 	fn drop(&mut self) {
-	if self.subscription_manager_controller.is_some()
-	|| self.event_loop_handle.is_some()
-	{
-	warn!(
-	"MqttAsyncClient dropped without calling shutdown(). \
-	Please call shutdown() and await its completion before dropping."
-	);
-	}
+		if self.subscription_manager_controller.is_some()
+			|| self.event_loop_handle.is_some()
+		{
+			warn!(
+				"MqttAsyncClient dropped without calling shutdown(). Please \
+				 call shutdown() and await its completion before dropping."
+			);
+		}
 	}
 }
 fn validate_mqtt_topic(topic_str: &str) -> Result<(), TopicRouterError> {

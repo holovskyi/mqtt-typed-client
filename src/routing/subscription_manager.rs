@@ -7,7 +7,8 @@ use string_cache::DefaultAtom as Topic;
 use tokio::{
 	sync::{
 		mpsc::{
-			self as tokio_mpsc, Receiver, Sender, channel, error::TrySendError,
+			self as tokio_mpsc, Receiver, Sender, channel,
+			error::{SendTimeoutError, TrySendError},
 		},
 		oneshot,
 	},
@@ -23,10 +24,24 @@ pub type MessageType<T> = (Topic, Arc<T>);
 type TopicRouterType<T> = TopicRouter<Sender<MessageType<T>>>;
 
 #[derive(Debug)]
+pub struct SubscriptionConfig {
+	pub qos: rumqttc::QoS,
+}
+
+impl Default for SubscriptionConfig {
+	fn default() -> Self {
+		Self {
+			qos: rumqttc::QoS::AtLeastOnce,
+		}
+	}
+}
+
+#[derive(Debug)]
 pub enum Command<T> {
 	Unsubscribe(SubscriptionId),
 	Subscribe(
 		TopicPatternPath,
+		SubscriptionConfig,
 		oneshot::Sender<Result<Subscriber<T>, SubscriptionError>>,
 	),
 	Send(MessageType<T>),
@@ -34,7 +49,7 @@ pub enum Command<T> {
 
 type SlowSendResult<T> = (
 	SubscriptionId,
-	Result<(), tokio_mpsc::error::SendError<(Topic, Arc<T>)>>,
+	Result<(), tokio_mpsc::error::SendTimeoutError<(Topic, Arc<T>)>>,
 );
 
 pub struct SubscriptionManagerActor<T> {
@@ -76,29 +91,29 @@ where T: Send + Sync + 'static
 
 	async fn run(mut self) {
 		loop {
-		tokio::select! {
-		_ = &mut self.shutdown_rx => {
-		info!("SubscriptionManagerActor: Shutdown signal received");
-		break;
-		}
-				Some(slow_send_res) = self.slow_send_futures.next() => {
-					self.handle_slow_send(slow_send_res).await;
-				}
-				cmd = self.command_rx.recv() => {
-					if let Some(cmd) = cmd {
-						match cmd {
-						Command::Unsubscribe(id) => self.handle_unsubscribe(&id).await,
-						Command::Send(message) => self.handle_send(message).await,
-						Command::Subscribe(topic, response_tx) => {
-							self.handle_subscribe(topic, response_tx).await
+			tokio::select! {
+			_ = &mut self.shutdown_rx => {
+			info!("SubscriptionManagerActor: Shutdown signal received");
+			break;
+			}
+					Some(slow_send_res) = self.slow_send_futures.next() => {
+						self.handle_slow_send(slow_send_res).await;
+					}
+					cmd = self.command_rx.recv() => {
+						if let Some(cmd) = cmd {
+							match cmd {
+							Command::Unsubscribe(id) => self.handle_unsubscribe(&id).await,
+							Command::Send(message) => self.handle_send(message).await,
+							Command::Subscribe(topic, config, response_tx) => {
+								self.handle_subscribe(topic, config, response_tx).await
+							}
+						}
+						} else {
+							info!("SubscriptionManagerActor: Command channel closed, exiting");
+							break;
 						}
 					}
-					} else {
-						info!("SubscriptionManagerActor: Command channel closed, exiting");
-						break;
-					}
 				}
-			}
 		}
 		info!("SubscriptionManagerActor: Exiting run loop");
 		// Cleanup remaining subscriptions
@@ -111,12 +126,19 @@ where T: Send + Sync + 'static
 	) {
 		match slow_send_res {
 			| Ok((_, Ok(()))) => {}
-			| Ok((subs_id, Err(send_res))) => {
+			| Ok((subs_id, Err(SendTimeoutError::Closed(msg)))) => {
 				self.handle_unsubscribe(&subs_id).await;
-				warn!(
+				error!(
 					subscription_id = ?subs_id,
-					error = ?send_res,
-					"Slow subscriber disconnected"
+					topic = %msg.0,
+					"slow_send channel closed, message dropped. unsubscribing",
+				);
+			}
+			| Ok((subs_id, Err(SendTimeoutError::Timeout(msg)))) => {
+				error!(
+					subscription_id = ?subs_id,
+					topic = %msg.0,
+					"Slow send timeout for subscriber. message dropped",
 				);
 			}
 			| Err(err) => {
@@ -172,17 +194,15 @@ where T: Send + Sync + 'static
 	async fn handle_subscribe(
 		&mut self,
 		topic: TopicPatternPath,
+		config: SubscriptionConfig,
 		response_tx: oneshot::Sender<Result<Subscriber<T>, SubscriptionError>>,
 	) {
 		let (channel_tx, channel_rx) = tokio_mpsc::channel(500);
 		let topic_clone = topic.to_string();
 		let (fresh_topic, id) = self.topic_router.subscribe(topic, channel_tx);
 		if fresh_topic {
-			//TODO what about QOS configure
-			let res = self
-				.client
-				.subscribe(topic_clone.clone(), rumqttc::QoS::AtLeastOnce)
-				.await;
+			let res =
+				self.client.subscribe(topic_clone.clone(), config.qos).await;
 			if let Err(err) = res {
 				if let Err(unsub_err) = self.topic_router.unsubscribe(&id) {
 					warn!(
@@ -254,18 +274,22 @@ where T: Send + Sync + 'static
 				}
 				| Err(TrySendError::Full(msg)) => {
 					if self.slow_send_futures.len() >= 100 {
-						warn!(
+						error!(
+							subscription_id = ?id,
 							topic = %topic,
 							queue_size = self.slow_send_futures.len(),
-							"Too many slow sends in processing queue"
+							"Too many slow sends in processing queue. Message dropped",
 						);
+						return;
 					}
 					let sender_clone = (*sender).clone();
 					let id_clone = **id;
 
 					let slow_send_handle = tokio::spawn(async move {
-						let send_res = sender_clone.send(msg).await;
-						(id_clone, send_res)
+						let send_result = sender_clone
+							.send_timeout(msg, Duration::from_secs(2))
+							.await;
+						(id_clone, send_result)
 					});
 					self.slow_send_futures.push(slow_send_handle);
 				}
@@ -285,7 +309,9 @@ pub struct SubscriptionManagerController {
 impl SubscriptionManagerController {
 	pub async fn shutdown(self) -> Result<(), JoinError> {
 		let _ = self.shutdown_tx.send(()).inspect_err(|_| {
-			warn!("SubscriptionManagerController: Shutdown signal already sent");
+			warn!(
+				"SubscriptionManagerController: Shutdown signal already sent"
+			);
 		});
 		self.join_handler.await.inspect_err(|e| {
 			warn!(
@@ -307,10 +333,11 @@ where T: Send + Sync + 'static
 	pub async fn subscribe(
 		&self,
 		topic: TopicPatternPath,
+		config: SubscriptionConfig,
 	) -> Result<Subscriber<T>, SubscriptionError> {
 		let (tx, rx) = oneshot::channel();
 		self.command_tx
-			.send(Command::Subscribe(topic, tx))
+			.send(Command::Subscribe(topic, config, tx))
 			.await
 			.map_err(|_| SubscriptionError::ChannelClosed)?;
 		rx.await.map_err(|_| SubscriptionError::ResponseLost)?

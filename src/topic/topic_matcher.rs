@@ -258,7 +258,6 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 
 	/// Finds all subscription data entries matching the given topic path
 	pub fn find_by_path<'a>(&'a self, path: &str) -> Vec<&'a T> {
-		//TODO may be remove mut for self and T?
 		let path_segments: Vec<&str> = path.split('/').collect();
 		let mut matching_subscribers = Vec::new();
 		self.collect_matching_subscriptions(
