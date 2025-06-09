@@ -220,7 +220,7 @@ impl<F> Drop for MqttAsyncClient<F> {
 		if self.subscription_manager_controller.is_some()
 			|| self.event_loop_handle.is_some()
 		{
-			warn!(
+			error!(
 				"MqttAsyncClient dropped without calling shutdown(). Please \
 				 call shutdown() and await its completion before dropping."
 			);
