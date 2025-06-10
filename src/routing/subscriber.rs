@@ -75,11 +75,13 @@ impl<T> Drop for Subscriber<T> {
 					// The channel is closed, meaning the subscription manager has already
 					// processed the unsubscribe command, so we can just ignore this.
 				}
-				| Err(err) => warn!(
-					subscription_id = ?self.id,
-					error = ?err,
-					"Failed to unsubscribe in Drop"
-				),
+				| Err(err) => {
+					warn!(
+						subscription_id = ?self.id,
+						error = ?err,
+							"Failed to unsubscribe in Drop"
+					);
+				}
 			}
 		}
 	}

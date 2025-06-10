@@ -1,7 +1,13 @@
 [package]
 name = "mqtt_typed_client"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+description = "A typed MQTT client library with pattern-based routing and automatic subscription management"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/mqtt_typed_client"
+keywords = ["mqtt", "async", "typed", "client", "iot"]
+categories = ["network-programming", "asynchronous"]
+readme = "README.md"
 
 [dependencies]
 async-trait = "0.1.88"

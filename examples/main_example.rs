@@ -1,20 +1,12 @@
-mod client;
-mod message_serializer;
-mod routing;
-mod topic;
-//#[cfg(test)]
-
 use std::time::Duration;
 
 use bincode::{Decode, Encode};
-use client::MqttAsyncClient;
-use message_serializer::BincodeSerializer;
+use mqtt_typed_client::{BincodeSerializer, MqttAsyncClient};
 //use mqtt_async_client::MqttAsyncClient;
 use serde::{Deserialize, Serialize};
 use tokio::time;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 
 #[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]
 struct MyData {
@@ -31,9 +23,7 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 
 	info!("Setting up publisher and subscriber");
 	let publisher = client.get_publisher::<MyData>("hello/typed")?;
-	let mut subscriber = client
-		.subscribe::<MyData>("hello/typed")
-		.await?;
+	let mut subscriber = client.subscribe::<MyData>("hello/typed").await?;
 	info!("Publisher and subscriber ready");
 
 	tokio::spawn(async move {
@@ -54,7 +44,6 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 			time::sleep(Duration::from_secs(1)).await;
 		}
 	});
-
 	let mut client_opt = Some(client);
 	let mut count = 0;
 	info!("Starting message reception loop");
@@ -89,9 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	tracing_subscriber::registry()
 		.with(
 			tracing_subscriber::EnvFilter::try_from_default_env()
-				.unwrap_or_else(|_| {
-					"mqtt_typed_client=debug,rumqttc=info".into()
-				}),
+				.unwrap_or_else(|_| "debug".into()),
 		)
 		.with(
 			tracing_subscriber::fmt::layer()
