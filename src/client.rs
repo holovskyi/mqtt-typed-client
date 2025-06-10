@@ -9,7 +9,7 @@ pub mod publisher;
 pub mod subscriber;
 
 // Re-export commonly used types for convenience
-pub use async_client::MqttAsyncClient;
+pub use async_client::MqttClient;
 pub use error::MqttClientError;
 pub use publisher::TopicPublisher;
 pub use subscriber::TypedSubscriber;

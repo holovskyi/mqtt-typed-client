@@ -101,7 +101,7 @@ pub mod routing;
 pub mod topic;
 
 // Re-export commonly used types for convenience
-pub use client::{MqttAsyncClient, MqttClientError, TopicPublisher, TypedSubscriber};
+pub use client::{MqttClient, MqttClientError, TopicPublisher, TypedSubscriber};
 pub use message_serializer::{BincodeSerializer, MessageSerializer};
 pub use routing::{SendError, SubscriptionError, Subscriber, SubscriptionManagerHandler};
 pub use topic::{
@@ -128,7 +128,7 @@ pub mod prelude {
     //! ```
 
     pub use crate::{
-        MqttAsyncClient, MqttClientError, TopicPublisher, TypedSubscriber,
+        MqttClient, MqttClientError, TopicPublisher, TypedSubscriber,
         MessageSerializer, BincodeSerializer,
         TopicPatternPath, SubscriptionId,
         QoS, Topic, Result

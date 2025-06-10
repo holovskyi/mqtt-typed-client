@@ -19,18 +19,24 @@ use crate::routing::{
 };
 use crate::topic::{self, TopicPatternPath, TopicRouterError};
 
-pub struct MqttAsyncClient<F> {
+#[derive(Clone)]
+pub struct MqttClient<F> {
 	pub client: AsyncClient,
 	subscription_manager_handler: SubscriptionManagerHandler<Bytes>,
-	subscription_manager_controller: Option<SubscriptionManagerController>,
-	event_loop_handle: Option<tokio::task::JoinHandle<()>>,
 	serializer: F,
 }
 
-impl<F> MqttAsyncClient<F>
+pub struct MqttConnection {
+	pub client: AsyncClient,
+	subscription_manager_controller: Option<SubscriptionManagerController>,
+	event_loop_handle: Option<tokio::task::JoinHandle<()>>,
+}
+
+
+impl<F> MqttClient<F>
 where F: Default + Clone + Send + Sync + 'static
 {
-	pub async fn new(url: &str) -> Result<Self, MqttClientError> {
+	pub async fn new(url: &str) -> Result<(Self,MqttConnection), MqttClientError> {
 		let mut mqttoptions = MqttOptions::parse_url(url)?;
 		mqttoptions.set_keep_alive(Duration::from_secs(10));
 		mqttoptions.set_clean_session(false);
@@ -47,13 +53,16 @@ where F: Default + Clone + Send + Sync + 'static
 			Self::run(event_loop, handler_clone).await;
 		});
 		let fresh_client = Self {
-			client,
+			client: client.clone(),
 			subscription_manager_handler: handler.clone(),
-			subscription_manager_controller: Some(controller),
-			event_loop_handle: Some(event_loop_handle),
 			serializer: F::default(),
 		};
-		Ok(fresh_client)
+		let connection = MqttConnection {
+			client,
+			subscription_manager_controller: Some(controller),
+			event_loop_handle: Some(event_loop_handle),
+		};
+		Ok((fresh_client, connection))
 	}
 
 	/// Main event loop that processes MQTT messages and handles graceful shutdown
@@ -178,6 +187,9 @@ where F: Default + Clone + Send + Sync + 'static
 		Ok(TypedSubscriber::new(subscriber, self.serializer.clone()))
 	}
 
+}
+
+impl MqttConnection {
 	/// Gracefully shutdown the MQTT client by:
 	/// 1. Shutting down subscription manager (sends unsubscribe commands for all topics)
 	/// 2. Sending MQTT Disconnect packet (triggers event loop termination)
@@ -215,7 +227,7 @@ where F: Default + Clone + Send + Sync + 'static
 }
 
 // implement Drop for MqttAsyncClient to ensure graceful shutdown
-impl<F> Drop for MqttAsyncClient<F> {
+impl Drop for MqttConnection {
 	fn drop(&mut self) {
 		if self.subscription_manager_controller.is_some()
 			|| self.event_loop_handle.is_some()

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, MqttAsyncClient};
+use mqtt_typed_client::{BincodeSerializer, MqttClient};
 //use mqtt_async_client::MqttAsyncClient;
 use serde::{Deserialize, Serialize};
 use tokio::time;
@@ -15,7 +15,7 @@ struct MyData {
 
 pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
-	let client = MqttAsyncClient::<BincodeSerializer>::new(
+	let (client, connection) = MqttClient::<BincodeSerializer>::new(
 		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async",
 	)
 	.await?;
@@ -44,7 +44,7 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 			time::sleep(Duration::from_secs(1)).await;
 		}
 	});
-	let mut client_opt = Some(client);
+	let mut connection_opt = Some(connection);
 	let mut count = 0;
 	info!("Starting message reception loop");
 	while let Some((topic, data)) = subscriber.receive().await {
@@ -52,9 +52,9 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 			// if let Err(err) = subscriber.cancel().await {
 			//     warn!(error = %err, "Failed to cancel subscription");
 			// }
-			if let Some(client) = client_opt.take() {
+			if let Some(connection) = connection_opt.take() {
 				info!("Shutting down client after receiving 10 messages");
-				let _res = client.shutdown().await;
+				let _res = connection.shutdown().await;
 				info!(result = ?_res, "Client shutdown completed");
 			}
 			//break;
