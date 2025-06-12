@@ -7,6 +7,8 @@ use super::error::MqttClientError;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::Subscriber;
 
+pub type IncomingMessage<T,F> = (Topic, Result<T,<F as MessageSerializer<T>>::DeserializeError>);
+
 pub struct TypedSubscriber<T, F> {
 	subscriber: Subscriber<Bytes>,
 	serializer: F,
@@ -28,7 +30,7 @@ where
 
 	pub async fn receive(
 		&mut self,
-	) -> Option<(Topic, Result<T, F::DeserializeError>)> {
+	) -> Option<IncomingMessage<T, F>> {
 		if let Some((topic, bytes)) = self.subscriber.recv().await {
 			let message = self.serializer.deserialize(&bytes);
 			Some((topic, message))
