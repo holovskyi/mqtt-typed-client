@@ -8,6 +8,7 @@ use std::sync::Mutex;
 
 use arcstr::{ArcStr, Substr};
 use lru::LruCache;
+use smallvec::SmallVec;
 use thiserror::Error;
 
 use crate::routing::subscription_manager::CacheStrategy;
@@ -340,13 +341,14 @@ impl TopicPatternPath {
 		}
 	}
 
+	#[allow(clippy::missing_docs_in_private_items)]
 	fn try_match_internal(
 		&self,
 		topic: Arc<TopicPath>,
 	) -> Result<TopicMatch, TopicMatchError> {
 		let mut topic_index = 0;
-		let mut params = Vec::new();
-		let mut named_params = HashMap::new();
+		let mut params = SmallVec::new();
+		let mut named_params = SmallVec::new();
 		for (i, pattern_segment) in self.iter().enumerate() {
 			match pattern_segment {
 				| TopicPatternItem::Str(expected) => {
@@ -370,26 +372,30 @@ impl TopicPatternPath {
 					params.push(param_range.clone());
 					topic_index += 1;
 					if let Some(name) = opt_name {
-						let res =
-							named_params.insert(name.clone(), param_range);
-						if res.is_some() {
+						if named_params
+							.iter()
+							.any(|(existing_name, _)| existing_name == name)
+						{
 							return Err(
 								TopicMatchError::DuplicateParameterName,
 							);
 						}
+						named_params.push((name.clone(), param_range));
 					}
 				}
 				| TopicPatternItem::Hash(opt_name) => {
 					let param_range = topic_index .. topic.segments.len();
 					params.push(param_range.clone());
 					if let Some(name) = opt_name {
-						let res =
-							named_params.insert(name.clone(), param_range);
-						if res.is_some() {
+						if named_params
+							.iter()
+							.any(|(existing_name, _)| existing_name == name)
+						{
 							return Err(
 								TopicMatchError::DuplicateParameterName,
 							);
 						}
+						named_params.push((name.clone(), param_range));
 					}
 					if i < self.len() - 1 {
 						return Err(TopicMatchError::UnexpectedHashSegment);

@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::{collections::HashMap, ops::Range};
 
 use arcstr::{ArcStr, Substr};
+use smallvec::SmallVec;
 
 #[derive(Debug, Clone)]
 pub struct TopicPath {
@@ -46,15 +47,15 @@ pub enum TopicMatchError {
 
 pub struct TopicMatch {
 	topic: Arc<TopicPath>,
-	params: Vec<Range<usize>>,
-	named_params: HashMap<Substr, Range<usize>>,
+	params: SmallVec<[Range<usize>;3]>,
+	named_params: SmallVec<[(Substr, Range<usize>);3]>,
 }
 
 impl TopicMatch {
     pub(crate) fn from_match_result(
         topic: Arc<TopicPath>,
-        params: Vec<Range<usize>>,
-        named_params: HashMap<Substr, Range<usize>>,
+        params: SmallVec<[Range<usize>;3]>,
+        named_params: SmallVec<[(Substr, Range<usize>);3]>,
     ) -> Self {
         Self {
             topic,
@@ -95,7 +96,12 @@ impl TopicMatch {
         &self,
         name: &str,
     ) -> Option<Substr> {
-        self.named_params.get(name).map(|range| self.get_param_range(range))
+        self.named_params
+            .iter()
+            .find(|(n, _)| n.as_str() == name)
+            .map(|(_, range)| self.get_param_range(range))
+
+        //self.named_params.get(name).map(|range| self.get_param_range(range))
     }
 }
 
