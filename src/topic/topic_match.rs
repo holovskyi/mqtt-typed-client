@@ -2,6 +2,7 @@
 #![allow(missing_docs)]
 
 use std::fmt;
+use std::sync::Arc;
 use std::{collections::HashMap, ops::Range};
 
 use arcstr::{ArcStr, Substr};
@@ -44,14 +45,14 @@ pub enum TopicMatchError {
 }
 
 pub struct TopicMatch {
-	topic: TopicPath,
+	topic: Arc<TopicPath>,
 	params: Vec<Range<usize>>,
 	named_params: HashMap<Substr, Range<usize>>,
 }
 
 impl TopicMatch {
     pub(crate) fn from_match_result(
-        topic: TopicPath,
+        topic: Arc<TopicPath>,
         params: Vec<Range<usize>>,
         named_params: HashMap<Substr, Range<usize>>,
     ) -> Self {

@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::slice::Iter;
+use std::sync::Arc;
 use std::{fmt, usize};
 
 use arcstr::{ArcStr, Substr};
@@ -284,7 +285,7 @@ impl TopicPatternPath {
 
 	pub fn try_match(
 		&self,
-		topic: TopicPath,
+		topic: Arc<TopicPath>,
 	) -> Result<TopicMatch, TopicMatchError> {
 		let mut topic_index = 0;
 		let mut params = Vec::new();

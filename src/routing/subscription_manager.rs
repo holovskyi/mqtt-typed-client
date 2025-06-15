@@ -274,20 +274,20 @@ where T: Send + Sync + 'static
 		}
 	}
 
-	async fn handle_send(&mut self, (topic, data): RawMessageType<T>) {
-		let topic = ArcStr::from(topic);
+	async fn handle_send(&mut self, (topic_str, data): RawMessageType<T>) {
+		let topic_arcstr = ArcStr::from(topic_str);
 		//TODO Create cache for TopicPath to avoid re-parsing
-		let topic = TopicPath::new(topic);
-		let subscribers = self.topic_router.get_subscribers(&topic);
+		let topic_path = Arc::new(TopicPath::new(topic_arcstr));
+		let subscribers = self.topic_router.get_subscribers(&topic_path);
 		let mut closed_subscribers = Vec::new();
 		let data = Arc::new(data);
 		subscribers.iter().for_each(|(id, topic_patern, sender)| {
-			let topic_match = match topic_patern.try_match(topic.clone()) {
+			let topic_match = match topic_patern.try_match(Arc::clone(&topic_path)) {
 				| Ok(match_result) => match_result,
 				| Err(err) => {
 					error!(
 						subscription_id = ?id,
-						topic = %topic,
+						topic = %topic_path,
 						error = ?err,
 						"Failed to match topic pattern"
 					);
@@ -303,7 +303,7 @@ where T: Send + Sync + 'static
 					if self.slow_send_futures.len() >= 100 {
 						error!(
 							subscription_id = ?id,
-							topic = %topic,
+							topic = %topic_path,
 							queue_size = self.slow_send_futures.len(),
 							"Too many slow sends in processing queue. Message dropped",
 						);
