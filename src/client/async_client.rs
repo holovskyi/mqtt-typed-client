@@ -38,16 +38,21 @@ where F: Default + Clone + Send + Sync + 'static
 {
 	pub async fn new(
 		url: &str,
-		topic_cache_size: NonZeroUsize,
+		topic_path_cache_capacity: NonZeroUsize,
+		event_loop_capacity: usize,
+		command_channel_capacity: usize,
 	) -> Result<(Self, MqttConnection), MqttClientError> {
 		let mut mqttoptions = MqttOptions::parse_url(url)?;
 		mqttoptions.set_keep_alive(Duration::from_secs(10));
 		mqttoptions.set_clean_session(false);
-		//TODO move 10 to config
-		let (client, event_loop) = AsyncClient::new(mqttoptions, 10);
+		let (client, event_loop) =
+			AsyncClient::new(mqttoptions, event_loop_capacity);
 
-		let (controller, handler) =
-			SubscriptionManagerActor::spawn(client.clone(), topic_cache_size);
+		let (controller, handler) = SubscriptionManagerActor::spawn(
+			client.clone(),
+			topic_path_cache_capacity,
+			command_channel_capacity,
+		);
 
 		// Spawn the event loop in a separate task to handle MQTT messages
 		// The event loop will terminate when it receives a Disconnect packet
@@ -90,9 +95,8 @@ where F: Default + Clone + Send + Sync + 'static
 					debug!(topic = %p.topic, payload_size = p.payload.len(), "Received MQTT message");
 
 					//let topic = Topic::from(p.topic);
-					if let Err(err) = subscription_manager
-						.send_data(p.topic, p.payload)
-						.await
+					if let Err(err) =
+						subscription_manager.send_data(p.topic, p.payload).await
 					{
 						error!(error = ?err, "Failed to send data to subscription manager");
 					}
@@ -180,12 +184,13 @@ where F: Default + Clone + Send + Sync + 'static
 		F: MessageSerializer<T>,
 	{
 		let topic_pattern =
-			TopicPatternPath::new_from_string(topic).map_err(|e| {
-				MqttClientError::TopicPattern(format!(
-					"Invalid topic pattern: {:?}",
-					e
-				))
-			})?;
+			TopicPatternPath::new_from_string(topic, config.cache_size)
+				.map_err(|e| {
+					MqttClientError::TopicPattern(format!(
+						"Invalid topic pattern: {:?}",
+						e
+					))
+				})?;
 		let subscriber = self
 			.subscription_manager_handler
 			.subscribe(topic_pattern, config)

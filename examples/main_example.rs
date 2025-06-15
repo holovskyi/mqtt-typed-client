@@ -17,7 +17,9 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
 	let (client, connection) = MqttClient::<BincodeSerializer>::new(
 		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async",
-		NonZeroUsize::new(100).unwrap()
+		NonZeroUsize::new(100).unwrap(),
+		10,
+		100
 	)
 	.await?;
 	info!("MQTT client created successfully");

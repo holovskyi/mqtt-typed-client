@@ -140,9 +140,8 @@ impl TryFrom<Substr> for TopicPatternItem {
 
 #[derive(Debug)]
 pub struct TopicPatternPath {
-	//TODO make sense?
-	//topic_wildcard_pattern: ArcStr, // original topic with named wildcards "sensors/{sensor_id}/data"
-	//topic_pattern: ArcStr, // mqqt topic as a string without named wildcards "sensors/+/data"
+	topic_pattern: ArcStr, // original topic pattern as a string
+	mqtt_pattern: ArcStr, // mqtt topic pattern with wildcards "sensors/+/data"
 	segments: Vec<TopicPatternItem>,
 	match_cache: Mutex<LruCache<ArcStr, Arc<TopicMatch>>>,
 }
@@ -150,6 +149,7 @@ pub struct TopicPatternPath {
 impl TopicPatternPath {
 	pub fn new_from_string(
 		topic_pattern: impl Into<ArcStr>,
+		cache_size: NonZeroUsize,
 	) -> Result<Self, TopicPatternError> {
 		let topic_pattern = topic_pattern.into();
 		if topic_pattern.is_empty() || topic_pattern.trim().is_empty() {
@@ -174,9 +174,10 @@ impl TopicPatternPath {
 				));
 			}
 		}
-		let cache_size = NonZeroUsize::new(100).unwrap();
+		
 		Ok(Self {
-			//TODO?? topic_wildcard_pattern: topic_pattern,
+			topic_pattern,
+			mqtt_pattern: ArcStr::from(Self::to_mqtt_subscription_pattern(&segments)),
 			segments,
 			match_cache: Mutex::new(LruCache::new(cache_size)), // Example size, adjust as needed
 		})
@@ -186,8 +187,11 @@ impl TopicPatternPath {
 	pub fn new_from_segments(
 		segments: &[TopicPatternItem],
 	) -> Result<Self, TopicPatternError> {
-		let cache_size = NonZeroUsize::new(100).unwrap();
+		let cache_size = NonZeroUsize::new(10).unwrap();
+		let topic_pattern = ArcStr::from(Self::to_template_pattern(segments));
 		let pattern = Self {
+			mqtt_pattern: ArcStr::from(Self::to_mqtt_subscription_pattern(segments)),
+			topic_pattern: topic_pattern.clone(),
 			segments: segments.to_vec(),
 			match_cache: Mutex::new(LruCache::new(cache_size)),
 		};
@@ -197,11 +201,19 @@ impl TopicPatternPath {
 		{
 			if hash_pos != segments.len() - 1 {
 				return Err(TopicPatternError::hash_position(
-					pattern.to_template_pattern(),
+					topic_pattern.as_str(),
 				));
 			}
 		}
 		Ok(pattern)
+	}
+
+	pub fn mqtt_pattern(&self) -> ArcStr {
+		self.mqtt_pattern.clone()
+	}
+
+	pub fn topic_pattern(&self) -> ArcStr {
+		self.topic_pattern.clone()
 	}
 
 	pub fn is_empty(&self) -> bool {
@@ -216,8 +228,7 @@ impl TopicPatternPath {
 		self.segments.len()
 	}
 
-	fn str_len(&self) -> usize {
-		let segments = &self.segments;
+	fn str_len(segments:&[TopicPatternItem]) -> usize {
 		if segments.is_empty() {
 			return 0;
 		}
@@ -229,13 +240,13 @@ impl TopicPatternPath {
 		&self.segments
 	}
 
-	pub fn to_mqtt_subscription_pattern(&self) -> String {
+	fn to_mqtt_subscription_pattern(segments:&[TopicPatternItem]) -> String {
 		// Convert to MQTT wildcards: sensors/+/data
-		if self.segments.is_empty() {
+		if segments.is_empty() {
 			return String::new();
 		}
-		let mut mqtt_topic = String::with_capacity(self.str_len());
-		self.segments.iter().enumerate().for_each(|(i, segment)| {
+		let mut mqtt_topic = String::with_capacity(Self::str_len(segments));
+		segments.iter().enumerate().for_each(|(i, segment)| {
 			if i > 0 {
 				mqtt_topic.push('/');
 			}
@@ -244,13 +255,13 @@ impl TopicPatternPath {
 		mqtt_topic
 	}
 
-	pub fn to_template_pattern(&self) -> String {
+	fn to_template_pattern(segments:&[TopicPatternItem]) -> String {
 		// Convert to named wildcards: sensors/{sensor_id}/data
-		if self.segments.is_empty() {
+		if segments.is_empty() {
 			return String::new();
 		}
 		let mut mqtt_topic = String::new();
-		self.segments.iter().enumerate().for_each(|(i, segment)| {
+		segments.iter().enumerate().for_each(|(i, segment)| {
 			if i > 0 {
 				mqtt_topic.push('/');
 			}
@@ -399,7 +410,7 @@ impl TopicPatternPath {
 impl std::fmt::Display for TopicPatternPath {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		// Convert segments to strings and join them with "/"
-		let path = self.to_template_pattern();
+		let path = self.topic_pattern();
 		write!(f, "{path}")
 	}
 }
@@ -411,7 +422,7 @@ mod tests {
 	fn str_to_topic_pattern_path(
 		topic: &str,
 	) -> Result<TopicPatternPath, TopicPatternError> {
-		TopicPatternPath::new_from_string(topic)
+		TopicPatternPath::new_from_string(topic, NonZeroUsize::new(10).unwrap())
 	}
 
 	#[test]

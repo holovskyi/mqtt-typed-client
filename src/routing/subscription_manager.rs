@@ -34,12 +34,14 @@ type TopicRouterType<T> = TopicRouter<Sender<MessageType<T>>>;
 #[derive(Debug)]
 pub struct SubscriptionConfig {
 	pub qos: rumqttc::QoS,
+	pub cache_size: NonZeroUsize,
 }
 
 impl Default for SubscriptionConfig {
 	fn default() -> Self {
 		Self {
 			qos: rumqttc::QoS::AtLeastOnce,
+			cache_size: NonZeroUsize::new(10).unwrap()
 		}
 	}
 }
@@ -76,13 +78,14 @@ where T: Send + Sync + 'static
 {
 	pub fn spawn(
 		client: AsyncClient,
-		topic_cache_size: NonZeroUsize,
+		topic_path_cache_capacity: NonZeroUsize,
+		command_channel_capacity: usize,
 	) -> (SubscriptionManagerController, SubscriptionManagerHandler<T>) {
-		let (command_tx, command_rx) = channel(100);
+		let (command_tx, command_rx) = channel(command_channel_capacity);
 		let (shutdown_tx, shutdown_rx) = oneshot::channel();
 		let actor = Self {
 			topic_router: TopicRouterType::<T>::new(),
-			topic_path_cache: LruCache::new(topic_cache_size),
+			topic_path_cache: LruCache::new(topic_path_cache_capacity),
 			client,
 			command_rx,
 			command_tx: command_tx.clone(),
@@ -168,7 +171,7 @@ where T: Send + Sync + 'static
 		let active_subscriptions = self.topic_router.get_active_subscriptions();
 
 		for topic in active_subscriptions {
-			if let Err(err) = self.client.unsubscribe(topic.to_string()).await {
+			if let Err(err) = self.client.unsubscribe(topic.mqtt_pattern().as_str()).await {
 				error!(
 					topic_pattern = %topic,
 					error = ?err,
@@ -209,12 +212,12 @@ where T: Send + Sync + 'static
 		response_tx: oneshot::Sender<Result<Subscriber<T>, SubscriptionError>>,
 	) {
 		let (channel_tx, channel_rx) = tokio_mpsc::channel(500);
-		let topic_patern_str = topic.to_mqtt_subscription_pattern();
+		let topic_patern_str = topic.mqtt_pattern();
 		let (fresh_topic, id) = self.topic_router.subscribe(topic, channel_tx);
 		if fresh_topic {
 			let res = self
 				.client
-				.subscribe(topic_patern_str.clone(), config.qos)
+				.subscribe(topic_patern_str.as_str(), config.qos)
 				.await;
 			if let Err(err) = res {
 				if let Err(unsub_err) = self.topic_router.unsubscribe(&id) {
@@ -258,7 +261,7 @@ where T: Send + Sync + 'static
 				if topic_empty {
 					let res = self
 						.client
-						.unsubscribe(topic_pattern.to_string())
+						.unsubscribe(topic_pattern.mqtt_pattern().as_str())
 						.await;
 					if let Err(err) = res {
 						error!(

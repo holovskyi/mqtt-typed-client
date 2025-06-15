@@ -5,9 +5,8 @@ use std::collections::{HashMap, HashSet};
 use arcstr::Substr;
 use thiserror::Error;
 
-use crate::topic::topic_match::TopicPath;
-
 use super::topic_pattern_path::{TopicPatternItem, TopicPatternPath};
+use crate::topic::topic_match::TopicPath;
 
 /// Errors that can occur during topic matching operations
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
@@ -284,14 +283,14 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 	// which is more efficient.
 	fn collect_active_subscriptions<'a>(
 		&'a self,
-		//TODO: change to persistent vector for prevent to_vec calls
 		current_path: &mut Vec<TopicPatternItem>,
 		result: &mut Vec<(TopicPatternPath, &'a T)>,
 	) {
 		// Collect exact match data if present
 		if let Some(data) = &self.exact_match_data {
-			let path = TopicPatternPath::new_from_segments(current_path.as_slice())
-				.expect("Internal path should always be valid");
+			let path =
+				TopicPatternPath::new_from_segments(current_path.as_slice())
+					.expect("Internal path should always be valid");
 			result.push((path, data))
 		};
 		// Collect hash wildcard data if present

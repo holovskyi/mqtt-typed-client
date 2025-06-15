@@ -24,7 +24,9 @@ pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
 
 	let (client, connection) = MqttClient::<BincodeSerializer>::new(
 		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async-example",
-		NonZeroUsize::new(100).unwrap()
+		NonZeroUsize::new(100).unwrap(),
+		10,
+		100
 	)
 	.await?;
 
