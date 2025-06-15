@@ -1,10 +1,11 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(missing_docs)]
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{num::NonZeroUsize, sync::Arc, time::Duration};
 
 use arcstr::ArcStr;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
+use lru::LruCache;
 use rumqttc::AsyncClient;
 use tokio::{
 	sync::{
@@ -26,7 +27,7 @@ use crate::topic::{
 };
 
 pub type RawMessageType<T> = (String, T);
-pub type MessageType<T> = (TopicMatch, Arc<T>);
+pub type MessageType<T> = (Arc<TopicMatch>, Arc<T>);
 
 type TopicRouterType<T> = TopicRouter<Sender<MessageType<T>>>;
 
@@ -61,7 +62,7 @@ type SlowSendResult<T> = (
 
 pub struct SubscriptionManagerActor<T> {
 	topic_router: TopicRouterType<T>,
-	topic_path_cache: HashMap<String, TopicPath>,
+	topic_path_cache: LruCache<ArcStr, Arc<TopicPath>>,
 	client: AsyncClient,
 	command_rx: Receiver<Command<T>>,
 	command_tx: Sender<Command<T>>, //For unsubscribe message
@@ -75,12 +76,13 @@ where T: Send + Sync + 'static
 {
 	pub fn spawn(
 		client: AsyncClient,
+		topic_cache_size: NonZeroUsize,
 	) -> (SubscriptionManagerController, SubscriptionManagerHandler<T>) {
 		let (command_tx, command_rx) = channel(100);
 		let (shutdown_tx, shutdown_rx) = oneshot::channel();
 		let actor = Self {
 			topic_router: TopicRouterType::<T>::new(),
-			topic_path_cache: HashMap::new(),
+			topic_path_cache: LruCache::new(topic_cache_size),
 			client,
 			command_rx,
 			command_tx: command_tx.clone(),
@@ -276,28 +278,36 @@ where T: Send + Sync + 'static
 
 	async fn handle_send(&mut self, (topic_str, data): RawMessageType<T>) {
 		let topic_arcstr = ArcStr::from(topic_str);
-		//TODO Create cache for TopicPath to avoid re-parsing
-		let topic_path = Arc::new(TopicPath::new(topic_arcstr));
+		let topic_path = match self.topic_path_cache.get(&topic_arcstr) {
+			| Some(path) => path.clone(),
+			| None => {
+				let path = Arc::new(TopicPath::new(topic_arcstr.clone()));
+				self.topic_path_cache.put(topic_arcstr, path.clone());
+				path
+			}
+		};
+
 		let subscribers = self.topic_router.get_subscribers(&topic_path);
 		let mut closed_subscribers = Vec::new();
 		let data = Arc::new(data);
-		subscribers.iter().for_each(|(id, topic_patern, sender)| {
-			let topic_match = match topic_patern.try_match(Arc::clone(&topic_path)) {
-				| Ok(match_result) => match_result,
-				| Err(err) => {
-					error!(
-						subscription_id = ?id,
-						topic = %topic_path,
-						error = ?err,
-						"Failed to match topic pattern"
-					);
-					return;
-				}
-			};
+		for (id, topic_patern, sender) in subscribers {
+			let topic_match =
+				match topic_patern.try_match(Arc::clone(&topic_path)) {
+					| Ok(match_result) => match_result,
+					| Err(err) => {
+						error!(
+							subscription_id = ?id,
+							topic = %topic_path,
+							error = ?err,
+							"Failed to match topic pattern"
+						);
+						continue;
+					}
+				};
 			match sender.try_send((topic_match, Arc::clone(&data))) {
 				| Ok(_) => (),
 				| Err(TrySendError::Closed(_)) => {
-					closed_subscribers.push(**id);
+					closed_subscribers.push(*id);
 				}
 				| Err(TrySendError::Full(msg)) => {
 					if self.slow_send_futures.len() >= 100 {
@@ -307,10 +317,10 @@ where T: Send + Sync + 'static
 							queue_size = self.slow_send_futures.len(),
 							"Too many slow sends in processing queue. Message dropped",
 						);
-						return;
+						continue;
 					}
 					let sender_clone = (*sender).clone();
-					let id_clone = **id;
+					let id_clone = *id;
 
 					let slow_send_handle = tokio::spawn(async move {
 						let send_result = sender_clone
@@ -321,7 +331,7 @@ where T: Send + Sync + 'static
 					self.slow_send_futures.push(slow_send_handle);
 				}
 			}
-		});
+		}
 		for closed_id in closed_subscribers {
 			self.handle_unsubscribe(&closed_id).await
 		}

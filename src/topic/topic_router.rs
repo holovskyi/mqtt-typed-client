@@ -172,12 +172,8 @@ impl<T> TopicRouter<T> {
 			.collect()
 	}
 
-	pub fn get_active_subscriptions(&self) -> Vec<TopicPatternPath> {
-		let active_subscriptions = self.topic_matcher.active_subscriptions();
-		active_subscriptions
-			.into_iter()
-			.map(|(topic_pattern, _)| topic_pattern)
-			.collect()
+	pub fn get_active_subscriptions(&self) -> impl Iterator<Item = &TopicPatternPath> {
+		self.subscriptions.values()
 	}
 
 	/// Cleanup all internal data structures and close subscriber channels

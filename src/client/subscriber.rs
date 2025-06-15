@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 use bytes::Bytes;
 
@@ -7,7 +8,7 @@ use crate::message_serializer::MessageSerializer;
 use crate::routing::Subscriber;
 use crate::topic::topic_match::TopicMatch;
 
-pub type IncomingMessage<T,F> = (TopicMatch, Result<T,<F as MessageSerializer<T>>::DeserializeError>);
+pub type IncomingMessage<T,F> = (Arc<TopicMatch>, Result<T,<F as MessageSerializer<T>>::DeserializeError>);
 
 pub struct TypedSubscriber<T, F> {
 	subscriber: Subscriber<Bytes>,

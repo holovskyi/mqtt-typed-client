@@ -15,6 +15,7 @@ async-trait = "0.1.88"
 bincode = "2.0.1"
 bytes = "1.10.1"
 futures = "0.3.31"
+lru = "0.14.0"
 rumqttc = { version = "0.24.0", features = ["url"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"

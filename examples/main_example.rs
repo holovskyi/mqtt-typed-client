@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{num::NonZeroUsize, time::Duration};
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient};
@@ -17,6 +17,7 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
 	let (client, connection) = MqttClient::<BincodeSerializer>::new(
 		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async",
+		NonZeroUsize::new(100).unwrap()
 	)
 	.await?;
 	info!("MQTT client created successfully");

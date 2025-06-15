@@ -5,7 +5,7 @@
 //!
 //! Run with: cargo run --example basic_usage --features examples
 
-use std::time::Duration;
+use std::{num::NonZeroUsize, time::Duration};
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient};
@@ -24,6 +24,7 @@ pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
 
 	let (client, connection) = MqttClient::<BincodeSerializer>::new(
 		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async-example",
+		NonZeroUsize::new(100).unwrap()
 	)
 	.await?;
 

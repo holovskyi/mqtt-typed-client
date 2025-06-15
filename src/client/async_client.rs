@@ -1,3 +1,4 @@
+use std::num::NonZeroUsize;
 use std::time::Duration;
 
 use arcstr::ArcStr;
@@ -37,6 +38,7 @@ where F: Default + Clone + Send + Sync + 'static
 {
 	pub async fn new(
 		url: &str,
+		topic_cache_size: NonZeroUsize,
 	) -> Result<(Self, MqttConnection), MqttClientError> {
 		let mut mqttoptions = MqttOptions::parse_url(url)?;
 		mqttoptions.set_keep_alive(Duration::from_secs(10));
@@ -45,7 +47,7 @@ where F: Default + Clone + Send + Sync + 'static
 		let (client, event_loop) = AsyncClient::new(mqttoptions, 10);
 
 		let (controller, handler) =
-			SubscriptionManagerActor::spawn(client.clone());
+			SubscriptionManagerActor::spawn(client.clone(), topic_cache_size);
 
 		// Spawn the event loop in a separate task to handle MQTT messages
 		// The event loop will terminate when it receives a Disconnect packet

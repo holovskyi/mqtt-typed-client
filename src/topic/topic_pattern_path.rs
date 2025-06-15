@@ -1,11 +1,13 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::num::NonZeroUsize;
 use std::slice::Iter;
 use std::sync::Arc;
-use std::{fmt, usize};
+use std::sync::Mutex;
 
 use arcstr::{ArcStr, Substr};
+use lru::LruCache;
 use thiserror::Error;
 
 use crate::topic::topic_match::{TopicMatch, TopicMatchError, TopicPath};
@@ -136,12 +138,13 @@ impl TryFrom<Substr> for TopicPatternItem {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct TopicPatternPath {
+	//TODO make sense?
 	//topic_wildcard_pattern: ArcStr, // original topic with named wildcards "sensors/{sensor_id}/data"
 	//topic_pattern: ArcStr, // mqqt topic as a string without named wildcards "sensors/+/data"
 	segments: Vec<TopicPatternItem>,
-	//TODO cached_str: OnceCell<String>,
+	match_cache: Mutex<LruCache<ArcStr, Arc<TopicMatch>>>,
 }
 
 impl TopicPatternPath {
@@ -171,17 +174,22 @@ impl TopicPatternPath {
 				));
 			}
 		}
+		let cache_size = NonZeroUsize::new(100).unwrap();
 		Ok(Self {
 			//TODO?? topic_wildcard_pattern: topic_pattern,
 			segments,
+			match_cache: Mutex::new(LruCache::new(cache_size)), // Example size, adjust as needed
 		})
 	}
 
+	#[cfg(test)]
 	pub fn new_from_segments(
 		segments: &[TopicPatternItem],
 	) -> Result<Self, TopicPatternError> {
+		let cache_size = NonZeroUsize::new(100).unwrap();
 		let pattern = Self {
 			segments: segments.to_vec(),
+			match_cache: Mutex::new(LruCache::new(cache_size)),
 		};
 		if let Some(hash_pos) = segments
 			.iter()
@@ -286,6 +294,26 @@ impl TopicPatternPath {
 	pub fn try_match(
 		&self,
 		topic: Arc<TopicPath>,
+	) -> Result<Arc<TopicMatch>, TopicMatchError> {
+		{
+			let mut match_cache = self.match_cache.lock().unwrap();
+			if let Some(cached_match) = match_cache.get(&topic.path) {
+				return Ok(cached_match.clone());
+			}
+		}
+
+		let topic_match = self.try_match_internal(topic.clone())?;
+		let topic_match_arc = Arc::new(topic_match);
+		{
+			let mut match_cache = self.match_cache.lock().unwrap();
+			match_cache.put(topic.path.clone(), Arc::clone(&topic_match_arc));
+		}
+		Ok(topic_match_arc)
+	}
+
+	fn try_match_internal(
+		&self,
+		topic: Arc<TopicPath>,
 	) -> Result<TopicMatch, TopicMatchError> {
 		let mut topic_index = 0;
 		let mut params = Vec::new();
@@ -348,7 +376,7 @@ impl TopicPatternPath {
 		if topic_index < topic.segments.len() {
 			return Err(TopicMatchError::UnexpectedEndOfPattern);
 		}
-		return Ok(TopicMatch::from_match_result(topic, params, named_params));
+		Ok(TopicMatch::from_match_result(topic, params, named_params))
 	}
 }
 
@@ -588,8 +616,11 @@ mod tests {
 		assert_eq!(path.to_string(), "sensors/#");
 
 		// Test empty path
-		let err = str_to_topic_pattern_path("");
-		assert_eq!(err, Err(TopicPatternError::EmptyTopic));
+		if let Err(err) = str_to_topic_pattern_path("") {
+			assert_eq!(err, TopicPatternError::EmptyTopic);
+		} else {
+			panic!("Expected error for empty topic pattern");
+		}
 
 		// Test / path
 		let path = str_to_topic_pattern_path("/").unwrap();
