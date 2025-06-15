@@ -1,14 +1,19 @@
+use std::borrow::Cow;
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::slice::Iter;
-use std::usize;
+use std::{fmt, usize};
 
+use arcstr::{ArcStr, Substr};
 use thiserror::Error;
+
+use crate::topic::topic_match::{TopicMatch, TopicMatchError, TopicPath};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TopicPatternItem {
-	Str(String),
-	Plus,
-	Hash,
+	Str(Substr),
+	Plus(Option<Substr>),
+	Hash(Option<Substr>),
 }
 
 /// Error types for topic pattern parsing
@@ -64,8 +69,22 @@ impl TopicPatternItem {
 	pub fn as_str(&self) -> &str {
 		match self {
 			| TopicPatternItem::Str(s) => s,
-			| TopicPatternItem::Plus => "+",
-			| TopicPatternItem::Hash => "#",
+			| TopicPatternItem::Plus(_) => "+",
+			| TopicPatternItem::Hash(_) => "#",
+		}
+	}
+
+	pub fn as_wildcard(&self) -> Cow<str> {
+		match self {
+			| TopicPatternItem::Plus(None) => Cow::Borrowed("+"),
+			| TopicPatternItem::Hash(None) => Cow::Borrowed("#"),
+			| TopicPatternItem::Plus(Some(name)) => {
+				Cow::Owned(format!("{{{name}}}"))
+			}
+			| TopicPatternItem::Hash(Some(name)) => {
+				Cow::Owned(format!("{{{name}:#}}"))
+			}
+			| TopicPatternItem::Str(s) => Cow::Borrowed(s),
 		}
 	}
 }
@@ -82,16 +101,35 @@ impl std::fmt::Display for TopicPatternItem {
 	}
 }
 
-impl TryFrom<&str> for TopicPatternItem {
+impl TryFrom<Substr> for TopicPatternItem {
 	type Error = TopicPatternError;
-	fn try_from(item: &str) -> Result<Self, Self::Error> {
-		let res = match item {
-			| "+" => TopicPatternItem::Plus,
-			| "#" => TopicPatternItem::Hash,
-			| _ if item.contains(['+', '#']) => {
-				return Err(TopicPatternError::wildcard_usage(item));
+	fn try_from(item: Substr) -> Result<Self, Self::Error> {
+		let res = match item.as_str() {
+			| "+" => TopicPatternItem::Plus(None),
+			| "#" => TopicPatternItem::Hash(None),
+			| _ if item.starts_with("{") && item.ends_with(":#}") => {
+				let inner =
+					item.trim_start_matches('{').trim_end_matches(":#}");
+				if inner.is_empty() {
+					return Err(TopicPatternError::wildcard_usage(
+						item.as_str(),
+					));
+				}
+				TopicPatternItem::Hash(Some(item.substr_from(inner)))
 			}
-			| _ => TopicPatternItem::Str(item.to_string()),
+			| _ if item.starts_with("{") && item.ends_with("}") => {
+				let inner = item.trim_start_matches('{').trim_end_matches("}");
+				if inner.is_empty() {
+					return Err(TopicPatternError::wildcard_usage(
+						item.as_str(),
+					));
+				}
+				TopicPatternItem::Plus(Some(item.substr_from(inner)))
+			}
+			| _ if item.contains(['+', '#']) => {
+				return Err(TopicPatternError::wildcard_usage(item.as_str()));
+			}
+			| _ => TopicPatternItem::Str(item),
 		};
 		Ok(res)
 	}
@@ -99,11 +137,64 @@ impl TryFrom<&str> for TopicPatternItem {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TopicPatternPath {
+	//topic_wildcard_pattern: ArcStr, // original topic with named wildcards "sensors/{sensor_id}/data"
+	//topic_pattern: ArcStr, // mqqt topic as a string without named wildcards "sensors/+/data"
 	segments: Vec<TopicPatternItem>,
 	//TODO cached_str: OnceCell<String>,
 }
 
 impl TopicPatternPath {
+	pub fn new_from_string(
+		topic_pattern: impl Into<ArcStr>,
+	) -> Result<Self, TopicPatternError> {
+		let topic_pattern = topic_pattern.into();
+		if topic_pattern.is_empty() || topic_pattern.trim().is_empty() {
+			return Err(TopicPatternError::EmptyTopic);
+		}
+
+		let segments: Result<Vec<_>, _> = topic_pattern
+			.split('/')
+			.map(|s| topic_pattern.substr_from(s))
+			.map(TopicPatternItem::try_from)
+			.collect();
+
+		let segments = segments?;
+
+		if let Some(hash_pos) = segments
+			.iter()
+			.position(|s| matches!(*s, TopicPatternItem::Hash(_)))
+		{
+			if hash_pos != segments.len() - 1 {
+				return Err(TopicPatternError::hash_position(
+					topic_pattern.as_str(),
+				));
+			}
+		}
+		Ok(Self {
+			//TODO?? topic_wildcard_pattern: topic_pattern,
+			segments,
+		})
+	}
+
+	pub fn new_from_segments(
+		segments: &[TopicPatternItem],
+	) -> Result<Self, TopicPatternError> {
+		let pattern = Self {
+			segments: segments.to_vec(),
+		};
+		if let Some(hash_pos) = segments
+			.iter()
+			.position(|s| matches!(*s, TopicPatternItem::Hash(_)))
+		{
+			if hash_pos != segments.len() - 1 {
+				return Err(TopicPatternError::hash_position(
+					pattern.to_template_pattern(),
+				));
+			}
+		}
+		Ok(pattern)
+	}
+
 	pub fn is_empty(&self) -> bool {
 		self.segments.is_empty()
 	}
@@ -116,7 +207,8 @@ impl TopicPatternPath {
 		self.segments.len()
 	}
 
-	pub fn str_len(segments: &[TopicPatternItem]) -> usize {
+	fn str_len(&self) -> usize {
+		let segments = &self.segments;
 		if segments.is_empty() {
 			return 0;
 		}
@@ -128,80 +220,157 @@ impl TopicPatternPath {
 		&self.segments
 	}
 
-	pub fn push(
-		&mut self,
-		segment: TopicPatternItem,
-	) -> Result<&Self, TopicPatternError> {
-		if let Some(TopicPatternItem::Hash) = self.segments.last() {
-			let error = format!("Can't add item ({segment}) after # in {self}");
-			return Err(TopicPatternError::hash_position(error));
-		}
-		self.segments.push(segment);
-		Ok(self)
-	}
-
-	pub fn segments_to_string(segments: &[TopicPatternItem]) -> String {
-		// Convert segments to strings and join them with "/"
-		if segments.is_empty() {
+	pub fn to_mqtt_subscription_pattern(&self) -> String {
+		// Convert to MQTT wildcards: sensors/+/data
+		if self.segments.is_empty() {
 			return String::new();
 		}
-		let mut result = String::with_capacity(Self::str_len(segments));
-		segments.iter().enumerate().for_each(|(i, segment)| {
+		let mut mqtt_topic = String::with_capacity(self.str_len());
+		self.segments.iter().enumerate().for_each(|(i, segment)| {
 			if i > 0 {
-				result.push('/');
+				mqtt_topic.push('/');
 			}
-			result.push_str(segment.as_str());
+			mqtt_topic.push_str(segment.as_str());
 		});
-		result
+		mqtt_topic
 	}
-}
 
-impl TryFrom<&str> for TopicPatternPath {
-	type Error = TopicPatternError;
-
-	fn try_from(topic: &str) -> Result<Self, Self::Error> {
-		if topic.is_empty() || topic.trim().is_empty() {
-			return Err(TopicPatternError::EmptyTopic);
+	pub fn to_template_pattern(&self) -> String {
+		// Convert to named wildcards: sensors/{sensor_id}/data
+		if self.segments.is_empty() {
+			return String::new();
 		}
+		let mut mqtt_topic = String::new();
+		self.segments.iter().enumerate().for_each(|(i, segment)| {
+			if i > 0 {
+				mqtt_topic.push('/');
+			}
+			mqtt_topic.push_str(segment.as_wildcard().as_ref());
+		});
+		mqtt_topic
+	}
 
-		let segments: Result<Vec<_>, _> =
-			topic.split('/').map(TopicPatternItem::try_from).collect();
+	// pub fn wildcard_count(&self) -> usize {
+	// 	self.segments
+	// 		.iter()
+	// 		.filter(|s| {
+	// 			matches!(
+	// 				s,
+	// 				TopicPatternItem::Plus(_) | TopicPatternItem::Hash(_)
+	// 			)
+	// 		})
+	// 		.count()
+	// }
 
-		let segments = segments?;
+	// pub fn named_params_positions(&self) -> HashMap<String, usize> {
+	// 	let mut named_params = HashMap::new();
+	// 	let mut wildcad_index = 0;
+	// 	for segment in &self.segments {
+	// 		match segment {
+	// 			| TopicPatternItem::Hash(opt_name)
+	// 			| TopicPatternItem::Plus(opt_name) => {
+	// 				opt_name.iter().for_each(|name| {
+	// 					named_params.insert(name.clone(), wildcad_index);
+	// 				});
+	// 				wildcad_index += 1;
+	// 			}
+	// 			| TopicPatternItem::Str(_) => {
+	// 				// Do nothing for regular string segments
+	// 			}
+	// 		}
+	// 	}
+	// 	named_params
+	// }
 
-		if let Some(hash_pos) =
-			segments.iter().position(|s| *s == TopicPatternItem::Hash)
-		{
-			if hash_pos != segments.len() - 1 {
-				return Err(TopicPatternError::hash_position(topic));
+	pub fn try_match(
+		&self,
+		topic: TopicPath,
+	) -> Result<TopicMatch, TopicMatchError> {
+		let mut topic_index = 0;
+		let mut params = Vec::new();
+		let mut named_params = HashMap::new();
+		for (i, pattern_segment) in self.iter().enumerate() {
+			match pattern_segment {
+				| TopicPatternItem::Str(expected) => {
+					if topic_index >= topic.segments.len() {
+						return Err(TopicMatchError::UnexpectedEndOfTopic);
+					}
+					if topic.segments[topic_index] != *expected {
+						return Err(TopicMatchError::SegmentMismatch {
+							expected: expected.to_string(),
+							found: topic.segments[topic_index].to_string(),
+							position: topic_index,
+						});
+					}
+					topic_index += 1;
+				}
+				| TopicPatternItem::Plus(opt_name) => {
+					if topic_index >= topic.segments.len() {
+						return Err(TopicMatchError::UnexpectedEndOfTopic);
+					}
+					let param_range = topic_index .. topic_index + 1;
+					params.push(param_range.clone());
+					topic_index += 1;
+					if let Some(name) = opt_name {
+						let res =
+							named_params.insert(name.clone(), param_range);
+						if res.is_some() {
+							return Err(
+								TopicMatchError::DuplicateParameterName,
+							);
+						}
+					}
+				}
+				| TopicPatternItem::Hash(opt_name) => {
+					let param_range = topic_index .. topic.segments.len();
+					params.push(param_range.clone());
+					if let Some(name) = opt_name {
+						let res =
+							named_params.insert(name.clone(), param_range);
+						if res.is_some() {
+							return Err(
+								TopicMatchError::DuplicateParameterName,
+							);
+						}
+					}
+					if i < self.len() - 1 {
+						return Err(TopicMatchError::UnexpectedHashSegment);
+					}
+					return Ok(TopicMatch::from_match_result(
+						topic,
+						params,
+						named_params,
+					));
+				}
 			}
 		}
-		Ok(Self { segments })
-	}
-}
-
-impl TryFrom<&[TopicPatternItem]> for TopicPatternPath {
-	type Error = TopicPatternError;
-
-	fn try_from(segments: &[TopicPatternItem]) -> Result<Self, Self::Error> {
-		if let Some(hash_pos) =
-			segments.iter().position(|s| *s == TopicPatternItem::Hash)
-		{
-			if hash_pos != segments.len() - 1 {
-				let path = Self::segments_to_string(segments);
-				return Err(TopicPatternError::hash_position(path));
-			}
+		if topic_index < topic.segments.len() {
+			return Err(TopicMatchError::UnexpectedEndOfPattern);
 		}
-		Ok(Self {
-			segments: segments.to_vec(),
-		})
+		return Ok(TopicMatch::from_match_result(topic, params, named_params));
 	}
 }
+
+// impl TryFrom<String> for TopicPatternPath {
+// 	type Error = TopicPatternError;
+
+// 	fn try_from(topic_pattern: String) -> Result<Self, Self::Error> {
+// 		TopicPatternPath::new_from_string(topic_pattern)
+// 	}
+// }
+
+// impl TryFrom<&[TopicPatternItem]> for TopicPatternPath {
+// 	type Error = TopicPatternError;
+
+// 	fn try_from(segments: &[TopicPatternItem]) -> Result<Self, Self::Error> {
+// 		Self::new_from_segments(segments)
+// 	}
+// }
 
 impl std::fmt::Display for TopicPatternPath {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		// Convert segments to strings and join them with "/"
-		let path = Self::segments_to_string(&self.segments);
+		let path = self.to_template_pattern();
 		write!(f, "{path}")
 	}
 }
@@ -213,7 +382,7 @@ mod tests {
 	fn str_to_topic_pattern_path(
 		topic: &str,
 	) -> Result<TopicPatternPath, TopicPatternError> {
-		topic.try_into()
+		TopicPatternPath::new_from_string(topic)
 	}
 
 	#[test]
@@ -222,8 +391,8 @@ mod tests {
 		assert_eq!(
 			result.segments,
 			vec![
-				TopicPatternItem::Str("simple".to_string()),
-				TopicPatternItem::Str("path".to_string())
+				TopicPatternItem::Str(Substr::from("simple")),
+				TopicPatternItem::Str(Substr::from("path"))
 			]
 		);
 	}
@@ -234,9 +403,9 @@ mod tests {
 		assert_eq!(
 			result.segments,
 			vec![
-				TopicPatternItem::Str("devices".to_string()),
-				TopicPatternItem::Plus,
-				TopicPatternItem::Str("status".to_string())
+				TopicPatternItem::Str(Substr::from("devices")),
+				TopicPatternItem::Plus(None),
+				TopicPatternItem::Str(Substr::from("status"))
 			]
 		);
 	}
@@ -247,8 +416,8 @@ mod tests {
 		assert_eq!(
 			result.segments,
 			vec![
-				TopicPatternItem::Str("sensors".to_string()),
-				TopicPatternItem::Hash
+				TopicPatternItem::Str(Substr::from("sensors")),
+				TopicPatternItem::Hash(None)
 			]
 		);
 	}
@@ -259,10 +428,10 @@ mod tests {
 		assert_eq!(
 			result.segments,
 			vec![
-				TopicPatternItem::Str("home".to_string()),
-				TopicPatternItem::Plus,
-				TopicPatternItem::Str("device".to_string()),
-				TopicPatternItem::Hash
+				TopicPatternItem::Str(Substr::from("home")),
+				TopicPatternItem::Plus(None),
+				TopicPatternItem::Str(Substr::from("device")),
+				TopicPatternItem::Hash(None)
 			]
 		);
 	}
@@ -277,10 +446,10 @@ mod tests {
 	#[test]
 	fn test_only_wildcards() {
 		let result_star = str_to_topic_pattern_path("+").unwrap();
-		assert_eq!(result_star.segments, vec![TopicPatternItem::Plus]);
+		assert_eq!(result_star.segments, vec![TopicPatternItem::Plus(None)]);
 
 		let result_hash = str_to_topic_pattern_path("#").unwrap();
-		assert_eq!(result_hash.segments, vec![TopicPatternItem::Hash]);
+		assert_eq!(result_hash.segments, vec![TopicPatternItem::Hash(None)]);
 	}
 
 	#[test]
@@ -290,9 +459,9 @@ mod tests {
 		assert_eq!(
 			result.unwrap().segments,
 			vec![
-				TopicPatternItem::Str("topic".to_string()),
-				TopicPatternItem::Str("".to_string()),
-				TopicPatternItem::Str("subtopic".to_string())
+				TopicPatternItem::Str(Substr::from("topic")),
+				TopicPatternItem::Str(Substr::from("")),
+				TopicPatternItem::Str(Substr::from("subtopic"))
 			]
 		);
 	}
@@ -304,8 +473,8 @@ mod tests {
 		assert_eq!(
 			result.unwrap().segments,
 			vec![
-				TopicPatternItem::Str("".to_string()),
-				TopicPatternItem::Str("start".to_string())
+				TopicPatternItem::Str(Substr::from("")),
+				TopicPatternItem::Str(Substr::from("start"))
 			]
 		);
 	}
@@ -317,8 +486,8 @@ mod tests {
 		assert_eq!(
 			result.unwrap().segments,
 			vec![
-				TopicPatternItem::Str("end".to_string()),
-				TopicPatternItem::Str("".to_string())
+				TopicPatternItem::Str(Substr::from("end")),
+				TopicPatternItem::Str(Substr::from(""))
 			]
 		);
 	}
@@ -383,9 +552,9 @@ mod tests {
 		assert_eq!(
 			result.segments,
 			vec![
-				TopicPatternItem::Str("пристрої".to_string()),
-				TopicPatternItem::Plus,
-				TopicPatternItem::Str("статус".to_string())
+				TopicPatternItem::Str(Substr::from("пристрої")),
+				TopicPatternItem::Plus(None),
+				TopicPatternItem::Str(Substr::from("статус"))
 			]
 		);
 	}
@@ -397,8 +566,8 @@ mod tests {
 		assert_eq!(
 			result.segments,
 			vec![
-				TopicPatternItem::Str("device-123".to_string()),
-				TopicPatternItem::Str("status@home".to_string())
+				TopicPatternItem::Str(Substr::from("device-123")),
+				TopicPatternItem::Str(Substr::from("status@home"))
 			]
 		);
 	}

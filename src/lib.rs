@@ -111,7 +111,6 @@ pub use topic::{
 
 // Re-export external types that users commonly need
 pub use rumqttc::QoS;
-pub use string_cache::DefaultAtom as Topic;
 
 /// Result type alias for operations that may fail with MqttClientError
 pub type Result<T> = std::result::Result<T, MqttClientError>;
@@ -131,6 +130,6 @@ pub mod prelude {
         MqttClient, MqttClientError, TopicPublisher, TypedSubscriber,
         MessageSerializer, BincodeSerializer,
         TopicPatternPath, SubscriptionId,
-        QoS, Topic, Result
+        QoS, Result
     };
 }

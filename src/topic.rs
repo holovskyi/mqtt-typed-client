@@ -8,6 +8,7 @@ pub mod error;
 pub mod topic_matcher;
 pub mod topic_pattern_path;
 pub mod topic_router;
+pub mod topic_match;
 
 #[cfg(test)]
 mod topic_matcher_tests;

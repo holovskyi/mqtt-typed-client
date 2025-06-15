@@ -1,10 +1,10 @@
 use std::time::Duration;
 
+use arcstr::ArcStr;
 use bytes::Bytes;
 use rumqttc::Packet::{Disconnect, Publish};
 use rumqttc::{AsyncClient, EventLoop, MqttOptions};
 use rumqttc::{Event::Incoming, Event::Outgoing};
-use string_cache::DefaultAtom as Topic;
 use tokio::time;
 use tracing::{debug, error, info, warn};
 
@@ -32,11 +32,12 @@ pub struct MqttConnection {
 	event_loop_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
-
 impl<F> MqttClient<F>
 where F: Default + Clone + Send + Sync + 'static
 {
-	pub async fn new(url: &str) -> Result<(Self,MqttConnection), MqttClientError> {
+	pub async fn new(
+		url: &str,
+	) -> Result<(Self, MqttConnection), MqttClientError> {
 		let mut mqttoptions = MqttOptions::parse_url(url)?;
 		mqttoptions.set_keep_alive(Duration::from_secs(10));
 		mqttoptions.set_clean_session(false);
@@ -86,9 +87,10 @@ where F: Default + Clone + Send + Sync + 'static
 
 					debug!(topic = %p.topic, payload_size = p.payload.len(), "Received MQTT message");
 
-					let topic = Topic::from(p.topic);
-					if let Err(err) =
-						subscription_manager.send_data(topic, p.payload).await
+					//let topic = Topic::from(p.topic);
+					if let Err(err) = subscription_manager
+						.send_data(p.topic, p.payload)
+						.await
 					{
 						error!(error = ?err, "Failed to send data to subscription manager");
 					}
@@ -139,13 +141,14 @@ where F: Default + Clone + Send + Sync + 'static
 
 	pub fn get_publisher<T>(
 		&self,
-		topic: &str,
+		topic: impl Into<ArcStr>,
 	) -> Result<TopicPublisher<T, F>, topic::TopicRouterError>
 	where
 		F: MessageSerializer<T>,
 	{
+		let topic = topic.into();
 		//Add type illegal topic
-		validate_mqtt_topic(topic)?;
+		validate_mqtt_topic(topic.as_str())?;
 		Ok(TopicPublisher::new(
 			self.client.clone(),
 			self.serializer.clone(),
@@ -155,7 +158,7 @@ where F: Default + Clone + Send + Sync + 'static
 
 	pub async fn subscribe<T>(
 		&self,
-		topic: &str,
+		topic: impl Into<ArcStr>,
 	) -> Result<TypedSubscriber<T, F>, MqttClientError>
 	where
 		T: 'static + Send + Sync,
@@ -167,26 +170,26 @@ where F: Default + Clone + Send + Sync + 'static
 
 	pub async fn subscribe_with_config<T>(
 		&self,
-		topic: &str,
+		topic: impl Into<ArcStr>,
 		config: SubscriptionConfig,
 	) -> Result<TypedSubscriber<T, F>, MqttClientError>
 	where
 		T: 'static + Send + Sync,
 		F: MessageSerializer<T>,
 	{
-		let topic_pattern = TopicPatternPath::try_from(topic).map_err(|e| {
-			MqttClientError::TopicPattern(format!(
-				"Invalid topic pattern '{}': {:?}",
-				topic, e
-			))
-		})?;
+		let topic_pattern =
+			TopicPatternPath::new_from_string(topic).map_err(|e| {
+				MqttClientError::TopicPattern(format!(
+					"Invalid topic pattern: {:?}",
+					e
+				))
+			})?;
 		let subscriber = self
 			.subscription_manager_handler
 			.subscribe(topic_pattern, config)
 			.await?;
 		Ok(TypedSubscriber::new(subscriber, self.serializer.clone()))
 	}
-
 }
 
 impl MqttConnection {

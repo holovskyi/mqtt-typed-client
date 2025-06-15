@@ -1,13 +1,13 @@
 use std::marker::PhantomData;
 
 use bytes::Bytes;
-use string_cache::DefaultAtom as Topic;
 
 use super::error::MqttClientError;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::Subscriber;
+use crate::topic::topic_match::TopicMatch;
 
-pub type IncomingMessage<T,F> = (Topic, Result<T,<F as MessageSerializer<T>>::DeserializeError>);
+pub type IncomingMessage<T,F> = (TopicMatch, Result<T,<F as MessageSerializer<T>>::DeserializeError>);
 
 pub struct TypedSubscriber<T, F> {
 	subscriber: Subscriber<Bytes>,

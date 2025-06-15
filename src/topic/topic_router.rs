@@ -1,7 +1,10 @@
+#![allow(clippy::missing_docs_in_private_items)]
+#![allow(missing_docs)]
 use std::collections::HashMap;
 
-use string_cache::DefaultAtom as Topic;
 use thiserror::Error;
+
+use crate::topic::topic_match::TopicPath;
 
 use super::topic_matcher::{TopicMatcherError, TopicMatcherNode};
 use super::topic_pattern_path::{TopicPatternError, TopicPatternPath};
@@ -153,12 +156,19 @@ impl<T> TopicRouter<T> {
 
 	pub fn get_subscribers<'a>(
 		&'a self,
-		topic: &Topic,
-	) -> Vec<(&'a SubscriptionId, &'a T)> {
-		let subscribers = self.topic_matcher.find_by_path(topic.as_ref());
+		topic: &TopicPath,
+	) -> Vec<(&'a SubscriptionId, &'a TopicPatternPath, &'a T)> {
+		let subscribers = self.topic_matcher.find_by_path(topic);
 		subscribers
 			.into_iter()
 			.flat_map(|hash_map| hash_map.iter())
+			.map(|(id, subscription)| {
+				let topic_pattern = self
+					.subscriptions
+					.get(id)
+					.expect("Subscription ID should exist in subscriptions");
+				(id, topic_pattern, subscription)
+			})
 			.collect()
 	}
 
@@ -178,5 +188,14 @@ impl<T> TopicRouter<T> {
 		self.topic_matcher = TopicMatcherNode::new();
 		self.subscriptions.clear();
 		self.next_id = 0;
+	}
+
+	pub fn get_topic_by_id(
+		&self,
+		id: &SubscriptionId,
+	) -> Result<&TopicPatternPath, TopicRouterError> {
+		self.subscriptions
+			.get(id)
+			.ok_or(TopicRouterError::subscription_not_found(*id))
 	}
 }

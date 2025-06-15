@@ -1,9 +1,11 @@
-use std::{sync::Arc, time::Duration};
+#![allow(clippy::missing_docs_in_private_items)]
+#![allow(missing_docs)]
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
+use arcstr::ArcStr;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 use rumqttc::AsyncClient;
-use string_cache::DefaultAtom as Topic;
 use tokio::{
 	sync::{
 		mpsc::{
@@ -18,9 +20,14 @@ use tracing::{debug, error, info, warn};
 
 use super::error::{SendError, SubscriptionError};
 use super::subscriber::Subscriber;
-use crate::topic::{SubscriptionId, TopicPatternPath, TopicRouter};
+use crate::topic::{
+	SubscriptionId, TopicPatternPath, TopicRouter,
+	topic_match::{TopicMatch, TopicPath},
+};
 
-pub type MessageType<T> = (Topic, Arc<T>);
+pub type RawMessageType<T> = (String, T);
+pub type MessageType<T> = (TopicMatch, Arc<T>);
+
 type TopicRouterType<T> = TopicRouter<Sender<MessageType<T>>>;
 
 #[derive(Debug)]
@@ -44,16 +51,17 @@ pub enum Command<T> {
 		SubscriptionConfig,
 		oneshot::Sender<Result<Subscriber<T>, SubscriptionError>>,
 	),
-	Send(MessageType<T>),
+	Send(RawMessageType<T>),
 }
 
 type SlowSendResult<T> = (
 	SubscriptionId,
-	Result<(), tokio_mpsc::error::SendTimeoutError<(Topic, Arc<T>)>>,
+	Result<(), tokio_mpsc::error::SendTimeoutError<MessageType<T>>>,
 );
 
 pub struct SubscriptionManagerActor<T> {
 	topic_router: TopicRouterType<T>,
+	topic_path_cache: HashMap<String, TopicPath>,
 	client: AsyncClient,
 	command_rx: Receiver<Command<T>>,
 	command_tx: Sender<Command<T>>, //For unsubscribe message
@@ -72,6 +80,7 @@ where T: Send + Sync + 'static
 		let (shutdown_tx, shutdown_rx) = oneshot::channel();
 		let actor = Self {
 			topic_router: TopicRouterType::<T>::new(),
+			topic_path_cache: HashMap::new(),
 			client,
 			command_rx,
 			command_tx: command_tx.clone(),
@@ -198,11 +207,13 @@ where T: Send + Sync + 'static
 		response_tx: oneshot::Sender<Result<Subscriber<T>, SubscriptionError>>,
 	) {
 		let (channel_tx, channel_rx) = tokio_mpsc::channel(500);
-		let topic_clone = topic.to_string();
+		let topic_patern_str = topic.to_mqtt_subscription_pattern();
 		let (fresh_topic, id) = self.topic_router.subscribe(topic, channel_tx);
 		if fresh_topic {
-			let res =
-				self.client.subscribe(topic_clone.clone(), config.qos).await;
+			let res = self
+				.client
+				.subscribe(topic_patern_str.clone(), config.qos)
+				.await;
 			if let Err(err) = res {
 				if let Err(unsub_err) = self.topic_router.unsubscribe(&id) {
 					warn!(
@@ -212,7 +223,7 @@ where T: Send + Sync + 'static
 					);
 				}
 				error!(
-					topic = %topic_clone,
+					topic = %topic_patern_str,
 					error = ?err,
 					"Failed to subscribe to MQTT topic"
 				);
@@ -221,7 +232,7 @@ where T: Send + Sync + 'static
 					.is_err()
 				{
 					warn!(
-						topic = %topic_clone,
+						topic = %topic_patern_str,
 						"Could not send subscribe error response (channel full/closed)"
 					);
 				}
@@ -263,11 +274,27 @@ where T: Send + Sync + 'static
 		}
 	}
 
-	async fn handle_send(&mut self, (topic, data): MessageType<T>) {
+	async fn handle_send(&mut self, (topic, data): RawMessageType<T>) {
+		let topic = ArcStr::from(topic);
+		//TODO Create cache for TopicPath to avoid re-parsing
+		let topic = TopicPath::new(topic);
 		let subscribers = self.topic_router.get_subscribers(&topic);
 		let mut closed_subscribers = Vec::new();
-		subscribers.iter().for_each(|(id, sender)| {
-			match sender.try_send((topic.clone(), Arc::clone(&data))) {
+		let data = Arc::new(data);
+		subscribers.iter().for_each(|(id, topic_patern, sender)| {
+			let topic_match = match topic_patern.try_match(topic.clone()) {
+				| Ok(match_result) => match_result,
+				| Err(err) => {
+					error!(
+						subscription_id = ?id,
+						topic = %topic,
+						error = ?err,
+						"Failed to match topic pattern"
+					);
+					return;
+				}
+			};
+			match sender.try_send((topic_match, Arc::clone(&data))) {
 				| Ok(_) => (),
 				| Err(TrySendError::Closed(_)) => {
 					closed_subscribers.push(**id);
@@ -345,11 +372,11 @@ where T: Send + Sync + 'static
 
 	pub async fn send_data(
 		&self,
-		topic: Topic,
+		topic: String,
 		data: T,
 	) -> Result<(), SendError> {
 		self.command_tx
-			.send(Command::Send((topic, Arc::new(data))))
+			.send(Command::Send((topic, data)))
 			.await
 			.map_err(|_| SendError::ChannelClosed)
 	}

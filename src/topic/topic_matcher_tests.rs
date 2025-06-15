@@ -1,7 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
+use arcstr::ArcStr;
+
 use super::topic_matcher::TopicMatcherNode;
 use super::topic_pattern_path::TopicPatternPath;
+use crate::topic::topic_match::TopicPath;
 
 /// A subscription identifier.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -26,7 +29,7 @@ fn test_subscriptions(
 
 	// Subscribe to all patterns
 	for (pattern_str, sub_id) in subscriptions {
-		let pattern = TopicPatternPath::try_from(*pattern_str).unwrap();
+		let pattern = TopicPatternPath::new_from_string(*pattern_str).unwrap();
 		let sub_id = make_subscription_id(*sub_id);
 		root.subscribe_to_pattern(&pattern).insert(sub_id);
 	}
@@ -40,7 +43,8 @@ fn test_subscriptions(
 			.collect();
 
 		// Get actual matches
-		let matches = root.find_by_path(path);
+		let topic = TopicPath::new(ArcStr::from(*path));
+		let matches = root.find_by_path(&topic);
 
 		// Collect all unique subscription IDs from matches
 		let actual: HashSet<SubscriptionId> =
@@ -174,7 +178,8 @@ fn test_multiple_subscribers_to_same_pattern() {
 	let mut root = TopicMatcherNode::<HashSet<SubscriptionId>>::new();
 
 	// Multiple subscriptions to the same pattern
-	let pattern = TopicPatternPath::try_from("sensors/temperature").unwrap();
+	let pattern =
+		TopicPatternPath::new_from_string("sensors/temperature").unwrap();
 
 	let sub_id1 = make_subscription_id(1);
 	let sub_id2 = make_subscription_id(2);
@@ -185,7 +190,8 @@ fn test_multiple_subscribers_to_same_pattern() {
 	subscribers.insert(sub_id2.clone());
 
 	// Test that both subscriptions match
-	let matches = root.find_by_path("sensors/temperature");
+	let topic = TopicPath::new(ArcStr::from("sensors/temperature"));
+	let matches = root.find_by_path(&topic);
 	assert_eq!(matches.len(), 1); // One matching node
 
 	let matched_subs: HashSet<SubscriptionId> =
@@ -206,20 +212,24 @@ fn test_same_subscriber_multiple_patterns() {
 
 	// Subscribe to pattern 1: Exact match
 	let pattern1 =
-		TopicPatternPath::try_from("devices/living-room/temperature").unwrap();
+		TopicPatternPath::new_from_string("devices/living-room/temperature")
+			.unwrap();
 	root.subscribe_to_pattern(&pattern1).insert(sub_id.clone());
 
 	// Subscribe to pattern 2: Wildcard match
-	let pattern2 = TopicPatternPath::try_from("devices/+/humidity").unwrap();
+	let pattern2 =
+		TopicPatternPath::new_from_string("devices/+/humidity").unwrap();
 	root.subscribe_to_pattern(&pattern2).insert(sub_id.clone());
 
 	// Subscribe to pattern 3: Hash wildcard
-	let pattern3 = TopicPatternPath::try_from("sensors/#").unwrap();
+	let pattern3 = TopicPatternPath::new_from_string("sensors/#").unwrap();
 	root.subscribe_to_pattern(&pattern3).insert(sub_id.clone());
 
 	// Test each path individually
 	{
-		let temp_matches = root.find_by_path("devices/living-room/temperature");
+		let topic =
+			TopicPath::new(ArcStr::from("devices/living-room/temperature"));
+		let temp_matches = root.find_by_path(&topic);
 		let matched_subs = collect_sub_ids(&temp_matches);
 
 		assert_eq!(matched_subs.len(), 1);
@@ -227,8 +237,8 @@ fn test_same_subscriber_multiple_patterns() {
 	}
 
 	{
-		let humidity_matches =
-			root.find_by_path("devices/living-room/humidity");
+		let topic = TopicPath::new(ArcStr::from("devices/living-room/humidity"));
+		let humidity_matches = root.find_by_path(&topic);
 		let matched_subs = collect_sub_ids(&humidity_matches);
 
 		assert_eq!(matched_subs.len(), 1);
@@ -236,8 +246,9 @@ fn test_same_subscriber_multiple_patterns() {
 	}
 
 	{
-		let sensors_matches =
-			root.find_by_path("sensors/living-room/temperature");
+		let topic =
+			TopicPath::new(ArcStr::from("sensors/living-room/temperature"));
+		let sensors_matches = root.find_by_path(&topic);
 		let matched_subs = collect_sub_ids(&sensors_matches);
 
 		assert_eq!(matched_subs.len(), 1);
@@ -264,7 +275,7 @@ fn test_active_subscriptions(
 
 	// Subscribe to all patterns
 	for (pattern_str, sub_id) in subscriptions {
-		let pattern = TopicPatternPath::try_from(*pattern_str).unwrap();
+		let pattern = TopicPatternPath::new_from_string(*pattern_str).unwrap();
 		let sub_id = make_subscription_id(*sub_id);
 		root.subscribe_to_pattern(&pattern).insert(sub_id);
 	}
@@ -338,8 +349,9 @@ fn test_multiple_subs_active_subscriptions() {
 	let mut root = TopicMatcherNode::<HashSet<SubscriptionId>>::new();
 
 	// Multiple subscriptions to the same pattern
-	let pattern1 = TopicPatternPath::try_from("sensors/temperature").unwrap();
-	let pattern2 = TopicPatternPath::try_from("home/#").unwrap();
+	let pattern1 =
+		TopicPatternPath::new_from_string("sensors/temperature").unwrap();
+	let pattern2 = TopicPatternPath::new_from_string("home/#").unwrap();
 
 	// Add multiple subscription IDs to the first pattern
 	let subscribers1 = root.subscribe_to_pattern(&pattern1);
@@ -388,14 +400,14 @@ fn test_update_node(
 
 	// Add initial subscriptions
 	for (pattern_str, sub_id) in initial_subs {
-		let pattern = TopicPatternPath::try_from(*pattern_str).unwrap();
+		let pattern = TopicPatternPath::new_from_string(*pattern_str).unwrap();
 		let sub_id = make_subscription_id(*sub_id);
 		root.subscribe_to_pattern(&pattern).insert(sub_id);
 	}
 
 	// Perform operations (subscribe or unsubscribe)
 	for (pattern_str, sub_id, should_remove) in operations {
-		let pattern = TopicPatternPath::try_from(*pattern_str).unwrap();
+		let pattern = TopicPatternPath::new_from_string(*pattern_str).unwrap();
 		let sub_id = make_subscription_id(*sub_id);
 
 		// Manually update the subscription in the node
@@ -551,13 +563,13 @@ fn test_unsubscribe_all() {
 	// Verify with a new matcher that it's truly empty
 	let mut root = TopicMatcherNode::<HashSet<SubscriptionId>>::new();
 	for (pattern_str, sub_id) in initial_subs {
-		let pattern = TopicPatternPath::try_from(pattern_str).unwrap();
+		let pattern = TopicPatternPath::new_from_string(pattern_str).unwrap();
 		let sub_id = make_subscription_id(sub_id);
 		root.subscribe_to_pattern(&pattern).insert(sub_id);
 	}
 
 	for (pattern_str, sub_id, _) in operations {
-		let pattern = TopicPatternPath::try_from(pattern_str).unwrap();
+		let pattern = TopicPatternPath::new_from_string(pattern_str).unwrap();
 		let sub_id = make_subscription_id(sub_id);
 		root.update_node(pattern.slice(), |subscriptions| {
 			subscriptions.remove(&sub_id);

@@ -1,8 +1,12 @@
+#![allow(clippy::missing_docs_in_private_items)]
+#![allow(missing_docs)]
 use std::collections::{HashMap, HashSet};
 
+use arcstr::Substr;
 use thiserror::Error;
 
 use super::topic_pattern_path::{TopicPatternItem, TopicPatternPath};
+use crate::topic::topic_match::TopicPath;
 
 /// Errors that can occur during topic matching operations
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
@@ -66,7 +70,7 @@ pub struct TopicMatcherNode<T> {
 	exact_match_data: Option<T>,
 
 	/// Children nodes for exact matches of next segment
-	exact_children: HashMap<String, TopicMatcherNode<T>>,
+	exact_children: HashMap<Substr, TopicMatcherNode<T>>,
 
 	/// Node for '+' pattern wildcard match (single segment)
 	plus_wildcard_node: Option<Box<TopicMatcherNode<T>>>,
@@ -107,6 +111,12 @@ impl<K, V> Len for HashMap<K, V> {
 	}
 }
 
+impl<T: Default + IsEmpty + Len> Default for TopicMatcherNode<T> {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 	/// Creates a new empty topic matcher node
 	pub fn new() -> Self {
@@ -136,16 +146,16 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 				| TopicPatternItem::Str(s) => {
 					current_node = current_node
 						.exact_children
-						.entry(s.to_string())
-						.or_insert_with(TopicMatcherNode::new)
+						.entry(s.clone())
+						.or_default()
 				}
-				| TopicPatternItem::Plus => {
+				| TopicPatternItem::Plus(_) => {
 					current_node =
 						current_node.plus_wildcard_node.get_or_insert_with(
 							|| Box::new(TopicMatcherNode::new()),
 						)
 				}
-				| TopicPatternItem::Hash => {
+				| TopicPatternItem::Hash(_) => {
 					// Hash wildcard must be the last segment, so we can return immediately
 					return current_node
 						.hash_wildcard_data
@@ -185,14 +195,14 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 			| TopicPatternItem::Str(s) => {
 				let child_node =
 					self.exact_children.get_mut(s).ok_or_else(|| {
-						TopicMatcherError::invalid_segment(s.clone(), 0)
+						TopicMatcherError::invalid_segment(s.as_str(), 0)
 					})?;
 				if child_node.update_node(rest_segments, f)? {
 					self.exact_children.remove(s);
 					return Ok(self.is_empty());
 				}
 			}
-			| TopicPatternItem::Plus => {
+			| TopicPatternItem::Plus(_) => {
 				let child_node =
 					self.plus_wildcard_node.as_mut().ok_or_else(|| {
 						TopicMatcherError::invalid_segment("+".to_string(), 0)
@@ -202,7 +212,7 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 					return Ok(self.is_empty());
 				}
 			}
-			| TopicPatternItem::Hash => {
+			| TopicPatternItem::Hash(_) => {
 				let hash_wildcard_data =
 					self.hash_wildcard_data.as_mut().ok_or_else(|| {
 						TopicMatcherError::invalid_segment("#".to_string(), 0)
@@ -220,10 +230,10 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 	/// Recursively collects all subscription data that matches the given topic path segments
 	fn collect_matching_subscriptions<'a>(
 		&'a self,
-		path_segments: &[&str],
+		topic: &[Substr],
 		matching_data: &mut Vec<&'a T>,
 	) {
-		match path_segments {
+		match topic {
 			| [] => {
 				// At end of path, collect data from this node if present
 				self.exact_match_data
@@ -235,7 +245,7 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 			}
 			| [segment, remaining_segments @ ..] => {
 				// Check for exact segment match
-				if let Some(child) = self.exact_children.get(*segment) {
+				if let Some(child) = self.exact_children.get(segment) {
 					child.collect_matching_subscriptions(
 						remaining_segments,
 						matching_data,
@@ -257,11 +267,11 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 	}
 
 	/// Finds all subscription data entries matching the given topic path
-	pub fn find_by_path<'a>(&'a self, path: &str) -> Vec<&'a T> {
-		let path_segments: Vec<&str> = path.split('/').collect();
+	pub fn find_by_path<'a>(&'a self, topic: &TopicPath) -> Vec<&'a T> {
+		//let path_segments: Vec<&str> = path.split('/').collect();
 		let mut matching_subscribers = Vec::new();
 		self.collect_matching_subscriptions(
-			&path_segments,
+			&topic.segments,
 			&mut matching_subscribers,
 		);
 		matching_subscribers
@@ -269,37 +279,41 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 
 	fn collect_active_subscriptions<'a>(
 		&'a self,
-		current_path: &[TopicPatternItem],
+		//TODO: change to persistent vector for prevent to_vec calls
+		current_path: &mut Vec<TopicPatternItem>,
 		result: &mut Vec<(TopicPatternPath, &'a T)>,
 	) {
-		self.exact_match_data.iter().for_each(|data| {
-			let path = TopicPatternPath::try_from(current_path)
-				.expect("Internal path should always be valid");
+		// Collect exact match data if present
+		if let Some(data) = &self.exact_match_data {
+			let path =
+				TopicPatternPath::new_from_segments(current_path.as_slice())
+					.expect("Internal path should always be valid");
 			result.push((path, data))
-		});
-		self.hash_wildcard_data.iter().for_each(|data| {
-			let mut segments = TopicPatternPath::try_from(current_path)
-				.expect("Internal path should always be valid");
-			segments
-				.push(TopicPatternItem::Hash)
-				.expect("Adding hash to internal path should always succeed");
-			result.push((segments, data))
-		});
-		self.plus_wildcard_node.iter().for_each(|plus_node| {
-			let mut segments = current_path.to_vec();
-			segments.push(TopicPatternItem::Plus);
-			plus_node.collect_active_subscriptions(&segments, result);
-		});
+		};
+		// Collect hash wildcard data if present
+		if let Some(data) = &self.hash_wildcard_data {
+			current_path.push(TopicPatternItem::Hash(None));
+			let topic_path =
+				TopicPatternPath::new_from_segments(current_path.as_slice())
+					.expect("Internal path should always be valid");
+			result.push((topic_path, data));
+			current_path.pop();
+		};
+		if let Some(plus_node) = &self.plus_wildcard_node {
+			current_path.push(TopicPatternItem::Plus(None));
+			plus_node.collect_active_subscriptions(current_path, result);
+			current_path.pop();
+		};
 		for (exact_segment, child) in &self.exact_children {
-			let mut segments = current_path.to_vec();
-			segments.push(TopicPatternItem::Str(exact_segment.clone()));
-			child.collect_active_subscriptions(&segments, result);
+			current_path.push(TopicPatternItem::Str(exact_segment.clone()));
+			child.collect_active_subscriptions(current_path, result);
+			current_path.pop();
 		}
 	}
 
 	pub fn active_subscriptions(&self) -> Vec<(TopicPatternPath, &T)> {
 		let mut result = Vec::new();
-		self.collect_active_subscriptions(&[], &mut result);
+		self.collect_active_subscriptions(&mut Vec::new(), &mut result);
 		result
 	}
 }

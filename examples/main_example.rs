@@ -22,8 +22,10 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("MQTT client created successfully");
 
 	info!("Setting up publisher and subscriber");
-	let publisher = client.get_publisher::<MyData>("hello/typed")?;
-	let mut subscriber = client.subscribe::<MyData>("hello/typed").await?;
+	let publisher =
+		client.get_publisher::<MyData>("hello/typed/sensor1/123")?;
+	let mut subscriber =
+		client.subscribe::<MyData>("hello/typed/+/{id}").await?;
 	info!("Publisher and subscriber ready");
 
 	tokio::spawn(async move {
@@ -47,7 +49,8 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut connection_opt = Some(connection);
 	let mut count = 0;
 	info!("Starting message reception loop");
-	while let Some((topic, data)) = subscriber.receive().await {
+	while let Some((topic_match, data)) = subscriber.receive().await {
+		info!(topic = ?topic_match,  "Received message on topic");
 		if count == 10 {
 			// if let Err(err) = subscriber.cancel().await {
 			//     warn!(error = %err, "Failed to cancel subscription");
@@ -60,9 +63,12 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 			//break;
 		}
 		if let Ok(data) = data {
-			info!(topic = %topic, data = ?data, count = count, "Received message");
+			if let Some(sensor_id) = topic_match.get_named_param("id") {
+				println!("Sensor ID: {}", sensor_id);
+			}
+			info!(topic = ?topic_match, data = ?data, count = count, "Received message");
 		} else {
-			error!(topic = %topic, count = count, "Failed to deserialize message data");
+			error!(topic = ?topic_match, count = count, "Failed to deserialize message data");
 		}
 		count += 1;
 	}
