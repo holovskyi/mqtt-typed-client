@@ -101,35 +101,38 @@ pub mod routing;
 pub mod topic;
 
 // Re-export commonly used types for convenience
-pub use client::{MqttClient, MqttClientError, TopicPublisher, TypedSubscriber};
-pub use message_serializer::{BincodeSerializer, MessageSerializer};
-pub use routing::{SendError, SubscriptionError, Subscriber, SubscriptionManagerHandler};
-pub use topic::{
-    TopicError, TopicPatternError, TopicPatternPath, TopicRouter, TopicRouterError,
-    SubscriptionId, limits, validation
+pub use client::{
+	MqttClient, MqttClientError, TopicPublisher, TypedSubscriber,
 };
-
+pub use message_serializer::{BincodeSerializer, MessageSerializer};
+pub use routing::{
+	CacheStrategy, SendError, Subscriber, SubscriptionConfig,
+	SubscriptionError, SubscriptionManagerHandler,
+};
 // Re-export external types that users commonly need
 pub use rumqttc::QoS;
+pub use topic::{
+	SubscriptionId, TopicError, TopicPatternError, TopicPatternPath,
+	TopicRouter, TopicRouterError, limits, validation,
+};
 
 /// Result type alias for operations that may fail with MqttClientError
 pub type Result<T> = std::result::Result<T, MqttClientError>;
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    //! Convenience re-exports for common functionality
-    //!
-    //! This module provides a convenient way to import the most commonly used
-    //! types and traits from the mqtt_typed_client library.
-    //!
-    //! ```rust
-    //! use mqtt_typed_client::prelude::*;
-    //! ```
+	//! Convenience re-exports for common functionality
+	//!
+	//! This module provides a convenient way to import the most commonly used
+	//! types and traits from the mqtt_typed_client library.
+	//!
+	//! ```rust
+	//! use mqtt_typed_client::prelude::*;
+	//! ```
 
-    pub use crate::{
-        MqttClient, MqttClientError, TopicPublisher, TypedSubscriber,
-        MessageSerializer, BincodeSerializer,
-        TopicPatternPath, SubscriptionId,
-        QoS, Result
-    };
+	pub use crate::{
+		BincodeSerializer, MessageSerializer, MqttClient, MqttClientError, QoS,
+		Result, SubscriptionId, TopicPatternPath, TopicPublisher,
+		TypedSubscriber,
+	};
 }

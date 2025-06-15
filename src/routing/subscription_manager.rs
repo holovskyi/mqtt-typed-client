@@ -31,17 +31,25 @@ pub type MessageType<T> = (Arc<TopicMatch>, Arc<T>);
 
 type TopicRouterType<T> = TopicRouter<Sender<MessageType<T>>>;
 
+#[derive(Debug, Clone, Copy)]
+pub enum CacheStrategy {
+	/// Use LRU cache with a fixed size
+	Lru(NonZeroUsize),
+	/// No caching, always create new TopicPath instances
+	NoCache,
+}
+
 #[derive(Debug)]
 pub struct SubscriptionConfig {
 	pub qos: rumqttc::QoS,
-	pub cache_size: NonZeroUsize,
+	pub cache_strategy: CacheStrategy,
 }
 
 impl Default for SubscriptionConfig {
 	fn default() -> Self {
 		Self {
 			qos: rumqttc::QoS::AtLeastOnce,
-			cache_size: NonZeroUsize::new(10).unwrap()
+			cache_strategy: CacheStrategy::NoCache,
 		}
 	}
 }

@@ -5,6 +5,7 @@ use arcstr::ArcStr;
 
 use super::topic_matcher::TopicMatcherNode;
 use super::topic_pattern_path::TopicPatternPath;
+use crate::routing::subscription_manager::CacheStrategy;
 use crate::topic::topic_match::TopicPath;
 
 /// A subscription identifier.
@@ -19,9 +20,7 @@ fn make_subscription_id(id: usize) -> SubscriptionId {
 }
 
 fn new_from_string(pattern: &str) -> Result<TopicPatternPath, String> {
-	let cache_size =
-		NonZeroUsize::new(10).expect("Cache size must be non-zero");
-	TopicPatternPath::new_from_string(pattern, cache_size)
+	TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
 		.map_err(|e| e.to_string())
 }
 

@@ -1,7 +1,9 @@
 use std::{num::NonZeroUsize, time::Duration};
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, MqttClient};
+use mqtt_typed_client::{
+	BincodeSerializer, CacheStrategy, MqttClient, SubscriptionConfig,
+};
 //use mqtt_async_client::MqttAsyncClient;
 use serde::{Deserialize, Serialize};
 use tokio::time;
@@ -19,16 +21,29 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async",
 		NonZeroUsize::new(100).unwrap(),
 		10,
-		100
+		100,
 	)
 	.await?;
 	info!("MQTT client created successfully");
 
 	info!("Setting up publisher and subscriber");
-	let publisher =
-		client.get_publisher::<MyData>("hello/typed/sensor1/123")?;
-	let mut subscriber =
-		client.subscribe::<MyData>("hello/typed/+/{id}").await?;
+	let publisher = client
+		.get_publisher::<MyData>("hello/typed/sensor1/123/some/234/tail/huy")?;
+	let mut subscriber = client
+		.subscribe::<MyData>("hello/typed/+/{id}/some/{hash_content:#}")
+		.await?;
+
+	let config_high_freq = SubscriptionConfig {
+		qos: rumqttc::QoS::AtLeastOnce,
+		cache_strategy: CacheStrategy::Lru(NonZeroUsize::new(1000).unwrap()),
+	};
+	let mut high_freq_subscriber = client
+		.subscribe_with_config::<MyData>(
+			"sensors/+/temperature",
+			config_high_freq,
+		)
+		.await?;
+
 	info!("Publisher and subscriber ready");
 
 	tokio::spawn(async move {

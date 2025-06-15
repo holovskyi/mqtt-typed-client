@@ -184,7 +184,7 @@ where F: Default + Clone + Send + Sync + 'static
 		F: MessageSerializer<T>,
 	{
 		let topic_pattern =
-			TopicPatternPath::new_from_string(topic, config.cache_size)
+			TopicPatternPath::new_from_string(topic, config.cache_strategy)
 				.map_err(|e| {
 					MqttClientError::TopicPattern(format!(
 						"Invalid topic pattern: {:?}",

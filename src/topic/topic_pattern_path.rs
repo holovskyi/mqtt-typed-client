@@ -10,6 +10,7 @@ use arcstr::{ArcStr, Substr};
 use lru::LruCache;
 use thiserror::Error;
 
+use crate::routing::subscription_manager::CacheStrategy;
 use crate::topic::topic_match::{TopicMatch, TopicMatchError, TopicPath};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -141,15 +142,15 @@ impl TryFrom<Substr> for TopicPatternItem {
 #[derive(Debug)]
 pub struct TopicPatternPath {
 	topic_pattern: ArcStr, // original topic pattern as a string
-	mqtt_pattern: ArcStr, // mqtt topic pattern with wildcards "sensors/+/data"
+	mqtt_pattern: ArcStr,  // mqtt topic pattern with wildcards "sensors/+/data"
 	segments: Vec<TopicPatternItem>,
-	match_cache: Mutex<LruCache<ArcStr, Arc<TopicMatch>>>,
+	match_cache: Option<Mutex<LruCache<ArcStr, Arc<TopicMatch>>>>,
 }
 
 impl TopicPatternPath {
 	pub fn new_from_string(
 		topic_pattern: impl Into<ArcStr>,
-		cache_size: NonZeroUsize,
+		cache_strategy: CacheStrategy,
 	) -> Result<Self, TopicPatternError> {
 		let topic_pattern = topic_pattern.into();
 		if topic_pattern.is_empty() || topic_pattern.trim().is_empty() {
@@ -174,12 +175,19 @@ impl TopicPatternPath {
 				));
 			}
 		}
-		
+		let match_cache = match cache_strategy {
+			| CacheStrategy::Lru(cache_size) => {
+				Some(Mutex::new(LruCache::new(cache_size)))
+			}
+			| CacheStrategy::NoCache => None,
+		};
 		Ok(Self {
 			topic_pattern,
-			mqtt_pattern: ArcStr::from(Self::to_mqtt_subscription_pattern(&segments)),
+			mqtt_pattern: ArcStr::from(Self::to_mqtt_subscription_pattern(
+				&segments,
+			)),
 			segments,
-			match_cache: Mutex::new(LruCache::new(cache_size)), // Example size, adjust as needed
+			match_cache,
 		})
 	}
 
@@ -187,13 +195,14 @@ impl TopicPatternPath {
 	pub fn new_from_segments(
 		segments: &[TopicPatternItem],
 	) -> Result<Self, TopicPatternError> {
-		let cache_size = NonZeroUsize::new(10).unwrap();
 		let topic_pattern = ArcStr::from(Self::to_template_pattern(segments));
 		let pattern = Self {
-			mqtt_pattern: ArcStr::from(Self::to_mqtt_subscription_pattern(segments)),
+			mqtt_pattern: ArcStr::from(Self::to_mqtt_subscription_pattern(
+				segments,
+			)),
 			topic_pattern: topic_pattern.clone(),
 			segments: segments.to_vec(),
-			match_cache: Mutex::new(LruCache::new(cache_size)),
+			match_cache: None,
 		};
 		if let Some(hash_pos) = segments
 			.iter()
@@ -228,7 +237,7 @@ impl TopicPatternPath {
 		self.segments.len()
 	}
 
-	fn str_len(segments:&[TopicPatternItem]) -> usize {
+	fn str_len(segments: &[TopicPatternItem]) -> usize {
 		if segments.is_empty() {
 			return 0;
 		}
@@ -240,7 +249,7 @@ impl TopicPatternPath {
 		&self.segments
 	}
 
-	fn to_mqtt_subscription_pattern(segments:&[TopicPatternItem]) -> String {
+	fn to_mqtt_subscription_pattern(segments: &[TopicPatternItem]) -> String {
 		// Convert to MQTT wildcards: sensors/+/data
 		if segments.is_empty() {
 			return String::new();
@@ -255,7 +264,7 @@ impl TopicPatternPath {
 		mqtt_topic
 	}
 
-	fn to_template_pattern(segments:&[TopicPatternItem]) -> String {
+	fn to_template_pattern(segments: &[TopicPatternItem]) -> String {
 		// Convert to named wildcards: sensors/{sensor_id}/data
 		if segments.is_empty() {
 			return String::new();
@@ -306,20 +315,29 @@ impl TopicPatternPath {
 		&self,
 		topic: Arc<TopicPath>,
 	) -> Result<Arc<TopicMatch>, TopicMatchError> {
-		{
-			let mut match_cache = self.match_cache.lock().unwrap();
-			if let Some(cached_match) = match_cache.get(&topic.path) {
-				return Ok(cached_match.clone());
+		match &self.match_cache {
+			| Some(cache_mutex) => {
+				{
+					let mut match_cache = cache_mutex.lock().unwrap();
+					if let Some(cached_match) = match_cache.get(&topic.path) {
+						return Ok(cached_match.clone());
+					}
+				}
+
+				let topic_match = self.try_match_internal(topic.clone())?;
+				let topic_match_arc = Arc::new(topic_match);
+				{
+					let mut match_cache = cache_mutex.lock().unwrap();
+					match_cache
+						.put(topic.path.clone(), Arc::clone(&topic_match_arc));
+				}
+				Ok(topic_match_arc)
+			}
+			| None => {
+				let topic_match = self.try_match_internal(topic)?;
+				Ok(Arc::new(topic_match))
 			}
 		}
-
-		let topic_match = self.try_match_internal(topic.clone())?;
-		let topic_match_arc = Arc::new(topic_match);
-		{
-			let mut match_cache = self.match_cache.lock().unwrap();
-			match_cache.put(topic.path.clone(), Arc::clone(&topic_match_arc));
-		}
-		Ok(topic_match_arc)
 	}
 
 	fn try_match_internal(
@@ -422,7 +440,7 @@ mod tests {
 	fn str_to_topic_pattern_path(
 		topic: &str,
 	) -> Result<TopicPatternPath, TopicPatternError> {
-		TopicPatternPath::new_from_string(topic, NonZeroUsize::new(10).unwrap())
+		TopicPatternPath::new_from_string(topic, CacheStrategy::NoCache)
 	}
 
 	#[test]
