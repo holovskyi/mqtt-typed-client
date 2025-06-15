@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::num::NonZeroUsize;
 use std::slice::Iter;
@@ -92,6 +93,14 @@ impl TopicPatternItem {
 			| TopicPatternItem::Str(s) => Cow::Borrowed(s),
 		}
 	}
+
+	pub fn param_name(&self) -> Option<Substr> {
+		match self {
+			| TopicPatternItem::Plus(Some(name))
+			| TopicPatternItem::Hash(Some(name)) => Some(name.clone()),
+			| _ => None,
+		}
+	}
 }
 
 impl From<&TopicPatternItem> for String {
@@ -166,6 +175,18 @@ impl TopicPatternPath {
 
 		let segments = segments?;
 
+		//Error on duplicate named parameters
+		let mut seen_names = HashSet::new();
+		for segment in &segments {
+			if let Some(name) = segment.param_name() {
+				if !seen_names.insert(name.to_string()) {
+					return Err(TopicPatternError::wildcard_usage(
+						segment.as_str(),
+					));
+				}
+			}
+		}
+
 		if let Some(hash_pos) = segments
 			.iter()
 			.position(|s| matches!(*s, TopicPatternItem::Hash(_)))
@@ -176,6 +197,7 @@ impl TopicPatternPath {
 				));
 			}
 		}
+
 		let match_cache = match cache_strategy {
 			| CacheStrategy::Lru(cache_size) => {
 				Some(Mutex::new(LruCache::new(cache_size)))
@@ -372,14 +394,6 @@ impl TopicPatternPath {
 					params.push(param_range.clone());
 					topic_index += 1;
 					if let Some(name) = opt_name {
-						if named_params
-							.iter()
-							.any(|(existing_name, _)| existing_name == name)
-						{
-							return Err(
-								TopicMatchError::DuplicateParameterName,
-							);
-						}
 						named_params.push((name.clone(), param_range));
 					}
 				}
@@ -387,14 +401,6 @@ impl TopicPatternPath {
 					let param_range = topic_index .. topic.segments.len();
 					params.push(param_range.clone());
 					if let Some(name) = opt_name {
-						if named_params
-							.iter()
-							.any(|(existing_name, _)| existing_name == name)
-						{
-							return Err(
-								TopicMatchError::DuplicateParameterName,
-							);
-						}
 						named_params.push((name.clone(), param_range));
 					}
 					if i < self.len() - 1 {
