@@ -99,8 +99,12 @@ pub mod client;
 pub mod message_serializer;
 pub mod routing;
 pub mod topic;
-
 // Re-export commonly used types for convenience
+pub use macros::mqtt_topic_subscriber;
+
+#[cfg(test)]
+mod test_macro;
+
 pub use client::{
 	MqttClient, MqttClientError, TopicPublisher, TypedSubscriber,
 };
