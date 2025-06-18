@@ -1,0 +1,7 @@
+[dependencies]
+mqtt_typed_client = { path = ".." }
+mqtt_typed_client_macros = { path = "../macros" }
+
+[dev-dependencies]
+mqtt_typed_client = { path = ".." }
+mqtt_typed_client_macros = { path = "../macros" }

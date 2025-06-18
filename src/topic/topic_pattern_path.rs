@@ -101,6 +101,10 @@ impl TopicPatternItem {
 			| _ => None,
 		}
 	}
+
+	pub fn is_wildcard(&self) -> bool {
+		matches!(self, TopicPatternItem::Plus(_) | TopicPatternItem::Hash(_))
+	}
 }
 
 impl From<&TopicPatternItem> for String {

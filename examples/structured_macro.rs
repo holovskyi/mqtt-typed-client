@@ -1,0 +1,139 @@
+use std::{
+	num::NonZeroUsize, sync::Arc,
+	time::Duration,
+};
+
+use bincode::{Decode, Encode};
+use mqtt_typed_client::{
+	extract_topic_parameter, topic::topic_match::TopicMatch, BincodeSerializer, FromMqttMessage, MessageConversionError, MessageSerializer, MqttClient, MqttStructuredSubscriber, TypedSubscriber
+};
+//use mqtt_async_client::MqttAsyncClient;
+
+
+use serde::{Deserialize, Serialize};
+use tokio::time;
+use tracing::{debug, error, info};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+//extern crate mqtt_typed_client_macros;
+use mqtt_typed_client_macros::mqtt_topic_subscriber;
+
+
+/* payload concrete type */
+#[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]
+struct SensorData {
+	timestamp: u64,
+	measure_id: u32,
+	value: f32,
+}
+
+/* MQTT message with all data */
+#[mqtt_topic_subscriber("typed/{room}/+/{sensor_id}/some/{temp}")]
+#[derive(Debug)]
+struct SensorReading {
+	sensor_id: u32, // extracted from topic field. Other fiellds not allowed here
+	room: String,
+	temp: f32,
+
+	payload: SensorData, // optional filed
+	topic: Arc<TopicMatch>, // optional filed
+}
+
+pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
+	info!("Creating MQTT client");
+	let (client, connection) = MqttClient::<BincodeSerializer>::new(
+		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async",
+		NonZeroUsize::new(100).unwrap(),
+		10,
+		100,
+	)
+	.await?;
+	info!("MQTT client created successfully");
+
+	info!("Setting up publisher and subscriber");
+	let publisher =
+		client.get_publisher::<SensorData>("typed/room52/37/some/36.6")?;
+
+	let mut subscriber_structured = SensorReading::subscribe(&client).await?;
+
+	tokio::spawn(async move {
+		for i in 0 .. 1000 {
+			debug!(message_id = i, "Publishing message");
+
+			let data = SensorData {
+				timestamp: 1633036800 + i as u64, // Example timestamp
+				measure_id: i,
+				value: 36.6 + (i as f32 * 0.1), // Example value
+			};
+
+			let res = publisher.publish(&data).await;
+			match res {
+				| Ok(()) => {
+					debug!(message_id = i, "Message published successfully")
+				}
+				| Err(err) => {
+					error!(message_id = i, error = %err, "Failed to publish message")
+				}
+			}
+			time::sleep(Duration::from_secs(1)).await;
+		}
+	});
+	let mut connection_opt = Some(connection);
+	let mut count = 0;
+	info!("Starting message reception loop");
+	while let Some(sensor_result) = subscriber_structured.receive().await {
+		//info!(topic = ?topic_match,  "Received message on topic");
+		if count == 10 {
+			// if let Err(err) = subscriber.cancel().await {
+			//     warn!(error = %err, "Failed to cancel subscription");
+			// }
+			if let Some(connection) = connection_opt.take() {
+				info!("Shutting down client after receiving 10 messages");
+				let _res = connection.shutdown().await;
+				info!(result = ?_res, "Client shutdown completed");
+			}
+			//break;
+		}
+		match sensor_result {
+			| Ok(sensor_reading) => {
+				info!(?sensor_reading, "Parsed sensor reading");
+			}
+			| Err(err) => {
+				error!(error = %err, "Failed to receive data");
+			}
+		}
+		count += 1;
+	}
+	info!("Exited from subscriber listen loop");
+	//subscriber.cancel();
+	time::sleep(Duration::from_secs(20)).await;
+	Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	// Initialize tracing subscriber with compact formatting
+	tracing_subscriber::registry()
+		.with(
+			tracing_subscriber::EnvFilter::try_from_default_env()
+				.unwrap_or_else(|_| "debug".into()),
+		)
+		.with(
+			tracing_subscriber::fmt::layer()
+				.with_target(true) // Hide module target for cleaner output
+				.with_thread_ids(false) // Hide thread IDs
+				.with_thread_names(false) // Hide thread names
+				.with_file(false) // Hide file info
+				.with_line_number(false) // Hide line numbers
+				.compact(), // More compact output
+		)
+		.init();
+
+	info!("Starting MQTT typed client application");
+	let result = test_main().await;
+	if let Err(ref e) = result {
+		error!(error = %e, "Application failed");
+	} else {
+		info!("Application completed successfully");
+	}
+	result
+}

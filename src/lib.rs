@@ -99,12 +99,8 @@ pub mod client;
 pub mod message_serializer;
 pub mod routing;
 pub mod topic;
+pub mod structured;
 // Re-export commonly used types for convenience
-pub use macros::mqtt_topic_subscriber;
-
-#[cfg(test)]
-mod test_macro;
-
 pub use client::{
 	MqttClient, MqttClientError, TopicPublisher, TypedSubscriber,
 };
@@ -118,6 +114,13 @@ pub use rumqttc::QoS;
 pub use topic::{
 	SubscriptionId, TopicError, TopicPatternError, TopicPatternPath,
 	TopicRouter, TopicRouterError, limits, validation,
+};
+
+pub use structured::{
+    MessageConversionError, 
+    FromMqttMessage, 
+    MqttStructuredSubscriber,
+    extract_topic_parameter,
 };
 
 /// Result type alias for operations that may fail with MqttClientError
