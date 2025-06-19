@@ -184,13 +184,7 @@ where F: Default + Clone + Send + Sync + 'static
 		F: MessageSerializer<T>,
 	{
 		let topic_pattern =
-			TopicPatternPath::new_from_string(topic, config.cache_strategy)
-				.map_err(|e| {
-					MqttClientError::TopicPattern(format!(
-						"Invalid topic pattern: {:?}",
-						e
-					))
-				})?;
+			TopicPatternPath::new_from_string(topic, config.cache_strategy)?;
 		let subscriber = self
 			.subscription_manager_handler
 			.subscribe(topic_pattern, config)
