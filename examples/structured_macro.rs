@@ -1,22 +1,18 @@
-use std::{
-	num::NonZeroUsize, sync::Arc,
-	time::Duration,
-};
+use std::{num::NonZeroUsize, sync::Arc, time::Duration};
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
-	extract_topic_parameter, topic::topic_match::TopicMatch, BincodeSerializer, FromMqttMessage, MessageConversionError, MessageSerializer, MqttClient, MqttStructuredSubscriber, TypedSubscriber
+	BincodeSerializer, FromMqttMessage, MessageConversionError,
+	MessageSerializer, MqttClient, MqttStructuredSubscriber, TypedSubscriber,
+	extract_topic_parameter, topic::topic_match::TopicMatch,
 };
+//extern crate mqtt_typed_client_macros;
+use mqtt_typed_client_macros::mqtt_topic_subscriber;
 //use mqtt_async_client::MqttAsyncClient;
-
-
 use serde::{Deserialize, Serialize};
 use tokio::time;
 use tracing::{debug, error, info};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-//extern crate mqtt_typed_client_macros;
-use mqtt_typed_client_macros::mqtt_topic_subscriber;
-
+use tracing_subscriber::{fmt::format, layer::SubscriberExt, util::SubscriberInitExt};
 
 /* payload concrete type */
 #[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]
@@ -27,21 +23,31 @@ struct SensorData {
 }
 
 /* MQTT message with all data */
-#[mqtt_topic_subscriber("typed/{room}/+/{sensor_id}/some/{temp}")]
+#[mqtt_topic_subscriber("typed/{room}/pl/{sensor_id}/some/{temp}")]
 #[derive(Debug)]
 struct SensorReading {
 	sensor_id: u32, // extracted from topic field. Other fiellds not allowed here
 	room: String,
 	temp: f32,
 
-	payload: SensorData, // optional filed
+	payload: SensorData,    // optional filed
 	topic: Arc<TopicMatch>, // optional filed
 }
 
-pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
+fn get_server(server:&str,client_id: &str) -> String {
+	format!(
+		"{}?client_id={}&clean_session=true",
+		server, client_id
+	)
+}
+const SERVER_COOL:&str= "mqtt://broker.mqtt.cool:1883";
+const SERVER_MODSQITO:&str = "mqtt://test.mosquitto.org:1883";
+const SERVER:&str = SERVER_MODSQITO;
+
+async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
 	let (client, connection) = MqttClient::<BincodeSerializer>::new(
-		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async",
+		&get_server(SERVER,"rust-publisher"),
 		NonZeroUsize::new(100).unwrap(),
 		10,
 		100,
@@ -50,8 +56,86 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("MQTT client created successfully");
 
 	info!("Setting up publisher and subscriber");
-	let publisher =
-		client.get_publisher::<SensorData>("typed/room52/37/some/36.6")?;
+	let publisher = client
+		.get_publisher::<SensorData>("typed/room52/pl/37/some/36.6")?;
+		//.get_publisher::<SensorData>("huy")?;
+	for i in 0 .. 10 {
+		debug!(message_id = i, "Publishing message");
+
+		let data = SensorData {
+			timestamp: 1633036800 + i as u64, // Example timestamp
+			measure_id: i,
+			value: 36.6 + (i as f32 * 0.1), // Example value
+		};
+
+		let res = publisher.publish(&data).await;
+		match res {
+			| Ok(()) => {
+				debug!(message_id = i, "Message published successfully")
+			}
+			| Err(err) => {
+				error!(message_id = i, error = %err, "Failed to publish message")
+			}
+		}
+		time::sleep(Duration::from_secs(1)).await;
+	}
+	info!("Publisher finished sending messages");
+	let _res = connection.shutdown().await;
+	info!(result = ?_res, "Client shutdown completed");
+	Ok(())
+}
+
+async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
+	info!("Creating MQTT client");
+	let (client, connection) = MqttClient::<BincodeSerializer>::new(
+		&get_server(SERVER,"rust-subscriber"),
+		NonZeroUsize::new(100).unwrap(),
+		10,
+		100,
+	)
+	.await?;
+	info!("MQTT client created successfully");
+
+	info!(mqtt=SensorReading::MQTT_PATTERN, "Setting up subscriber");
+	let mut subscriber_structured = SensorReading::subscribe(&client).await?;
+
+	let mut count = 0;
+	info!("Starting message reception loop");
+	while let Some(sensor_result) = subscriber_structured.receive().await {
+		if count == 10 {
+			break;
+		}
+		match sensor_result {
+			| Ok(sensor_reading) => {
+				info!(?sensor_reading, "Sensor result received");
+			}
+			| Err(err) => {
+				error!(error = %err, "Failed to receive data");
+			}
+		}
+		count += 1;
+	}
+
+	info!("Subscriber finished");
+	let _res = connection.shutdown().await;
+	info!(result = ?_res, "Client shutdown completed");
+	Ok(())
+}
+
+pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
+	info!("Creating MQTT client");
+	let (client, connection) = MqttClient::<BincodeSerializer>::new(
+		&get_server(SERVER,"rust-pub-sub"),
+		NonZeroUsize::new(100).unwrap(),
+		10,
+		100,
+	)
+	.await?;
+	info!("MQTT client created successfully");
+
+	info!("Setting up publisher and subscriber");
+	let publisher = client
+		.get_publisher::<SensorData>("typed/room52/other_plus/37/some/36.6")?;
 
 	let mut subscriber_structured = SensorReading::subscribe(&client).await?;
 
@@ -127,9 +211,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				.compact(), // More compact output
 		)
 		.init();
+    let args: Vec<String> = std::env::args().collect();
+    
+    if args.len() < 2 {
+        println!("Usage: {} <mode>", args[0]);
+        println!("Modes:");
+        println!("  publisher  - Run as publisher only");
+        println!("  subscriber - Run as subscriber only");
+        println!("  both       - Run both publisher and subscriber (original behavior)");
+        return Ok(());
+    }
+    let mode = &args[1];
+    let result = match mode.as_str() {
+        "publisher" => {
+            info!("Starting MQTT publisher");
+            run_publisher().await
+        }
+        "subscriber" => {
+            info!("Starting MQTT subscriber");
+            run_subscriber().await
+        }
+        "both" => {
+            info!("Starting MQTT typed client application (both modes)");
+            test_main().await
+        }
+        _ => {
+            error!("Invalid mode: {}. Use 'publisher', 'subscriber', or 'both'", mode);
+            return Ok(());
+        }
+    };
 
-	info!("Starting MQTT typed client application");
-	let result = test_main().await;
 	if let Err(ref e) = result {
 		error!(error = %e, "Application failed");
 	} else {
