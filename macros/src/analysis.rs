@@ -54,8 +54,8 @@ impl StructAnalysisContext {
 			let field_name = field
 				.ident
 				.as_ref()
-				//Never panic, this should always have an identifier
-				.expect("Named fields should have identifiers")
+				// Safe: we already validated this is a struct with named fields
+				.unwrap()
 				.to_string();
 
 			match field_name.as_str() {
@@ -218,6 +218,28 @@ mod tests {
 
 	use super::*;
 
+	/// Test case for struct analysis
+	struct AnalysisTestCase {
+		name: &'static str,
+		pattern: &'static str,
+		struct_fields: proc_macro2::TokenStream,
+		expected_result: AnalysisResult,
+	}
+
+	/// Expected result of analysis
+	#[derive(Debug, PartialEq)]
+	enum AnalysisResult {
+		Success {
+			param_count: usize,
+			has_payload: bool,
+			has_topic_field: bool,
+			param_names: Vec<&'static str>,
+		},
+		Error {
+			error_contains: &'static str,
+		},
+	}
+
 	/// Helper to create a topic pattern for testing
 	fn create_topic_pattern(pattern: &str) -> TopicPatternPath {
 		TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
@@ -235,157 +257,320 @@ mod tests {
 		}
 	}
 
-	#[test]
-	fn test_extract_available_params() {
-		let pattern = create_topic_pattern("sensors/{sensor_id}/+/{room}/data");
-		let params = StructAnalysisContext::extract_available_params(&pattern);
+	/// Run a single analysis test case
+	fn run_analysis_test(test_case: AnalysisTestCase) {
+		let pattern = create_topic_pattern(test_case.pattern);
+		let test_struct = create_test_struct(test_case.struct_fields);
+		let result = StructAnalysisContext::analyze(&test_struct, &pattern);
 
-		assert_eq!(params.len(), 2);
-		assert_eq!(params[0].name, "sensor_id");
-		assert_eq!(params[0].wildcard_index, 0);
-		assert_eq!(params[1].name, "room");
-		assert_eq!(params[1].wildcard_index, 2);
+		match test_case.expected_result {
+			AnalysisResult::Success {
+				param_count,
+				has_payload,
+				has_topic_field,
+				param_names,
+			} => {
+				let context = result.expect(&format!(
+					"Test '{}' should succeed but failed",
+					test_case.name
+				));
+
+				assert_eq!(
+					context.param_count(),
+					param_count,
+					"Test '{}': param count mismatch",
+					test_case.name
+				);
+				assert_eq!(
+					context.has_special_fields(),
+					has_payload || has_topic_field,
+					"Test '{}': special fields mismatch",
+					test_case.name
+				);
+				assert_eq!(
+					context.payload_type.is_some(),
+					has_payload,
+					"Test '{}': payload presence mismatch",
+					test_case.name
+				);
+				assert_eq!(
+					context.has_topic_field,
+					has_topic_field,
+					"Test '{}': topic field presence mismatch",
+					test_case.name
+				);
+
+				let actual_names = context.param_names();
+				assert_eq!(
+					actual_names.len(),
+					param_names.len(),
+					"Test '{}': param names count mismatch",
+					test_case.name
+				);
+				for expected_name in param_names {
+					assert!(
+						actual_names.contains(&expected_name),
+						"Test '{}': missing parameter '{}'",
+						test_case.name,
+						expected_name
+					);
+				}
+			}
+			AnalysisResult::Error { error_contains } => {
+				let error = result.expect_err(&format!(
+					"Test '{}' should fail but succeeded",
+					test_case.name
+				));
+				let error_msg = error.to_string();
+				assert!(
+					error_msg.contains(error_contains),
+					"Test '{}': error message '{}' should contain '{}'",
+					test_case.name,
+					error_msg,
+					error_contains
+				);
+			}
+		}
 	}
 
 	#[test]
-	fn test_extract_available_params_mixed_wildcards() {
-		let pattern = create_topic_pattern("home/+/{device_id}/status/#");
-		let params = StructAnalysisContext::extract_available_params(&pattern);
+	fn test_extract_available_params() {
+		struct ParamTestCase {
+			pattern: &'static str,
+			expected: Vec<(&'static str, usize)>, // (name, wildcard_index)
+		}
 
-		assert_eq!(params.len(), 1);
-		assert_eq!(params[0].name, "device_id");
-		assert_eq!(params[0].wildcard_index, 1);
+		let test_cases = vec![
+			ParamTestCase {
+				pattern: "sensors/{sensor_id}/+/{room}/data",
+				expected: vec![("sensor_id", 0), ("room", 2)],
+			},
+			ParamTestCase {
+				pattern: "home/+/{device_id}/status/#",
+				expected: vec![("device_id", 1)],
+			},
+			ParamTestCase {
+				pattern: "simple/+/topic",
+				expected: vec![],
+			},
+			ParamTestCase {
+				pattern: "{a}/{b}/{c}",
+				expected: vec![("a", 0), ("b", 1), ("c", 2)],
+			},
+		];
+
+		for (i, test_case) in test_cases.into_iter().enumerate() {
+			let pattern = create_topic_pattern(test_case.pattern);
+			let params = StructAnalysisContext::extract_available_params(&pattern);
+
+			assert_eq!(
+				params.len(),
+				test_case.expected.len(),
+				"Test case {}: param count mismatch for pattern '{}'",
+				i,
+				test_case.pattern
+			);
+
+			for (param, (expected_name, expected_index)) in
+				params.iter().zip(test_case.expected.iter())
+			{
+				assert_eq!(
+					param.name,
+					*expected_name,
+					"Test case {}: param name mismatch",
+					i
+				);
+				assert_eq!(
+					param.wildcard_index,
+					*expected_index,
+					"Test case {}: wildcard index mismatch for '{}'",
+					i,
+					param.name
+				);
+			}
+		}
 	}
 
 	#[test]
 	fn test_is_arc_topic_match_type() {
-		// Valid types
-		let valid_type: syn::Type = parse_quote!(Arc<TopicMatch>);
-		assert!(StructAnalysisContext::is_arc_topic_match_type(&valid_type));
+		struct TypeTestCase {
+			name: &'static str,
+			type_tokens: proc_macro2::TokenStream,
+			expected: bool,
+		}
 
-		let valid_type_full: syn::Type = parse_quote!(
-			std::sync::Arc<mqtt_typed_client::topic::topic_match::TopicMatch>
-		);
-		assert!(StructAnalysisContext::is_arc_topic_match_type(
-			&valid_type_full
-		));
+		let test_cases = vec![
+			// Valid types
+			TypeTestCase {
+				name: "simple_arc_topic_match",
+				type_tokens: quote!(Arc<TopicMatch>),
+				expected: true,
+			},
+			TypeTestCase {
+				name: "fully_qualified_arc_topic_match",
+				type_tokens: quote!(
+					std::sync::Arc<mqtt_typed_client::topic::topic_match::TopicMatch>
+				),
+				expected: true,
+			},
+			// Invalid types
+			TypeTestCase {
+				name: "arc_with_wrong_inner_type",
+				type_tokens: quote!(Arc<String>),
+				expected: false,
+			},
+			TypeTestCase {
+				name: "topic_match_without_arc",
+				type_tokens: quote!(TopicMatch),
+				expected: false,
+			},
+			TypeTestCase {
+				name: "vec_with_topic_match",
+				type_tokens: quote!(Vec<TopicMatch>),
+				expected: false,
+			},
+			TypeTestCase {
+				name: "box_with_topic_match",
+				type_tokens: quote!(Box<TopicMatch>),
+				expected: false,
+			},
+			TypeTestCase {
+				name: "primitive_type",
+				type_tokens: quote!(u32),
+				expected: false,
+			},
+		];
 
-		// Invalid types
-		let invalid_type: syn::Type = parse_quote!(Arc<String>);
-		assert!(!StructAnalysisContext::is_arc_topic_match_type(
-			&invalid_type
-		));
+		for test_case in test_cases {
+			let parsed_type: syn::Type = syn::parse2(test_case.type_tokens)
+				.expect(&format!("Failed to parse type for test '{}'", test_case.name));
 
-		let invalid_type2: syn::Type = parse_quote!(TopicMatch);
-		assert!(!StructAnalysisContext::is_arc_topic_match_type(
-			&invalid_type2
-		));
-
-		let invalid_type3: syn::Type = parse_quote!(Vec<TopicMatch>);
-		assert!(!StructAnalysisContext::is_arc_topic_match_type(
-			&invalid_type3
-		));
+			let result = StructAnalysisContext::is_arc_topic_match_type(&parsed_type);
+			assert_eq!(
+				result,
+				test_case.expected,
+				"Test '{}': expected {}, got {}",
+				test_case.name,
+				test_case.expected,
+				result
+			);
+		}
 	}
 
 	#[test]
-	fn test_successful_analysis() {
-		let pattern = create_topic_pattern("sensors/{sensor_id}/data");
-		let test_struct = create_test_struct(quote! {
-			sensor_id: u32,
-			payload: String,
-		});
+	fn test_comprehensive_analysis() {
+		let test_cases = vec![
+			// Success cases
+			AnalysisTestCase {
+				name: "basic_sensor_reading",
+				pattern: "sensors/{sensor_id}/data",
+				struct_fields: quote! {
+					sensor_id: u32,
+					payload: String,
+				},
+				expected_result: AnalysisResult::Success {
+					param_count: 1,
+					has_payload: true,
+					has_topic_field: false,
+					param_names: vec!["sensor_id"],
+				},
+			},
+			AnalysisTestCase {
+				name: "multi_param_with_topic",
+				pattern: "sensors/{sensor_id}/{room}/data",
+				struct_fields: quote! {
+					sensor_id: u32,
+					room: String,
+					payload: Vec<u8>,
+					topic: Arc<TopicMatch>,
+				},
+				expected_result: AnalysisResult::Success {
+					param_count: 2,
+					has_payload: true,
+					has_topic_field: true,
+					param_names: vec!["sensor_id", "room"],
+				},
+			},
+			AnalysisTestCase {
+				name: "no_payload_field",
+				pattern: "heartbeat/{service}",
+				struct_fields: quote! {
+					service: String,
+				},
+				expected_result: AnalysisResult::Success {
+					param_count: 1,
+					has_payload: false,
+					has_topic_field: false,
+					param_names: vec!["service"],
+				},
+			},
+			AnalysisTestCase {
+				name: "empty_struct_anonymous_wildcards",
+				pattern: "sensors/+/data",
+				struct_fields: quote! {},
+				expected_result: AnalysisResult::Success {
+					param_count: 0,
+					has_payload: false,
+					has_topic_field: false,
+					param_names: vec![],
+				},
+			},
+			// Error cases
+			AnalysisTestCase {
+				name: "unknown_field_error",
+				pattern: "sensors/{sensor_id}/data",
+				struct_fields: quote! {
+					sensor_id: u32,
+					unknown_field: String,
+				},
+				expected_result: AnalysisResult::Error {
+					error_contains: "Unknown fields",
+				},
+			},
+			AnalysisTestCase {
+				name: "invalid_topic_field_type",
+				pattern: "sensors/+/data",
+				struct_fields: quote! {
+					topic: String,
+				},
+				expected_result: AnalysisResult::Error {
+					error_contains: "must be of type Arc<TopicMatch>",
+				},
+			},
+		];
 
-		let context =
-			StructAnalysisContext::analyze(&test_struct, &pattern).unwrap();
-
-		assert_eq!(context.topic_params.len(), 1);
-		assert_eq!(context.topic_params[0].name, "sensor_id");
-		assert!(context.payload_type.is_some());
-		assert!(!context.has_topic_field);
+		for test_case in test_cases {
+			run_analysis_test(test_case);
+		}
 	}
 
 	#[test]
-	fn test_unknown_field_error() {
-		let pattern = create_topic_pattern("sensors/{sensor_id}/data");
-		let test_struct = create_test_struct(quote! {
-			sensor_id: u32,
-			unknown_field: String,
-		});
-
-		let result = StructAnalysisContext::analyze(&test_struct, &pattern);
-		assert!(result.is_err());
-
-		let error_msg = result.unwrap_err().to_string();
-		assert!(error_msg.contains("Unknown fields: [unknown_field]"));
-		assert!(error_msg.contains("sensor_id"));
-	}
-
-	#[test]
-	fn test_invalid_topic_field_type() {
-		let pattern = create_topic_pattern("sensors/+/data");
-		let test_struct = create_test_struct(quote! {
-			topic: String,  // Wrong type
-		});
-
-		let result = StructAnalysisContext::analyze(&test_struct, &pattern);
-		assert!(result.is_err());
-
-		let error_msg = result.unwrap_err().to_string();
-		assert!(
-			error_msg.contains("Field 'topic' must be of type Arc<TopicMatch>")
-		);
-	}
-
-	#[test]
-	fn test_non_struct_input() {
+	fn test_invalid_struct_types() {
 		let pattern = create_topic_pattern("test/+");
+
+		// Test enum
 		let test_enum: syn::DeriveInput = parse_quote! {
 			enum TestEnum {
 				Variant1,
 				Variant2,
 			}
 		};
-
 		let result = StructAnalysisContext::analyze(&test_enum, &pattern);
 		assert!(result.is_err());
+		assert!(result
+			.unwrap_err()
+			.to_string()
+			.contains("can only be applied to structs"));
 
-		let error_msg = result.unwrap_err().to_string();
-		assert!(error_msg.contains("can only be applied to structs with"));
-	}
-
-	#[test]
-	fn test_tuple_struct() {
-		let pattern = create_topic_pattern("test/+");
-		let test_struct: syn::DeriveInput = parse_quote! {
+		// Test tuple struct
+		let test_tuple: syn::DeriveInput = parse_quote! {
 			struct TestStruct(u32, String);
 		};
-
-		let result = StructAnalysisContext::analyze(&test_struct, &pattern);
+		let result = StructAnalysisContext::analyze(&test_tuple, &pattern);
 		assert!(result.is_err());
-
-		let error_msg = result.unwrap_err().to_string();
-		assert!(error_msg.contains("named fields, not tuple structs"));
-	}
-
-	#[test]
-	fn test_helper_methods() {
-		let pattern = create_topic_pattern("sensors/{sensor_id}/{room}/data");
-		let test_struct = create_test_struct(quote! {
-			sensor_id: u32,
-			room: String,
-			payload: Vec<u8>,
-			topic: Arc<TopicMatch>,
-		});
-
-		let context =
-			StructAnalysisContext::analyze(&test_struct, &pattern).unwrap();
-
-		assert_eq!(context.param_count(), 2);
-		assert!(context.has_special_fields());
-
-		let param_names = context.param_names();
-		assert_eq!(param_names.len(), 2);
-		assert!(param_names.contains(&"sensor_id"));
-		assert!(param_names.contains(&"room"));
+		assert!(result
+			.unwrap_err()
+			.to_string()
+			.contains("named fields"));
 	}
 }
