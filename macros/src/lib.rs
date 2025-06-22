@@ -1,13 +1,13 @@
 //! # MQTT Typed Client Macros
 //!
 //! This crate provides procedural macros for generating typed MQTT subscribers
-//! with automatic topic parameter extraction and payload deserialization.
+//! and publishers with automatic topic parameter extraction and payload serialization.
 //!
 //! ## Overview
 //!
-//! The main macro `mqtt_topic_subscriber` allows you to annotate a struct with
+//! The main macro `mqtt_topic` allows you to annotate a struct with
 //! a topic pattern, automatically generating the necessary trait implementations
-//! and helper methods for MQTT subscription handling.
+//! and helper methods for MQTT subscription and publishing.
 //!
 //! ## Features
 //!
@@ -15,17 +15,18 @@
 //! - **Type Safety**: Compile-time validation of struct fields against topic patterns
 //! - **Flexible Payload Handling**: Support for custom payload types with automatic serialization
 //! - **Optional Topic Access**: Include the full topic match information if needed
-//! - **Generated Helper Methods**: Convenient subscription methods and pattern constants
+//! - **Dual Mode Generation**: Generate subscriber, publisher, or both methods
+//! - **Generated Helper Methods**: Convenient subscription and publishing methods with pattern constants
 //!
 //! ## Quick Start
 //!
 //! ```rust
-//! use mqtt_typed_client_macros::mqtt_topic_subscriber;
+//! use mqtt_typed_client_macros::mqtt_topic;
 //! use std::sync::Arc;
 //! use mqtt_typed_client::topic::topic_match::TopicMatch;
 //!
 //! #[derive(Debug)]
-//! #[mqtt_topic_subscriber("sensors/{sensor_id}/temperature/{room}")]
+//! #[mqtt_topic("sensors/{sensor_id}/temperature/{room}")]
 //! struct TemperatureReading {
 //!     sensor_id: u32,           // Extracted from {sensor_id} in topic
 //!     room: String,             // Extracted from {room} in topic
@@ -37,8 +38,9 @@
 //! // TemperatureReading::TOPIC_PATTERN = "sensors/{sensor_id}/temperature/{room}"
 //! // TemperatureReading::MQTT_PATTERN = "sensors/+/temperature/+"
 //!
-//! // Generated subscription method:
+//! // Generated methods:
 //! // let subscriber = TemperatureReading::subscribe(&client).await?;
+//! // TemperatureReading::publish(&client, sensor_id, room, &data).await?;
 //! ```
 //!
 //! ## Supported Field Types
@@ -75,20 +77,26 @@ use crate::analysis::{StructAnalysisContext, TopicParam};
 // pub use analysis::{StructAnalysisContext, TopicParam};
 // pub use codegen::{CodeGenerator, GenerationInfo};
 
-/// Generate a typed MQTT subscriber from a struct and topic pattern
+/// Generate a typed MQTT subscriber and/or publisher from a struct and topic pattern
 ///
 /// This macro analyzes the annotated struct and generates:
-/// 1. `FromMqttMessage` trait implementation for message conversion
+/// 1. `FromMqttMessage` trait implementation for message conversion (if subscriber enabled)
 /// 2. Helper constants (`TOPIC_PATTERN`, `MQTT_PATTERN`)
-/// 3. Async `subscribe()` method for easy subscription
+/// 3. Async `subscribe()` method for easy subscription (if subscriber enabled)
+/// 4. `publish()` and `get_publisher()` methods for publishing (if publisher enabled)
 ///
 /// ## Arguments
 ///
-/// The macro takes a single string literal argument containing the topic pattern.
+/// The macro takes a topic pattern string and optional mode flags:
+/// - `#[mqtt_topic("pattern")]` - Generate both subscriber and publisher (default)
+/// - `#[mqtt_topic("pattern", subscriber)]` - Generate only subscriber
+/// - `#[mqtt_topic("pattern", publisher)]` - Generate only publisher
+/// - `#[mqtt_topic("pattern", subscriber, publisher)]` - Generate both (explicit)
+///
 /// The pattern can include:
 /// - Literal segments: `sensors`, `data`, `status`
 /// - Named wildcards: `{sensor_id}`, `{room}`, `{device_type}`
-/// - Anonymous wildcards: `+` (single level), `#` (multi-level, must be last)
+/// - Anonymous wildcards: `+` (single level), `#` (multi-level, subscriber-only)
 ///
 /// ## Struct Requirements
 ///
@@ -101,9 +109,10 @@ use crate::analysis::{StructAnalysisContext, TopicParam};
 ///
 /// ## Generated Code
 ///
-/// For a struct annotated with `#[mqtt_topic_subscriber("sensors/{id}/data")]`:
+/// For a struct annotated with `#[mqtt_topic("sensors/{id}/data")]`:
 ///
 /// ```rust,ignore
+/// // Subscriber functionality (if enabled)
 /// impl<DE> FromMqttMessage<PayloadType, DE> for YourStruct {
 ///     fn from_mqtt_message(
 ///         topic: Arc<TopicMatch>,
@@ -117,39 +126,66 @@ use crate::analysis::{StructAnalysisContext, TopicParam};
 ///     pub const TOPIC_PATTERN: &'static str = "sensors/{id}/data";
 ///     pub const MQTT_PATTERN: &'static str = "sensors/+/data";
 ///     
+///     // Subscriber methods (if enabled)
 ///     pub async fn subscribe<F>(client: &MqttClient<F>) -> Result<...> {
 ///         // Subscription logic
+///     }
+///     
+///     // Publisher methods (if enabled)
+///     pub async fn publish<F>(client: &MqttClient<F>, id: ParamType, data: &PayloadType) -> Result<...> {
+///         // Publishing logic
+///     }
+///     
+///     pub fn get_publisher<F>(client: &MqttClient<F>, id: ParamType) -> Result<...> {
+///         // Publisher creation
 ///     }
 /// }
 /// ```
 ///
 /// ## Examples
 ///
-/// ### Basic Usage
+/// ### Basic Usage (Both Modes)
 /// ```rust
+/// # use mqtt_typed_client_macros::mqtt_topic;
 /// #[derive(Debug)]
-/// #[mqtt_topic_subscriber("sensors/{sensor_id}/temperature")]
+/// #[mqtt_topic("sensors/{sensor_id}/temperature")]
 /// struct TemperatureReading {
 ///     sensor_id: u32,
 ///     payload: f64,
 /// }
 /// ```
 ///
-/// ### With Topic Information
+/// ### Subscriber Only
 /// ```rust
+/// # use mqtt_typed_client_macros::mqtt_topic;
+/// # use std::sync::Arc;
+/// # use mqtt_typed_client::topic::topic_match::TopicMatch;
 /// #[derive(Debug)]
-/// #[mqtt_topic_subscriber("devices/{device_id}/status")]
+/// #[mqtt_topic("devices/{device_id}/status/#", subscriber)]
 /// struct DeviceStatus {
 ///     device_id: String,
-///     payload: serde_json::Value,
+///     payload: Vec<u8>,
 ///     topic: Arc<TopicMatch>,  // Access to full topic match
+/// }
+/// ```
+///
+/// ### Publisher Only
+/// ```rust
+/// # use mqtt_typed_client_macros::mqtt_topic;
+/// #[derive(Debug)]
+/// #[mqtt_topic("commands/{service}/{action}", publisher)]
+/// struct Command {
+///     service: String,
+///     action: String,
+///     payload: String,
 /// }
 /// ```
 ///
 /// ### Multiple Parameters
 /// ```rust
+/// # use mqtt_typed_client_macros::mqtt_topic;
 /// #[derive(Debug)]
-/// #[mqtt_topic_subscriber("buildings/{building}/floors/{floor}/rooms/{room}/sensors/{sensor_id}")]
+/// #[mqtt_topic("buildings/{building}/floors/{floor}/rooms/{room}/sensors/{sensor_id}")]
 /// struct SensorReading {
 ///     building: String,
 ///     floor: u32,
@@ -161,8 +197,9 @@ use crate::analysis::{StructAnalysisContext, TopicParam};
 ///
 /// ### No Payload
 /// ```rust
+/// # use mqtt_typed_client_macros::mqtt_topic;
 /// #[derive(Debug)]
-/// #[mqtt_topic_subscriber("heartbeat/{service_name}")]
+/// #[mqtt_topic("heartbeat/{service_name}")]
 /// struct Heartbeat {
 ///     service_name: String,
 ///     // No payload field - will default to Vec<u8>
@@ -178,14 +215,22 @@ use crate::analysis::{StructAnalysisContext, TopicParam};
 /// - Invalid topic patterns (e.g., `#` not at the end)
 /// - Incorrect type for `topic` field
 /// - Non-struct types or structs without named fields
+/// - Publisher mode with `#` wildcards (not supported)
 ///
 /// ## Runtime Behavior
 ///
+/// ### Subscriber
 /// When messages are received:
 /// 1. Topic is matched against the pattern
 /// 2. Named parameters are extracted and parsed to their field types
 /// 3. Payload is deserialized to the payload field type
 /// 4. Struct is constructed with all extracted values
+///
+/// ### Publisher
+/// When publishing messages:
+/// 1. Topic parameters are provided as method arguments
+/// 2. Topic string is constructed from the pattern
+/// 3. Payload is serialized and published
 ///
 /// If parameter parsing fails (e.g., non-numeric string for `u32` field),
 /// a `MessageConversionError` is returned.
