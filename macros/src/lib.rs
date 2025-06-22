@@ -58,6 +58,8 @@ mod analysis;
 #[cfg(test)]
 mod analysis_test;
 mod codegen;
+#[cfg(test)]
+mod codegen_test;
 
 use mqtt_typed_client::routing::subscription_manager::CacheStrategy;
 use mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath;
