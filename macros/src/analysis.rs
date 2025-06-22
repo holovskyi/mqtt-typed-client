@@ -10,10 +10,63 @@ use syn::{Data, DataStruct, Fields, Path, PathSegment, TypePath};
 /// Represents a topic parameter with its name and position in the wildcard sequence
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TopicParam {
-	/// The parameter name (e.g., "sensor_id" from "{sensor_id}")
-	pub name: String,
-	/// Index among ALL wildcards in the pattern (used for extraction)
+	/// Parameter name for named wildcards, None for anonymous (+)
+	pub name: Option<String>,
+	/// Index among ALL wildcards in the pattern
 	pub wildcard_index: usize,
+	/// Type from struct field, None means use &str
+	pub field_type: Option<syn::Type>,
+}
+
+impl TopicParam {
+	/// Get the parameter name for publisher methods
+	pub fn get_publisher_param_name(&self) -> String {
+		match &self.name {
+			| Some(name) => name.clone(),
+			| None => format!("wildcard_{}", self.wildcard_index + 1),
+		}
+	}
+
+	/// Get the parameter type for publisher methods  
+	pub fn get_publisher_param_type(&self) -> syn::Type {
+		self.field_type
+			.clone()
+			.unwrap_or_else(|| syn::parse_quote! { &str })
+	}
+
+	/// Is this an anonymous wildcard?
+	pub fn is_anonymous(&self) -> bool {
+		self.name.is_none()
+	}
+
+	/// Is this a named parameter that has a corresponding struct field?
+	pub fn has_struct_field(&self) -> bool {
+		self.field_type.is_some()
+	}
+
+	fn build_topic_params(
+		topic_pattern: &TopicPatternPath,
+		field_types: &std::collections::HashMap<String, syn::Type>,
+	) -> Vec<TopicParam> {
+		topic_pattern
+			.iter()
+			.filter(|item| item.is_wildcard())
+			.enumerate()
+			.map(|(wildcard_index, item)| {
+				let name = item.param_name().map(|s| s.to_string());
+				let field_type = name
+					.as_ref()
+					.and_then(|param_name| field_types.get(param_name))
+					.cloned();
+
+				TopicParam {
+					name,
+					wildcard_index,
+					field_type,
+				}
+			})
+			.collect()
+	}
 }
 
 /// Contains all validated information about the struct and its relationship to the topic pattern
@@ -28,63 +81,51 @@ pub struct StructAnalysisContext {
 }
 
 impl StructAnalysisContext {
-	/// Analyze the struct and topic pattern, returning a context for code generation
-	/// # Validation Rules
-	/// 1. Must be a struct with named fields
-	/// 2. Only allowed fields: "payload", "topic", and topic parameter names
-	/// 3. "topic" field must be of type `Arc<TopicMatch>` if present
-	/// 4. Parameter fields must correspond to named wildcards in the pattern
 	pub fn analyze(
 		input_struct: &syn::DeriveInput,
 		topic_pattern: &TopicPatternPath,
 	) -> Result<Self, syn::Error> {
 		let struct_fields = Self::extract_struct_fields(input_struct)?;
-		let available_params = Self::extract_available_params(topic_pattern);
-
-		let mut context = Self {
-			payload_type: None,
-			has_topic_field: false,
-			topic_params: Vec::new(),
-		};
+		let field_types = Self::extract_field_types(struct_fields)?;
 
 		let mut unknown_fields = Vec::new();
 
+		let mut payload_type = None;
+		let mut has_topic_field = false;
 		// Process each struct field and categorize it
 		for field in struct_fields {
-			let field_name = field
-				.ident
-				.as_ref()
-				// Safe: we already validated this is a struct with named fields
-				.unwrap()
-				.to_string();
+			let field_name = field.ident.as_ref().unwrap().to_string();
 
 			match field_name.as_str() {
 				| "payload" => {
-					context.payload_type = Some(field.ty.clone());
+					payload_type = Some(field.ty.clone());
 				}
-
 				| "topic" => {
 					Self::validate_topic_field_type(&field.ty)?;
-					context.has_topic_field = true;
+					has_topic_field = true;
 				}
-
 				| _ => {
 					// Check if this field corresponds to a topic parameter
-					if let Some(param) =
-						available_params.iter().find(|p| p.name == field_name)
-					{
-						context.topic_params.push(param.clone());
-					} else {
+					let is_topic_param = topic_pattern
+						.iter()
+						.filter(|item| item.is_wildcard())
+						.filter_map(|item| item.param_name())
+						.any(|param_name| param_name == field_name);
+
+					if !is_topic_param {
 						unknown_fields.push(field_name);
 					}
 				}
 			}
 		}
 
-		// Validate that all fields are recognized
+		// Validate unknown fields
 		if !unknown_fields.is_empty() {
-			let available_param_names: Vec<&str> =
-				available_params.iter().map(|p| p.name.as_str()).collect();
+			let named_params: Vec<_> = topic_pattern
+				.iter()
+				.filter(|item| item.is_wildcard())
+				.filter_map(|item| item.param_name())
+				.collect();
 
 			return Err(syn::Error::new_spanned(
 				input_struct,
@@ -92,12 +133,37 @@ impl StructAnalysisContext {
 					"Unknown fields: [{}]. Allowed fields: 'payload', \
 					 'topic', and topic parameters: [{}]",
 					unknown_fields.join(", "),
-					available_param_names.join(", ")
+					named_params.join(", ")
 				),
 			));
 		}
 
-		Ok(context)
+		// Build topic parameters with field types
+		let topic_params =
+			TopicParam::build_topic_params(topic_pattern, &field_types);
+
+		Ok(Self {
+			payload_type,
+			has_topic_field,
+			topic_params,
+		})
+	}
+
+	fn extract_field_types(
+		fields: &syn::punctuated::Punctuated<syn::Field, syn::Token![,]>,
+	) -> Result<std::collections::HashMap<String, syn::Type>, syn::Error> {
+		let mut field_types = std::collections::HashMap::new();
+
+		for field in fields {
+			if let Some(ident) = &field.ident {
+				let field_name = ident.to_string();
+				if field_name != "payload" && field_name != "topic" {
+					field_types.insert(field_name, field.ty.clone());
+				}
+			}
+		}
+
+		Ok(field_types)
 	}
 
 	/// Extract named fields from struct with validation
@@ -122,33 +188,6 @@ impl StructAnalysisContext {
 		}
 	}
 
-	/// Extract all available topic parameters with their wildcard indices
-	///
-	/// Scans the topic pattern for named wildcards (e.g., `{sensor_id}`, `{room:#}`)
-	/// and assigns each one an index based on its position among ALL wildcards.
-	///
-	/// # Example
-	/// For pattern "sensors/+/{sensor_id}/data/{room}":
-	/// - Anonymous wildcard `+` at index 0 (not returned)
-	/// - Named wildcard `{sensor_id}` at index 1 → TopicParam { name: "sensor_id", wildcard_index: 1 }
-	/// - Named wildcard `{room}` at index 2 → TopicParam { name: "room", wildcard_index: 2 }
-	fn extract_available_params(
-		topic_pattern: &TopicPatternPath,
-	) -> Vec<TopicParam> {
-		topic_pattern
-			.iter()
-			.filter(|item| item.is_wildcard())
-			.enumerate()
-			.filter_map(|(i, item)| {
-				item.param_name().map(|name| (i, name.to_string()))
-			})
-			.map(|(wildcard_index, name)| TopicParam {
-				name,
-				wildcard_index,
-			})
-			.collect()
-	}
-
 	/// Validate that a topic field has the correct type: `Arc<TopicMatch>`
 	///
 	/// Performs syntactic analysis of the type to ensure it matches exactly
@@ -170,29 +209,36 @@ impl StructAnalysisContext {
 	/// This is a best-effort check that looks for the Arc<...> pattern with
 	/// TopicMatch as the inner type. It handles various import styles but
 	/// may not catch all edge cases.
-    fn is_arc_topic_match_type(ty: &syn::Type) -> bool {
-        match ty {
-            syn::Type::Path(type_path) => {
-                // Look for the last segment being "Arc"
-                if let Some(arc_segment) = type_path.path.segments.last() {
-                    if arc_segment.ident == "Arc" {
-                        // Check if Arc has angle-bracketed generic arguments
-                        if let syn::PathArguments::AngleBracketed(args) = &arc_segment.arguments {
-                            // Look for the first generic argument being TopicMatch
-                            if let Some(syn::GenericArgument::Type(syn::Type::Path(inner_path))) = args.args.first() {
-                                // Check if the inner type ends with TopicMatch
-                                if let Some(inner_segment) = inner_path.path.segments.last() {
-                                    return inner_segment.ident == "TopicMatch";
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            _ => return false,
-        }
-        false
-    }
+	fn is_arc_topic_match_type(ty: &syn::Type) -> bool {
+		match ty {
+			| syn::Type::Path(type_path) => {
+				// Look for the last segment being "Arc"
+				if let Some(arc_segment) = type_path.path.segments.last() {
+					if arc_segment.ident == "Arc" {
+						// Check if Arc has angle-bracketed generic arguments
+						if let syn::PathArguments::AngleBracketed(args) =
+							&arc_segment.arguments
+						{
+							// Look for the first generic argument being TopicMatch
+							if let Some(syn::GenericArgument::Type(
+								syn::Type::Path(inner_path),
+							)) = args.args.first()
+							{
+								// Check if the inner type ends with TopicMatch
+								if let Some(inner_segment) =
+									inner_path.path.segments.last()
+								{
+									return inner_segment.ident == "TopicMatch";
+								}
+							}
+						}
+					}
+				}
+			}
+			| _ => return false,
+		}
+		false
+	}
 
 	/// Get the number of topic parameters that need to be extracted
 	pub fn param_count(&self) -> usize {
@@ -206,7 +252,11 @@ impl StructAnalysisContext {
 
 	/// Get all topic parameter names
 	pub fn param_names(&self) -> Vec<&str> {
-		self.topic_params.iter().map(|p| p.name.as_str()).collect()
+		self.topic_params.iter()
+		.filter_map(|p| {
+			p.name.as_ref().map(|name| name.as_str())
+		})
+		.collect()
 	}
 }
 
@@ -264,7 +314,7 @@ mod tests {
 		let result = StructAnalysisContext::analyze(&test_struct, &pattern);
 
 		match test_case.expected_result {
-			AnalysisResult::Success {
+			| AnalysisResult::Success {
 				param_count,
 				has_payload,
 				has_topic_field,
@@ -294,8 +344,7 @@ mod tests {
 					test_case.name
 				);
 				assert_eq!(
-					context.has_topic_field,
-					has_topic_field,
+					context.has_topic_field, has_topic_field,
 					"Test '{}': topic field presence mismatch",
 					test_case.name
 				);
@@ -316,7 +365,7 @@ mod tests {
 					);
 				}
 			}
-			AnalysisResult::Error { error_contains } => {
+			| AnalysisResult::Error { error_contains } => {
 				let error = result.expect_err(&format!(
 					"Test '{}' should fail but succeeded",
 					test_case.name
@@ -361,7 +410,8 @@ mod tests {
 
 		for (i, test_case) in test_cases.into_iter().enumerate() {
 			let pattern = create_topic_pattern(test_case.pattern);
-			let params = StructAnalysisContext::extract_available_params(&pattern);
+			let params =
+				StructAnalysisContext::extract_available_params(&pattern);
 
 			assert_eq!(
 				params.len(),
@@ -375,17 +425,14 @@ mod tests {
 				params.iter().zip(test_case.expected.iter())
 			{
 				assert_eq!(
-					param.name,
-					*expected_name,
+					param.name, *expected_name,
 					"Test case {}: param name mismatch",
 					i
 				);
 				assert_eq!(
-					param.wildcard_index,
-					*expected_index,
+					param.wildcard_index, *expected_index,
 					"Test case {}: wildcard index mismatch for '{}'",
-					i,
-					param.name
+					i, param.name
 				);
 			}
 		}
@@ -409,7 +456,9 @@ mod tests {
 			TypeTestCase {
 				name: "fully_qualified_arc_topic_match",
 				type_tokens: quote!(
-					std::sync::Arc<mqtt_typed_client::topic::topic_match::TopicMatch>
+					std::sync::Arc<
+						mqtt_typed_client::topic::topic_match::TopicMatch,
+					>
 				),
 				expected: true,
 			},
@@ -443,16 +492,17 @@ mod tests {
 
 		for test_case in test_cases {
 			let parsed_type: syn::Type = syn::parse2(test_case.type_tokens)
-				.expect(&format!("Failed to parse type for test '{}'", test_case.name));
+				.expect(&format!(
+					"Failed to parse type for test '{}'",
+					test_case.name
+				));
 
-			let result = StructAnalysisContext::is_arc_topic_match_type(&parsed_type);
+			let result =
+				StructAnalysisContext::is_arc_topic_match_type(&parsed_type);
 			assert_eq!(
-				result,
-				test_case.expected,
+				result, test_case.expected,
 				"Test '{}': expected {}, got {}",
-				test_case.name,
-				test_case.expected,
-				result
+				test_case.name, test_case.expected, result
 			);
 		}
 	}
@@ -557,10 +607,12 @@ mod tests {
 		};
 		let result = StructAnalysisContext::analyze(&test_enum, &pattern);
 		assert!(result.is_err());
-		assert!(result
-			.unwrap_err()
-			.to_string()
-			.contains("can only be applied to structs"));
+		assert!(
+			result
+				.unwrap_err()
+				.to_string()
+				.contains("can only be applied to structs")
+		);
 
 		// Test tuple struct
 		let test_tuple: syn::DeriveInput = parse_quote! {
@@ -568,9 +620,6 @@ mod tests {
 		};
 		let result = StructAnalysisContext::analyze(&test_tuple, &pattern);
 		assert!(result.is_err());
-		assert!(result
-			.unwrap_err()
-			.to_string()
-			.contains("named fields"));
+		assert!(result.unwrap_err().to_string().contains("named fields"));
 	}
 }

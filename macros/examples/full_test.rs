@@ -1,11 +1,11 @@
-use mqtt_typed_client_macros::mqtt_topic_subscriber;
+use mqtt_typed_client_macros::mqtt_topic;
 use mqtt_typed_client::message_serializer::BincodeSerializer;
 use mqtt_typed_client::client::async_client::MqttClient;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 #[derive(Debug)]
-#[mqtt_topic_subscriber("sensors/{sensor_id}/temperature")]
+#[mqtt_topic("sensors/{sensor_id}/temperature")]
 struct TemperatureReading {
     sensor_id: u32,
     payload: Vec<u8>,

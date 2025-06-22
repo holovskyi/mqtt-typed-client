@@ -256,6 +256,12 @@ impl TopicPatternPath {
 		self.segments.is_empty()
 	}
 
+	pub fn contains_hash(&self) -> bool {
+		self.segments.last().map_or(false, |s| {
+			matches!(s, TopicPatternItem::Hash(_))
+		})
+	}
+
 	pub fn iter(&self) -> Iter<TopicPatternItem> {
 		self.segments.iter()
 	}
