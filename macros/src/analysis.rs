@@ -182,7 +182,7 @@ impl StructAnalysisContext {
 			}) => Ok(&fields.named),
 			| _ => Err(syn::Error::new_spanned(
 				input_struct,
-				"mqtt_topic_subscriber can only be applied to structs with \
+				"mqtt_topic can only be applied to structs with \
 				 named fields, not tuple structs or unit structs",
 			)),
 		}
