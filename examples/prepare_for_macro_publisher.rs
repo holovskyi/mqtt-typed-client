@@ -4,7 +4,7 @@ use bincode::{Decode, Encode};
 use mqtt_typed_client::{
 	topic::{self, topic_match::TopicMatch}, BincodeSerializer, MessageSerializer, MqttClient, MqttClientError, TopicPublisher, TopicRouterError
 };
-use mqtt_typed_client_macros::mqtt_topic_subscriber;
+use mqtt_typed_client_macros::mqtt_topic;
 use tokio::time;
 use tracing::{debug, error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

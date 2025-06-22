@@ -7,7 +7,7 @@ use mqtt_typed_client::{
 	extract_topic_parameter, topic::topic_match::TopicMatch,
 };
 //extern crate mqtt_typed_client_macros;
-use mqtt_typed_client_macros::mqtt_topic_subscriber;
+use mqtt_typed_client_macros::mqtt_topic;
 //use mqtt_async_client::MqttAsyncClient;
 use serde::{Deserialize, Serialize};
 use tokio::time;
@@ -23,7 +23,7 @@ struct SensorData {
 }
 
 /* MQTT message with all data */
-#[mqtt_topic_subscriber("typed/{room}/pl/{sensor_id}/some/{temp}")]
+#[mqtt_topic("typed/{room}/pl/{sensor_id}/some/{temp}")]
 #[derive(Debug)]
 struct SensorReading {
 	sensor_id: u32, // extracted from topic field. Other fiellds not allowed here
@@ -56,9 +56,13 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 	info!("MQTT client created successfully");
 
 	info!("Setting up publisher and subscriber");
-	let publisher = client
-		.get_publisher::<SensorData>("typed/room52/pl/37/some/36.6")?;
-		//.get_publisher::<SensorData>("huy")?;
+
+	let publisher = SensorReading::get_publisher(
+		&client,
+		"room52".to_string(),
+		37,
+		36.6,
+	)?;
 	for i in 0 .. 10 {
 		debug!(message_id = i, "Publishing message");
 
