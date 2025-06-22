@@ -29,9 +29,21 @@ impl TopicParam {
 
 	/// Get the parameter type for publisher methods  
 	pub fn get_publisher_param_type(&self) -> syn::Type {
-		self.field_type
-			.clone()
-			.unwrap_or_else(|| syn::parse_quote! { &str })
+		match &self.field_type {
+			Some(field_type) => {
+				if Self::is_string_type(field_type) {
+					syn::parse_quote! { &str }
+				} else {
+					field_type.clone()
+				}
+			}
+			None => syn::parse_quote! { &str }
+		}
+	}
+
+	fn is_string_type(ty: &syn::Type) -> bool {
+		matches!(ty, syn::Type::Path(path) if 
+			path.path.segments.last().map(|s| s.ident == "String").unwrap_or(false))
 	}
 
 	/// Is this an anonymous wildcard?
