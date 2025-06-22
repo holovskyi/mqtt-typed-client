@@ -44,6 +44,10 @@ impl TopicParam {
 		self.field_type.is_some()
 	}
 
+	/// Build topic parameters from pattern and struct field types
+	///
+	/// Maps wildcard positions in the topic pattern to corresponding struct fields,
+	/// preserving wildcard order and associating correct types.
 	pub fn build_topic_params(
 		topic_pattern: &TopicPatternPath,
 		field_types: &std::collections::HashMap<String, syn::Type>,
@@ -149,6 +153,7 @@ impl StructAnalysisContext {
 		})
 	}
 
+	/// Extract field name to type mappings, excluding special fields (payload, topic)
 	fn extract_field_types(
 		fields: &syn::punctuated::Punctuated<syn::Field, syn::Token![,]>,
 	) -> Result<std::collections::HashMap<String, syn::Type>, syn::Error> {
@@ -206,9 +211,8 @@ impl StructAnalysisContext {
 
 	/// Check if a type syntactically matches `Arc<TopicMatch>`
 	///
-	/// This is a best-effort check that looks for the Arc<...> pattern with
-	/// TopicMatch as the inner type. It handles various import styles but
-	/// may not catch all edge cases.
+	/// Performs syntactic analysis to validate topic field type.
+	/// Handles various import styles but may not catch all edge cases.
 	fn is_arc_topic_match_type(ty: &syn::Type) -> bool {
 		match ty {
 			| syn::Type::Path(type_path) => {

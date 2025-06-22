@@ -30,10 +30,12 @@ impl CodeGenerator {
 		}
 	}
 
+	/// Check if subscriber code should be generated
 	pub fn should_generate_subscriber(&self) -> bool {
 		self.macro_args.generate_subscriber
 	}
 
+	/// Check if publisher code should be generated
 	pub fn should_generate_publisher(&self) -> bool {
 		self.macro_args.generate_publisher
 	}
@@ -105,6 +107,7 @@ impl CodeGenerator {
 		})
 	}
 
+	/// Generate topic pattern constants
 	fn generate_constants(&self) -> proc_macro2::TokenStream {
 		let topic_pattern = &self.macro_args.pattern;
 		let topic_pattern_literal = topic_pattern.topic_pattern().to_string();
@@ -352,7 +355,7 @@ impl CodeGenerator {
 			.collect()
 	}
 
-	/// Get format arguments for topic string construction  
+	/// Get format string and arguments for topic construction
 	fn get_topic_format_and_args(
 		&self,
 	) -> (String, Vec<proc_macro2::TokenStream>) {

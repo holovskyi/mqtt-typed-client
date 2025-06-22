@@ -251,6 +251,8 @@ pub fn mqtt_topic(args: TokenStream, input: TokenStream) -> TokenStream {
 
 /// Main orchestration function that coordinates analysis and code generation
 ///
+/// Ties together the analysis and code generation phases.
+///
 /// This function ties together the analysis and code generation phases:
 /// 1. Parse and validate the topic pattern
 /// 2. Analyze the struct against the pattern
@@ -274,6 +276,8 @@ fn generate_mqtt_code(
 }
 
 /// Parse macro arguments: pattern string and optional generation mode flags
+///
+/// Supports: `pattern`, `(pattern, subscriber)`, `(pattern, publisher)`, `(pattern, subscriber, publisher)`
 fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 	let parser = syn::punctuated::Punctuated::<syn::Expr, syn::Token![,]>::parse_terminated;
 	let args = parser.parse(args)?;
@@ -371,6 +375,8 @@ fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 
 /// Parse and validate a topic pattern string
 ///
+/// Converts string literal into validated TopicPatternPath with syntax validation.
+///
 /// Converts a string literal from the macro arguments into a validated
 /// `TopicPatternPath`, checking for syntax errors and invalid wildcard usage.
 ///
@@ -401,6 +407,7 @@ fn parse_topic_pattern(
 	})
 }
 
+/// Macro configuration arguments
 #[derive(Debug)]
 struct MacroArgs {
 	pattern: TopicPatternPath,
@@ -410,7 +417,10 @@ struct MacroArgs {
 
 /// Utility functions for advanced usage and testing
 impl StructAnalysisContext {
-	/// Create a context from components (useful for testing)
+	/// Create a context from components
+	///
+	/// Useful for testing and advanced usage where you need to construct
+	/// the analysis context manually.
 	#[doc(hidden)]
 	pub fn from_components(
 		payload_type: Option<syn::Type>,
