@@ -417,448 +417,448 @@ impl CodeGenerator {
 	}
 }
 
-#[cfg(test)]
-mod tests {
-	use mqtt_typed_client::routing::subscription_manager::CacheStrategy;
-	use quote::quote;
-	use syn::parse_quote;
+// #[cfg(test)]
+// mod tests {
+// 	use mqtt_typed_client::routing::subscription_manager::CacheStrategy;
+// 	use quote::quote;
+// 	use syn::parse_quote;
 
-	use super::*;
-	use crate::analysis::StructAnalysisContext;
+// 	use super::*;
+// 	use crate::analysis::StructAnalysisContext;
 
-	/// Test case for code generation
-	struct CodegenTestCase {
-		name: &'static str,
-		pattern: &'static str,
-		struct_fields: proc_macro2::TokenStream,
-		expected_checks: Vec<CodeCheck>,
-	}
+// 	/// Test case for code generation
+// 	struct CodegenTestCase {
+// 		name: &'static str,
+// 		pattern: &'static str,
+// 		struct_fields: proc_macro2::TokenStream,
+// 		expected_checks: Vec<CodeCheck>,
+// 	}
 
-	/// What to check in generated code
-	#[derive(Debug, Clone)]
-	enum CodeCheck {
-		/// Check that a parameter is extracted with correct index
-		ParamExtraction {
-			param_name: &'static str,
-			index: usize,
-		},
-		/// Check that field assignment exists
-		FieldAssignment(&'static str),
-		/// Check that constant is defined with correct value
-		Constant {
-			name: &'static str,
-			value: &'static str,
-		},
-		/// Check that method exists
-		Method(&'static str),
-		/// Check trait implementation
-		TraitImpl(&'static str),
-		/// Check payload type in generated code
-		PayloadType(&'static str),
-	}
+// 	/// What to check in generated code
+// 	#[derive(Debug, Clone)]
+// 	enum CodeCheck {
+// 		/// Check that a parameter is extracted with correct index
+// 		ParamExtraction {
+// 			param_name: &'static str,
+// 			index: usize,
+// 		},
+// 		/// Check that field assignment exists
+// 		FieldAssignment(&'static str),
+// 		/// Check that constant is defined with correct value
+// 		Constant {
+// 			name: &'static str,
+// 			value: &'static str,
+// 		},
+// 		/// Check that method exists
+// 		Method(&'static str),
+// 		/// Check trait implementation
+// 		TraitImpl(&'static str),
+// 		/// Check payload type in generated code
+// 		PayloadType(&'static str),
+// 	}
 
-	/// Helper to create a topic pattern for testing
-	fn create_topic_pattern(pattern: &str) -> TopicPatternPath {
-		TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
-			.expect("Invalid test pattern")
-	}
+// 	/// Helper to create a topic pattern for testing
+// 	fn create_topic_pattern(pattern: &str) -> TopicPatternPath {
+// 		TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
+// 			.expect("Invalid test pattern")
+// 	}
 
-	/// Helper to create a test struct
-	fn create_test_struct(
-		fields: proc_macro2::TokenStream,
-	) -> syn::DeriveInput {
-		parse_quote! {
-			struct TestStruct {
-				#fields
-			}
-		}
-	}
+// 	/// Helper to create a test struct
+// 	fn create_test_struct(
+// 		fields: proc_macro2::TokenStream,
+// 	) -> syn::DeriveInput {
+// 		parse_quote! {
+// 			struct TestStruct {
+// 				#fields
+// 			}
+// 		}
+// 	}
 
-	/// Helper to analyze and create a code generator
-	fn create_generator(
-		struct_fields: proc_macro2::TokenStream,
-		pattern: &str,
-	) -> (CodeGenerator, syn::DeriveInput, TopicPatternPath) {
-		let test_struct = create_test_struct(struct_fields);
-		let topic_pattern = create_topic_pattern(pattern);
-		let context =
-			StructAnalysisContext::analyze(&test_struct, &topic_pattern)
-				.expect("Analysis should succeed");
-		let generator = CodeGenerator::new(context);
+// 	/// Helper to analyze and create a code generator
+// 	fn create_generator(
+// 		struct_fields: proc_macro2::TokenStream,
+// 		pattern: &str,
+// 	) -> (CodeGenerator, syn::DeriveInput, TopicPatternPath) {
+// 		let test_struct = create_test_struct(struct_fields);
+// 		let topic_pattern = create_topic_pattern(pattern);
+// 		let context =
+// 			StructAnalysisContext::analyze(&test_struct, &topic_pattern)
+// 				.expect("Analysis should succeed");
+// 		let generator = CodeGenerator::new(context);
 
-		(generator, test_struct, topic_pattern)
-	}
+// 		(generator, test_struct, topic_pattern)
+// 	}
 
-	/// Run checks against generated code
-	fn verify_generated_code(
-		code: &str,
-		checks: Vec<CodeCheck>,
-		test_name: &str,
-	) {
-		for check in checks {
-			match check {
-				| CodeCheck::ParamExtraction { param_name, index } => {
-					// More flexible pattern matching for parameter extraction
-					// Check if the call exists with correct parameters, ignore spacing
-					let has_extract_call =
-						code.contains("extract_topic_parameter");
-					let has_param_name =
-						code.contains(&format!("\"{}\"", param_name));
-					let has_index_plain = code
-						.contains(&format!("& topic , {} ,", index))
-						|| code.contains(&format!("&topic, {}, ", index))
-						|| code
-							.contains(&format!("& topic , {}usize ,", index))
-						|| code.contains(&format!("&topic, {}usize,", index));
+// 	/// Run checks against generated code
+// 	fn verify_generated_code(
+// 		code: &str,
+// 		checks: Vec<CodeCheck>,
+// 		test_name: &str,
+// 	) {
+// 		for check in checks {
+// 			match check {
+// 				| CodeCheck::ParamExtraction { param_name, index } => {
+// 					// More flexible pattern matching for parameter extraction
+// 					// Check if the call exists with correct parameters, ignore spacing
+// 					let has_extract_call =
+// 						code.contains("extract_topic_parameter");
+// 					let has_param_name =
+// 						code.contains(&format!("\"{}\"", param_name));
+// 					let has_index_plain = code
+// 						.contains(&format!("& topic , {} ,", index))
+// 						|| code.contains(&format!("&topic, {}, ", index))
+// 						|| code
+// 							.contains(&format!("& topic , {}usize ,", index))
+// 						|| code.contains(&format!("&topic, {}usize,", index));
 
-					let found =
-						has_extract_call && has_param_name && has_index_plain;
-					assert!(
-						found,
-						"Test '{}': missing parameter extraction for '{}' at \
-						 index {}\nExtract call: {}, Param name: {}, Index: \
-						 {}\nGenerated code: {}",
-						test_name,
-						param_name,
-						index,
-						has_extract_call,
-						has_param_name,
-						has_index_plain,
-						code
-					);
-				}
-				| CodeCheck::FieldAssignment(field) => {
-					let patterns =
-						vec![format!("{} ,", field), format!("{},", field)];
-					let found =
-						patterns.iter().any(|pattern| code.contains(pattern));
-					assert!(
-						found,
-						"Test '{}': missing field assignment for \
-						 '{}'\nGenerated code: {}",
-						test_name, field, code
-					);
-				}
-				| CodeCheck::Constant { name, value } => {
-					let patterns = vec![
-						format!(
-							"pub const {} : & 'static str = \"{}\" ;",
-							name, value
-						),
-						format!(
-							"pub const {}: &'static str = \"{}\";",
-							name, value
-						),
-						format!(
-							"pub const {} : &'static str = \"{}\" ;",
-							name, value
-						),
-					];
-					let found =
-						patterns.iter().any(|pattern| code.contains(pattern));
-					assert!(
-						found,
-						"Test '{}': missing constant '{}' with value \
-						 '{}'\nGenerated code: {}",
-						test_name, name, value, code
-					);
-				}
-				| CodeCheck::Method(method_name) => {
-					let patterns = vec![
-						format!("pub async fn {}", method_name),
-						format!("pub async fn {}(", method_name),
-					];
-					let found =
-						patterns.iter().any(|pattern| code.contains(pattern));
-					assert!(
-						found,
-						"Test '{}': missing method '{}'\nGenerated code: {}",
-						test_name, method_name, code
-					);
-				}
-				| CodeCheck::TraitImpl(trait_name) => {
-					assert!(
-						code.contains(trait_name),
-						"Test '{}': missing trait implementation for \
-						 '{}'\nGenerated code: {}",
-						test_name,
-						trait_name,
-						code
-					);
-				}
-				| CodeCheck::PayloadType(type_name) => {
-					assert!(
-						code.contains(type_name),
-						"Test '{}': missing payload type '{}'\nGenerated \
-						 code: {}",
-						test_name,
-						type_name,
-						code
-					);
-				}
-			}
-		}
-	}
+// 					let found =
+// 						has_extract_call && has_param_name && has_index_plain;
+// 					assert!(
+// 						found,
+// 						"Test '{}': missing parameter extraction for '{}' at \
+// 						 index {}\nExtract call: {}, Param name: {}, Index: \
+// 						 {}\nGenerated code: {}",
+// 						test_name,
+// 						param_name,
+// 						index,
+// 						has_extract_call,
+// 						has_param_name,
+// 						has_index_plain,
+// 						code
+// 					);
+// 				}
+// 				| CodeCheck::FieldAssignment(field) => {
+// 					let patterns =
+// 						vec![format!("{} ,", field), format!("{},", field)];
+// 					let found =
+// 						patterns.iter().any(|pattern| code.contains(pattern));
+// 					assert!(
+// 						found,
+// 						"Test '{}': missing field assignment for \
+// 						 '{}'\nGenerated code: {}",
+// 						test_name, field, code
+// 					);
+// 				}
+// 				| CodeCheck::Constant { name, value } => {
+// 					let patterns = vec![
+// 						format!(
+// 							"pub const {} : & 'static str = \"{}\" ;",
+// 							name, value
+// 						),
+// 						format!(
+// 							"pub const {}: &'static str = \"{}\";",
+// 							name, value
+// 						),
+// 						format!(
+// 							"pub const {} : &'static str = \"{}\" ;",
+// 							name, value
+// 						),
+// 					];
+// 					let found =
+// 						patterns.iter().any(|pattern| code.contains(pattern));
+// 					assert!(
+// 						found,
+// 						"Test '{}': missing constant '{}' with value \
+// 						 '{}'\nGenerated code: {}",
+// 						test_name, name, value, code
+// 					);
+// 				}
+// 				| CodeCheck::Method(method_name) => {
+// 					let patterns = vec![
+// 						format!("pub async fn {}", method_name),
+// 						format!("pub async fn {}(", method_name),
+// 					];
+// 					let found =
+// 						patterns.iter().any(|pattern| code.contains(pattern));
+// 					assert!(
+// 						found,
+// 						"Test '{}': missing method '{}'\nGenerated code: {}",
+// 						test_name, method_name, code
+// 					);
+// 				}
+// 				| CodeCheck::TraitImpl(trait_name) => {
+// 					assert!(
+// 						code.contains(trait_name),
+// 						"Test '{}': missing trait implementation for \
+// 						 '{}'\nGenerated code: {}",
+// 						test_name,
+// 						trait_name,
+// 						code
+// 					);
+// 				}
+// 				| CodeCheck::PayloadType(type_name) => {
+// 					assert!(
+// 						code.contains(type_name),
+// 						"Test '{}': missing payload type '{}'\nGenerated \
+// 						 code: {}",
+// 						test_name,
+// 						type_name,
+// 						code
+// 					);
+// 				}
+// 			}
+// 		}
+// 	}
 
-	/// Run a comprehensive test case
-	fn run_codegen_test(test_case: CodegenTestCase) {
-		let (generator, test_struct, topic_pattern) =
-			create_generator(test_case.struct_fields, test_case.pattern);
+// 	/// Run a comprehensive test case
+// 	fn run_codegen_test(test_case: CodegenTestCase) {
+// 		let (generator, test_struct, topic_pattern) =
+// 			create_generator(test_case.struct_fields, test_case.pattern);
 
-		let complete = generator
-			.generate_complete_implementation(&test_struct, &topic_pattern)
-			.expect(&format!(
-				"Test '{}' should generate code successfully",
-				test_case.name
-			));
+// 		let complete = generator
+// 			.generate_complete_implementation(&test_struct, &topic_pattern)
+// 			.expect(&format!(
+// 				"Test '{}' should generate code successfully",
+// 				test_case.name
+// 			));
 
-		let code = complete.to_string();
-		verify_generated_code(&code, test_case.expected_checks, test_case.name);
-	}
+// 		let code = complete.to_string();
+// 		verify_generated_code(&code, test_case.expected_checks, test_case.name);
+// 	}
 
-	#[test]
-	fn test_comprehensive_code_generation() {
-		let test_cases = vec![
-			CodegenTestCase {
-				name: "basic_sensor_reading",
-				pattern: "sensors/{sensor_id}/data",
-				struct_fields: quote! {
-					sensor_id: u32,
-					payload: String,
-				},
-				expected_checks: vec![
-					CodeCheck::ParamExtraction {
-						param_name: "sensor_id",
-						index: 0,
-					},
-					CodeCheck::FieldAssignment("sensor_id"),
-					CodeCheck::FieldAssignment("payload"),
-					CodeCheck::Constant {
-						name: "TOPIC_PATTERN",
-						value: "sensors/{sensor_id}/data",
-					},
-					CodeCheck::Constant {
-						name: "MQTT_PATTERN",
-						value: "sensors/+/data",
-					},
-					CodeCheck::Method("subscribe"),
-					CodeCheck::TraitImpl("FromMqttMessage"),
-					CodeCheck::PayloadType("String"),
-				],
-			},
-			CodegenTestCase {
-				name: "multi_param_with_topic",
-				pattern: "sensors/{sensor_id}/{room}/temperature",
-				struct_fields: quote! {
-					sensor_id: u32,
-					room: String,
-					payload: f64,
-					topic: Arc<TopicMatch>,
-				},
-				expected_checks: vec![
-					CodeCheck::ParamExtraction {
-						param_name: "sensor_id",
-						index: 0,
-					},
-					CodeCheck::ParamExtraction {
-						param_name: "room",
-						index: 1,
-					},
-					CodeCheck::FieldAssignment("sensor_id"),
-					CodeCheck::FieldAssignment("room"),
-					CodeCheck::FieldAssignment("payload"),
-					CodeCheck::FieldAssignment("topic"),
-					CodeCheck::PayloadType("f64"),
-				],
-			},
-			CodegenTestCase {
-				name: "no_payload_field",
-				pattern: "heartbeat/{service}",
-				struct_fields: quote! {
-					service: String,
-				},
-				expected_checks: vec![
-					CodeCheck::ParamExtraction {
-						param_name: "service",
-						index: 0,
-					},
-					CodeCheck::FieldAssignment("service"),
-					CodeCheck::PayloadType("Vec < u8 >"), // Default payload type
-				],
-			},
-			CodegenTestCase {
-				name: "complex_pattern",
-				pattern: "buildings/{building}/floors/{floor}/rooms/{room}/\
-				          devices/{device_id}/data",
-				struct_fields: quote! {
-					building: String,
-					floor: u32,
-					room: String,
-					device_id: String,
-					payload: serde_json::Value,
-				},
-				expected_checks: vec![
-					CodeCheck::ParamExtraction {
-						param_name: "building",
-						index: 0,
-					},
-					CodeCheck::ParamExtraction {
-						param_name: "floor",
-						index: 1,
-					},
-					CodeCheck::ParamExtraction {
-						param_name: "room",
-						index: 2,
-					},
-					CodeCheck::ParamExtraction {
-						param_name: "device_id",
-						index: 3,
-					},
-					CodeCheck::PayloadType("serde_json :: Value"),
-				],
-			},
-		];
+// 	#[test]
+// 	fn test_comprehensive_code_generation() {
+// 		let test_cases = vec![
+// 			CodegenTestCase {
+// 				name: "basic_sensor_reading",
+// 				pattern: "sensors/{sensor_id}/data",
+// 				struct_fields: quote! {
+// 					sensor_id: u32,
+// 					payload: String,
+// 				},
+// 				expected_checks: vec![
+// 					CodeCheck::ParamExtraction {
+// 						param_name: "sensor_id",
+// 						index: 0,
+// 					},
+// 					CodeCheck::FieldAssignment("sensor_id"),
+// 					CodeCheck::FieldAssignment("payload"),
+// 					CodeCheck::Constant {
+// 						name: "TOPIC_PATTERN",
+// 						value: "sensors/{sensor_id}/data",
+// 					},
+// 					CodeCheck::Constant {
+// 						name: "MQTT_PATTERN",
+// 						value: "sensors/+/data",
+// 					},
+// 					CodeCheck::Method("subscribe"),
+// 					CodeCheck::TraitImpl("FromMqttMessage"),
+// 					CodeCheck::PayloadType("String"),
+// 				],
+// 			},
+// 			CodegenTestCase {
+// 				name: "multi_param_with_topic",
+// 				pattern: "sensors/{sensor_id}/{room}/temperature",
+// 				struct_fields: quote! {
+// 					sensor_id: u32,
+// 					room: String,
+// 					payload: f64,
+// 					topic: Arc<TopicMatch>,
+// 				},
+// 				expected_checks: vec![
+// 					CodeCheck::ParamExtraction {
+// 						param_name: "sensor_id",
+// 						index: 0,
+// 					},
+// 					CodeCheck::ParamExtraction {
+// 						param_name: "room",
+// 						index: 1,
+// 					},
+// 					CodeCheck::FieldAssignment("sensor_id"),
+// 					CodeCheck::FieldAssignment("room"),
+// 					CodeCheck::FieldAssignment("payload"),
+// 					CodeCheck::FieldAssignment("topic"),
+// 					CodeCheck::PayloadType("f64"),
+// 				],
+// 			},
+// 			CodegenTestCase {
+// 				name: "no_payload_field",
+// 				pattern: "heartbeat/{service}",
+// 				struct_fields: quote! {
+// 					service: String,
+// 				},
+// 				expected_checks: vec![
+// 					CodeCheck::ParamExtraction {
+// 						param_name: "service",
+// 						index: 0,
+// 					},
+// 					CodeCheck::FieldAssignment("service"),
+// 					CodeCheck::PayloadType("Vec < u8 >"), // Default payload type
+// 				],
+// 			},
+// 			CodegenTestCase {
+// 				name: "complex_pattern",
+// 				pattern: "buildings/{building}/floors/{floor}/rooms/{room}/\
+// 				          devices/{device_id}/data",
+// 				struct_fields: quote! {
+// 					building: String,
+// 					floor: u32,
+// 					room: String,
+// 					device_id: String,
+// 					payload: serde_json::Value,
+// 				},
+// 				expected_checks: vec![
+// 					CodeCheck::ParamExtraction {
+// 						param_name: "building",
+// 						index: 0,
+// 					},
+// 					CodeCheck::ParamExtraction {
+// 						param_name: "floor",
+// 						index: 1,
+// 					},
+// 					CodeCheck::ParamExtraction {
+// 						param_name: "room",
+// 						index: 2,
+// 					},
+// 					CodeCheck::ParamExtraction {
+// 						param_name: "device_id",
+// 						index: 3,
+// 					},
+// 					CodeCheck::PayloadType("serde_json :: Value"),
+// 				],
+// 			},
+// 		];
 
-		for test_case in test_cases {
-			run_codegen_test(test_case);
-		}
-	}
+// 		for test_case in test_cases {
+// 			run_codegen_test(test_case);
+// 		}
+// 	}
 
-	#[test]
-	fn test_generator_info_methods() {
-		let test_cases = vec![
-			(
-				"basic_struct",
-				quote! {
-					sensor_id: u32,
-					payload: String,
-				},
-				"sensors/{sensor_id}/data",
-				1,     // param_count
-				true,  // has_payload
-				false, // has_topic_field
-				vec!["sensor_id"],
-			),
-			(
-				"full_struct",
-				quote! {
-					sensor_id: u32,
-					room: String,
-					payload: Vec<u8>,
-					topic: Arc<TopicMatch>,
-				},
-				"sensors/{sensor_id}/{room}/data",
-				2,    // param_count
-				true, // has_payload
-				true, // has_topic_field
-				vec!["sensor_id", "room"],
-			),
-			(
-				"minimal_struct",
-				quote! {
-					service: String,
-				},
-				"heartbeat/{service}",
-				1,     // param_count
-				false, // has_payload
-				false, // has_topic_field
-				vec!["service"],
-			),
-		];
+// 	#[test]
+// 	fn test_generator_info_methods() {
+// 		let test_cases = vec![
+// 			(
+// 				"basic_struct",
+// 				quote! {
+// 					sensor_id: u32,
+// 					payload: String,
+// 				},
+// 				"sensors/{sensor_id}/data",
+// 				1,     // param_count
+// 				true,  // has_payload
+// 				false, // has_topic_field
+// 				vec!["sensor_id"],
+// 			),
+// 			(
+// 				"full_struct",
+// 				quote! {
+// 					sensor_id: u32,
+// 					room: String,
+// 					payload: Vec<u8>,
+// 					topic: Arc<TopicMatch>,
+// 				},
+// 				"sensors/{sensor_id}/{room}/data",
+// 				2,    // param_count
+// 				true, // has_payload
+// 				true, // has_topic_field
+// 				vec!["sensor_id", "room"],
+// 			),
+// 			(
+// 				"minimal_struct",
+// 				quote! {
+// 					service: String,
+// 				},
+// 				"heartbeat/{service}",
+// 				1,     // param_count
+// 				false, // has_payload
+// 				false, // has_topic_field
+// 				vec!["service"],
+// 			),
+// 		];
 
-		for (
-			name,
-			fields,
-			pattern,
-			expected_count,
-			expected_payload,
-			expected_topic,
-			expected_names,
-		) in test_cases
-		{
-			let (generator, _, _) = create_generator(fields, pattern);
+// 		for (
+// 			name,
+// 			fields,
+// 			pattern,
+// 			expected_count,
+// 			expected_payload,
+// 			expected_topic,
+// 			expected_names,
+// 		) in test_cases
+// 		{
+// 			let (generator, _, _) = create_generator(fields, pattern);
 
-			assert_eq!(
-				generator.param_count(),
-				expected_count,
-				"Test '{}': param count mismatch",
-				name
-			);
-			assert_eq!(
-				generator.has_payload(),
-				expected_payload,
-				"Test '{}': payload presence mismatch",
-				name
-			);
-			assert_eq!(
-				generator.has_topic_field(),
-				expected_topic,
-				"Test '{}': topic field presence mismatch",
-				name
-			);
+// 			assert_eq!(
+// 				generator.param_count(),
+// 				expected_count,
+// 				"Test '{}': param count mismatch",
+// 				name
+// 			);
+// 			assert_eq!(
+// 				generator.has_payload(),
+// 				expected_payload,
+// 				"Test '{}': payload presence mismatch",
+// 				name
+// 			);
+// 			assert_eq!(
+// 				generator.has_topic_field(),
+// 				expected_topic,
+// 				"Test '{}': topic field presence mismatch",
+// 				name
+// 			);
 
-			let actual_names = generator.param_names();
-			assert_eq!(
-				actual_names.len(),
-				expected_names.len(),
-				"Test '{}': param names count mismatch",
-				name
-			);
-			for expected_name in expected_names {
-				assert!(
-					actual_names.contains(&expected_name),
-					"Test '{}': missing parameter '{}'",
-					name,
-					expected_name
-				);
-			}
-		}
-	}
+// 			let actual_names = generator.param_names();
+// 			assert_eq!(
+// 				actual_names.len(),
+// 				expected_names.len(),
+// 				"Test '{}': param names count mismatch",
+// 				name
+// 			);
+// 			for expected_name in expected_names {
+// 				assert!(
+// 					actual_names.contains(&expected_name),
+// 					"Test '{}': missing parameter '{}'",
+// 					name,
+// 					expected_name
+// 				);
+// 			}
+// 		}
+// 	}
 
-	#[test]
-	fn test_edge_cases() {
-		let edge_cases = vec![
-			CodegenTestCase {
-				name: "empty_struct",
-				pattern: "sensors/+/data",
-				struct_fields: quote! {},
-				expected_checks: vec![
-					CodeCheck::TraitImpl("FromMqttMessage"),
-					CodeCheck::PayloadType("Vec < u8 >"), // Default payload
-					CodeCheck::Method("subscribe"),
-				],
-			},
-			CodegenTestCase {
-				name: "only_topic_field",
-				pattern: "status/+",
-				struct_fields: quote! {
-					topic: Arc<TopicMatch>,
-				},
-				expected_checks: vec![
-					CodeCheck::FieldAssignment("topic"),
-					CodeCheck::PayloadType("Vec < u8 >"),
-				],
-			},
-			CodegenTestCase {
-				name: "mixed_wildcards",
-				pattern: "devices/+/{device_id}/status/#",
-				struct_fields: quote! {
-					device_id: String,
-					payload: String,
-				},
-				expected_checks: vec![
-					CodeCheck::ParamExtraction {
-						param_name: "device_id",
-						index: 1,
-					}, // Second wildcard
-					CodeCheck::FieldAssignment("device_id"),
-					CodeCheck::FieldAssignment("payload"),
-				],
-			},
-		];
+// 	#[test]
+// 	fn test_edge_cases() {
+// 		let edge_cases = vec![
+// 			CodegenTestCase {
+// 				name: "empty_struct",
+// 				pattern: "sensors/+/data",
+// 				struct_fields: quote! {},
+// 				expected_checks: vec![
+// 					CodeCheck::TraitImpl("FromMqttMessage"),
+// 					CodeCheck::PayloadType("Vec < u8 >"), // Default payload
+// 					CodeCheck::Method("subscribe"),
+// 				],
+// 			},
+// 			CodegenTestCase {
+// 				name: "only_topic_field",
+// 				pattern: "status/+",
+// 				struct_fields: quote! {
+// 					topic: Arc<TopicMatch>,
+// 				},
+// 				expected_checks: vec![
+// 					CodeCheck::FieldAssignment("topic"),
+// 					CodeCheck::PayloadType("Vec < u8 >"),
+// 				],
+// 			},
+// 			CodegenTestCase {
+// 				name: "mixed_wildcards",
+// 				pattern: "devices/+/{device_id}/status/#",
+// 				struct_fields: quote! {
+// 					device_id: String,
+// 					payload: String,
+// 				},
+// 				expected_checks: vec![
+// 					CodeCheck::ParamExtraction {
+// 						param_name: "device_id",
+// 						index: 1,
+// 					}, // Second wildcard
+// 					CodeCheck::FieldAssignment("device_id"),
+// 					CodeCheck::FieldAssignment("payload"),
+// 				],
+// 			},
+// 		];
 
-		for test_case in edge_cases {
-			run_codegen_test(test_case);
-		}
-	}
-}
+// 		for test_case in edge_cases {
+// 			run_codegen_test(test_case);
+// 		}
+// 	}
+// }

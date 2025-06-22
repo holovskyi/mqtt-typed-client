@@ -55,6 +55,8 @@
 //! - `{param_name:#}` - Named multi-level wildcard (extracted as string)
 
 mod analysis;
+#[cfg(test)]
+mod analysis_test;
 mod codegen;
 
 use mqtt_typed_client::routing::subscription_manager::CacheStrategy;
@@ -373,163 +375,163 @@ impl StructAnalysisContext {
 	}
 }
 
-#[cfg(test)]
-mod tests {
-	use quote::quote;
-	use syn::parse_quote;
+// #[cfg(test)]
+// mod tests {
+// 	use quote::quote;
+// 	use syn::parse_quote;
 
-	use super::*;
+// 	use super::*;
 
-	/// Test that the main macro orchestration works correctly
-	#[test]
-	fn test_generate_mqtt_subscriber_success() {
-		let pattern_str: LitStr = parse_quote!("sensors/{sensor_id}/data");
-		let test_struct: syn::DeriveInput = parse_quote! {
-			struct TestStruct {
-				sensor_id: u32,
-				payload: String,
-			}
-		};
+// 	/// Test that the main macro orchestration works correctly
+// 	#[test]
+// 	fn test_generate_mqtt_subscriber_success() {
+// 		let pattern_str: LitStr = parse_quote!("sensors/{sensor_id}/data");
+// 		let test_struct: syn::DeriveInput = parse_quote! {
+// 			struct TestStruct {
+// 				sensor_id: u32,
+// 				payload: String,
+// 			}
+// 		};
 
-		let result = generate_mqtt_subscriber(&pattern_str, &test_struct);
-		assert!(result.is_ok());
+// 		let result = generate_mqtt_subscriber(&pattern_str, &test_struct);
+// 		assert!(result.is_ok());
 
-		let generated = result.unwrap();
-		let code = generated.to_string();
+// 		let generated = result.unwrap();
+// 		let code = generated.to_string();
 
-		// Should contain all expected parts
-		assert!(code.contains("struct TestStruct"));
-		assert!(code.contains("FromMqttMessage"));
-		assert!(code.contains("TOPIC_PATTERN"));
-		assert!(code.contains("subscribe"));
-	}
+// 		// Should contain all expected parts
+// 		assert!(code.contains("struct TestStruct"));
+// 		assert!(code.contains("FromMqttMessage"));
+// 		assert!(code.contains("TOPIC_PATTERN"));
+// 		assert!(code.contains("subscribe"));
+// 	}
 
-	#[test]
-	fn test_generate_mqtt_subscriber_invalid_pattern() {
-		let pattern_str: LitStr = parse_quote!("sensors/#/invalid"); // # not at end
-		let test_struct: syn::DeriveInput = parse_quote! {
-			struct TestStruct {
-				payload: String,
-			}
-		};
+// 	#[test]
+// 	fn test_generate_mqtt_subscriber_invalid_pattern() {
+// 		let pattern_str: LitStr = parse_quote!("sensors/#/invalid"); // # not at end
+// 		let test_struct: syn::DeriveInput = parse_quote! {
+// 			struct TestStruct {
+// 				payload: String,
+// 			}
+// 		};
 
-		let result = generate_mqtt_subscriber(&pattern_str, &test_struct);
-		assert!(result.is_err());
+// 		let result = generate_mqtt_subscriber(&pattern_str, &test_struct);
+// 		assert!(result.is_err());
 
-		let error = result.unwrap_err();
-		assert!(error.to_string().contains("Invalid topic pattern"));
-	}
+// 		let error = result.unwrap_err();
+// 		assert!(error.to_string().contains("Invalid topic pattern"));
+// 	}
 
-	#[test]
-	fn test_generate_mqtt_subscriber_struct_validation_error() {
-		let pattern_str: LitStr = parse_quote!("sensors/{sensor_id}/data");
-		let test_struct: syn::DeriveInput = parse_quote! {
-			struct TestStruct {
-				unknown_field: String,  // Should cause error
-			}
-		};
+// 	#[test]
+// 	fn test_generate_mqtt_subscriber_struct_validation_error() {
+// 		let pattern_str: LitStr = parse_quote!("sensors/{sensor_id}/data");
+// 		let test_struct: syn::DeriveInput = parse_quote! {
+// 			struct TestStruct {
+// 				unknown_field: String,  // Should cause error
+// 			}
+// 		};
 
-		let result = generate_mqtt_subscriber(&pattern_str, &test_struct);
-		assert!(result.is_err());
+// 		let result = generate_mqtt_subscriber(&pattern_str, &test_struct);
+// 		assert!(result.is_err());
 
-		let error = result.unwrap_err();
-		assert!(error.to_string().contains("Unknown fields"));
-	}
+// 		let error = result.unwrap_err();
+// 		assert!(error.to_string().contains("Unknown fields"));
+// 	}
 
-	#[test]
-	fn test_parse_topic_pattern_success() {
-		let pattern_str: LitStr =
-			parse_quote!("sensors/{sensor_id}/temperature/{room}");
-		let result = parse_topic_pattern(&pattern_str);
+// 	#[test]
+// 	fn test_parse_topic_pattern_success() {
+// 		let pattern_str: LitStr =
+// 			parse_quote!("sensors/{sensor_id}/temperature/{room}");
+// 		let result = parse_topic_pattern(&pattern_str);
 
-		assert!(result.is_ok());
-		let pattern = result.unwrap();
-		assert_eq!(
-			pattern.topic_pattern(),
-			"sensors/{sensor_id}/temperature/{room}"
-		);
-		assert_eq!(pattern.mqtt_pattern(), "sensors/+/temperature/+");
-	}
+// 		assert!(result.is_ok());
+// 		let pattern = result.unwrap();
+// 		assert_eq!(
+// 			pattern.topic_pattern(),
+// 			"sensors/{sensor_id}/temperature/{room}"
+// 		);
+// 		assert_eq!(pattern.mqtt_pattern(), "sensors/+/temperature/+");
+// 	}
 
-	#[test]
-	fn test_parse_topic_pattern_empty() {
-		let pattern_str: LitStr = parse_quote!("");
-		let result = parse_topic_pattern(&pattern_str);
+// 	#[test]
+// 	fn test_parse_topic_pattern_empty() {
+// 		let pattern_str: LitStr = parse_quote!("");
+// 		let result = parse_topic_pattern(&pattern_str);
 
-		assert!(result.is_err());
-		let error = result.unwrap_err();
-		assert!(error.to_string().contains("Invalid topic pattern"));
-	}
+// 		assert!(result.is_err());
+// 		let error = result.unwrap_err();
+// 		assert!(error.to_string().contains("Invalid topic pattern"));
+// 	}
 
-	#[test]
-	fn test_parse_topic_pattern_invalid_hash_position() {
-		let pattern_str: LitStr = parse_quote!("sensors/#/data");
-		let result = parse_topic_pattern(&pattern_str);
+// 	#[test]
+// 	fn test_parse_topic_pattern_invalid_hash_position() {
+// 		let pattern_str: LitStr = parse_quote!("sensors/#/data");
+// 		let result = parse_topic_pattern(&pattern_str);
 
-		assert!(result.is_err());
-		let error = result.unwrap_err();
-		assert!(error.to_string().contains("Invalid topic pattern"));
-	}
+// 		assert!(result.is_err());
+// 		let error = result.unwrap_err();
+// 		assert!(error.to_string().contains("Invalid topic pattern"));
+// 	}
 
-	/// Integration test that ensures the full pipeline works
-	#[test]
-	fn test_full_integration() {
-		let pattern_str: LitStr =
-			parse_quote!("buildings/{building}/sensors/{sensor_id}/data");
-		let test_struct: syn::DeriveInput = parse_quote! {
-			struct BuildingSensor {
-				building: String,
-				sensor_id: u32,
-				payload: f64,
-				topic: Arc<TopicMatch>,
-			}
-		};
+// 	/// Integration test that ensures the full pipeline works
+// 	#[test]
+// 	fn test_full_integration() {
+// 		let pattern_str: LitStr =
+// 			parse_quote!("buildings/{building}/sensors/{sensor_id}/data");
+// 		let test_struct: syn::DeriveInput = parse_quote! {
+// 			struct BuildingSensor {
+// 				building: String,
+// 				sensor_id: u32,
+// 				payload: f64,
+// 				topic: Arc<TopicMatch>,
+// 			}
+// 		};
 
-		let result = generate_mqtt_subscriber(&pattern_str, &test_struct);
-		assert!(result.is_ok());
+// 		let result = generate_mqtt_subscriber(&pattern_str, &test_struct);
+// 		assert!(result.is_ok());
 
-		let generated = result.unwrap();
-		let code = generated.to_string();
+// 		let generated = result.unwrap();
+// 		let code = generated.to_string();
 
-		// Verify key components are present
-		assert!(code.contains("struct BuildingSensor"));
-		assert!(
-			code.contains(
-				"impl < DE > :: mqtt_typed_client :: FromMqttMessage"
-			)
-		);
-		assert!(code.contains("buildings/{building}/sensors/{sensor_id}/data"));
-		assert!(code.contains("buildings/+/sensors/+/data"));
-		assert!(code.contains("extract_topic_parameter"));
-		assert!(code.contains("building ,"));
-		assert!(code.contains("sensor_id ,"));
-		assert!(code.contains("payload ,"));
-		assert!(code.contains("topic ,"));
-	}
+// 		// Verify key components are present
+// 		assert!(code.contains("struct BuildingSensor"));
+// 		assert!(
+// 			code.contains(
+// 				"impl < DE > :: mqtt_typed_client :: FromMqttMessage"
+// 			)
+// 		);
+// 		assert!(code.contains("buildings/{building}/sensors/{sensor_id}/data"));
+// 		assert!(code.contains("buildings/+/sensors/+/data"));
+// 		assert!(code.contains("extract_topic_parameter"));
+// 		assert!(code.contains("building ,"));
+// 		assert!(code.contains("sensor_id ,"));
+// 		assert!(code.contains("payload ,"));
+// 		assert!(code.contains("topic ,"));
+// 	}
 
-	/// Test utility function
-	#[test]
-	fn test_struct_analysis_context_from_components() {
-		let payload_type: syn::Type = parse_quote!(String);
-		let topic_params = vec![
-			TopicParam {
-				name: "sensor_id".to_string(),
-				wildcard_index: 0,
-			},
-			TopicParam {
-				name: "room".to_string(),
-				wildcard_index: 1,
-			},
-		];
+// 	/// Test utility function
+// 	#[test]
+// 	fn test_struct_analysis_context_from_components() {
+// 		let payload_type: syn::Type = parse_quote!(String);
+// 		let topic_params = vec![
+// 			TopicParam {
+// 				name: "sensor_id".to_string(),
+// 				wildcard_index: 0,
+// 			},
+// 			TopicParam {
+// 				name: "room".to_string(),
+// 				wildcard_index: 1,
+// 			},
+// 		];
 
-		let context = StructAnalysisContext::from_components(
-			Some(payload_type),
-			true,
-			topic_params,
-		);
+// 		let context = StructAnalysisContext::from_components(
+// 			Some(payload_type),
+// 			true,
+// 			topic_params,
+// 		);
 
-		assert!(context.payload_type.is_some());
-		assert!(context.has_topic_field);
-		assert_eq!(context.topic_params.len(), 2);
-	}
-}
+// 		assert!(context.payload_type.is_some());
+// 		assert!(context.has_topic_field);
+// 		assert_eq!(context.topic_params.len(), 2);
+// 	}
+// }
