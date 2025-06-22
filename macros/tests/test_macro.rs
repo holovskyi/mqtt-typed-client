@@ -1,6 +1,6 @@
-use mqtt_typed_client_macros::mqtt_topic_subscriber;
+use mqtt_typed_client_macros::mqtt_topic;
 
-#[mqtt_topic_subscriber("test/topic/{huy}")] 
+#[mqtt_topic("test/topic/{huy}")] 
 struct TestStruct {
     huy: u32,
     payload: String,
