@@ -58,11 +58,11 @@
 
 mod analysis;
 
+#[cfg(test)]
+mod analysis_test;
 mod codegen;
 #[cfg(test)]
 mod codegen_test;
-#[cfg(test)]
-mod analysis_test;
 #[cfg(test)]
 mod lib_test;
 
@@ -267,8 +267,10 @@ fn generate_mqtt_code(
 	input_struct: &syn::DeriveInput,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
 	// Analyze the struct against the pattern
-	let context =
-		analysis::StructAnalysisContext::analyze(input_struct, &macro_args.pattern)?;
+	let context = analysis::StructAnalysisContext::analyze(
+		input_struct,
+		&macro_args.pattern,
+	)?;
 
 	// Generate the complete implementation
 	let generator = codegen::CodeGenerator::new(context, macro_args);

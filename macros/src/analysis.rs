@@ -30,20 +30,20 @@ impl TopicParam {
 	/// Get the parameter type for publisher methods  
 	pub fn get_publisher_param_type(&self) -> syn::Type {
 		match &self.field_type {
-			Some(field_type) => {
+			| Some(field_type) => {
 				if Self::is_string_type(field_type) {
 					syn::parse_quote! { &str }
 				} else {
 					field_type.clone()
 				}
 			}
-			None => syn::parse_quote! { &str }
+			| None => syn::parse_quote! { &str },
 		}
 	}
 
 	fn is_string_type(ty: &syn::Type) -> bool {
-		matches!(ty, syn::Type::Path(path) if 
-			path.path.segments.last().map(|s| s.ident == "String").unwrap_or(false))
+		matches!(ty, syn::Type::Path(path)
+		  if path.path.segments.last().map(|s| s.ident == "String").unwrap_or(false))
 	}
 
 	/// Is this an anonymous wildcard?
@@ -199,8 +199,8 @@ impl StructAnalysisContext {
 			}) => Ok(&fields.named),
 			| _ => Err(syn::Error::new_spanned(
 				input_struct,
-				"mqtt_topic can only be applied to structs with \
-				 named fields, not tuple structs or unit structs",
+				"mqtt_topic can only be applied to structs with named fields, \
+				 not tuple structs or unit structs",
 			)),
 		}
 	}
@@ -268,10 +268,9 @@ impl StructAnalysisContext {
 
 	/// Get all topic parameter names
 	pub fn param_names(&self) -> Vec<&str> {
-		self.topic_params.iter()
-		.filter_map(|p| {
-			p.name.as_ref().map(|name| name.as_str())
-		})
-		.collect()
+		self.topic_params
+			.iter()
+			.filter_map(|p| p.name.as_ref().map(|name| name.as_str()))
+			.collect()
 	}
 }

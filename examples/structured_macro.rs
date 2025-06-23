@@ -12,7 +12,9 @@ use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
 use tokio::time;
 use tracing::{debug, error, info};
-use tracing_subscriber::{fmt::format, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{
+	fmt::format, layer::SubscriberExt, util::SubscriberInitExt,
+};
 
 /* payload concrete type */
 #[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]
@@ -34,20 +36,17 @@ struct SensorReading {
 	topic: Arc<TopicMatch>, // optional filed
 }
 
-fn get_server(server:&str,client_id: &str) -> String {
-	format!(
-		"{}?client_id={}&clean_session=true",
-		server, client_id
-	)
+fn get_server(server: &str, client_id: &str) -> String {
+	format!("{}?client_id={}&clean_session=true", server, client_id)
 }
-const SERVER_COOL:&str= "mqtt://broker.mqtt.cool:1883";
-const SERVER_MODSQITO:&str = "mqtt://test.mosquitto.org:1883";
-const SERVER:&str = SERVER_MODSQITO;
+const SERVER_COOL: &str = "mqtt://broker.mqtt.cool:1883";
+const SERVER_MODSQITO: &str = "mqtt://test.mosquitto.org:1883";
+const SERVER: &str = SERVER_MODSQITO;
 
 async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
 	let (client, connection) = MqttClient::<BincodeSerializer>::new(
-		&get_server(SERVER,"rust-publisher"),
+		&get_server(SERVER, "rust-publisher"),
 		NonZeroUsize::new(100).unwrap(),
 		10,
 		100,
@@ -57,12 +56,7 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 
 	info!("Setting up publisher and subscriber");
 
-	let publisher = SensorReading::get_publisher(
-		&client,
-		"room52".to_string(),
-		37,
-		36.6,
-	)?;
+	let publisher = SensorReading::get_publisher(&client, "room52", 37, 36.6)?;
 	for i in 0 .. 10 {
 		debug!(message_id = i, "Publishing message");
 
@@ -92,7 +86,7 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
 	let (client, connection) = MqttClient::<BincodeSerializer>::new(
-		&get_server(SERVER,"rust-subscriber"),
+		&get_server(SERVER, "rust-subscriber"),
 		NonZeroUsize::new(100).unwrap(),
 		10,
 		100,
@@ -100,7 +94,7 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 	.await?;
 	info!("MQTT client created successfully");
 
-	info!(mqtt=SensorReading::MQTT_PATTERN, "Setting up subscriber");
+	info!(mqtt = SensorReading::MQTT_PATTERN, "Setting up subscriber");
 	let mut subscriber_structured = SensorReading::subscribe(&client).await?;
 
 	let mut count = 0;
@@ -129,7 +123,7 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
 	let (client, connection) = MqttClient::<BincodeSerializer>::new(
-		&get_server(SERVER,"rust-pub-sub"),
+		&get_server(SERVER, "rust-pub-sub"),
 		NonZeroUsize::new(100).unwrap(),
 		10,
 		100,
@@ -215,35 +209,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				.compact(), // More compact output
 		)
 		.init();
-    let args: Vec<String> = std::env::args().collect();
-    
-    if args.len() < 2 {
-        println!("Usage: {} <mode>", args[0]);
-        println!("Modes:");
-        println!("  publisher  - Run as publisher only");
-        println!("  subscriber - Run as subscriber only");
-        println!("  both       - Run both publisher and subscriber (original behavior)");
-        return Ok(());
-    }
-    let mode = &args[1];
-    let result = match mode.as_str() {
-        "publisher" => {
-            info!("Starting MQTT publisher");
-            run_publisher().await
-        }
-        "subscriber" => {
-            info!("Starting MQTT subscriber");
-            run_subscriber().await
-        }
-        "both" => {
-            info!("Starting MQTT typed client application (both modes)");
-            test_main().await
-        }
-        _ => {
-            error!("Invalid mode: {}. Use 'publisher', 'subscriber', or 'both'", mode);
-            return Ok(());
-        }
-    };
+	let args: Vec<String> = std::env::args().collect();
+
+	if args.len() < 2 {
+		println!("Usage: {} <mode>", args[0]);
+		println!("Modes:");
+		println!("  publisher  - Run as publisher only");
+		println!("  subscriber - Run as subscriber only");
+		println!(
+			"  both       - Run both publisher and subscriber (original \
+			 behavior)"
+		);
+		return Ok(());
+	}
+	let mode = &args[1];
+	let result = match mode.as_str() {
+		| "publisher" => {
+			info!("Starting MQTT publisher");
+			run_publisher().await
+		}
+		| "subscriber" => {
+			info!("Starting MQTT subscriber");
+			run_subscriber().await
+		}
+		| "both" => {
+			info!("Starting MQTT typed client application (both modes)");
+			test_main().await
+		}
+		| _ => {
+			error!(
+				"Invalid mode: {}. Use 'publisher', 'subscriber', or 'both'",
+				mode
+			);
+			return Ok(());
+		}
+	};
 
 	if let Err(ref e) = result {
 		error!(error = %e, "Application failed");

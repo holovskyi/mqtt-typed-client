@@ -2,7 +2,9 @@ use std::{num::NonZeroUsize, sync::Arc, time::Duration};
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
-	topic::{self, topic_match::TopicMatch}, BincodeSerializer, MessageSerializer, MqttClient, MqttClientError, TopicPublisher, TopicRouterError
+	BincodeSerializer, MessageSerializer, MqttClient, MqttClientError,
+	TopicPublisher, TopicRouterError,
+	topic::{self, topic_match::TopicMatch},
 };
 use mqtt_typed_client_macros::mqtt_topic;
 use tokio::time;
@@ -84,14 +86,14 @@ impl SensorReading {
 	}
 
 	//EMULATE PUBLISHING CODEGEN
-		// if in pattern present anonymous fields + it's translated  to 
-		// positional parameters for example "typed/{room}/+/some/{temp}
-		// will be translated to wildcard_1:&str
-		// all + has &str type
-		// 
-		// Also if named paramteter in pattern not have field in struct it 
-		// also has &str type (we can generate warning for this case)
-		// # wildcard not allowed for publish interface
+	// if in pattern present anonymous fields + it's translated  to
+	// positional parameters for example "typed/{room}/+/some/{temp}
+	// will be translated to wildcard_1:&str
+	// all + has &str type
+	//
+	// Also if named paramteter in pattern not have field in struct it
+	// also has &str type (we can generate warning for this case)
+	// # wildcard not allowed for publish interface
 	pub async fn publish<F>(
 		client: &MqttClient<F>,
 		sensor_id: u32,
@@ -108,19 +110,19 @@ impl SensorReading {
 		publisher.publish(data).await
 	}
 
-    pub fn get_publisher<F>(
-        client: &MqttClient<F>,
-        sensor_id: u32,
-        room: &str,
-        temp: f32,
-    ) -> Result<TopicPublisher<SensorData, F>, TopicRouterError>
-    where F: MessageSerializer<SensorData> {
-        let topic = format!("typed/{room}/{sensor_id}/some/{temp}");
-        client.get_publisher::<SensorData>(&topic)
-    }
-	
+	pub fn get_publisher<F>(
+		client: &MqttClient<F>,
+		sensor_id: u32,
+		room: &str,
+		temp: f32,
+	) -> Result<TopicPublisher<SensorData, F>, TopicRouterError>
+	where
+		F: MessageSerializer<SensorData>,
+	{
+		let topic = format!("typed/{room}/{sensor_id}/some/{temp}");
+		client.get_publisher::<SensorData>(&topic)
+	}
 }
-
 
 pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");

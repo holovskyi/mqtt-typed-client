@@ -5,7 +5,6 @@ use syn::parse_quote;
 
 use super::*;
 
-
 /// Helper function for tests
 fn create_topic_pattern(pattern: &str) -> TopicPatternPath {
 	TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
@@ -61,7 +60,8 @@ fn test_parse_topic_pattern_validation() {
 	];
 
 	for test_case in test_cases {
-		let pattern_str = syn::LitStr::new(test_case.pattern, proc_macro2::Span::call_site());
+		let pattern_str =
+			syn::LitStr::new(test_case.pattern, proc_macro2::Span::call_site());
 		let result = parse_topic_pattern(&pattern_str);
 
 		if test_case.should_succeed {
@@ -91,7 +91,7 @@ fn test_parse_topic_pattern_validation() {
 		}
 	}
 }
- 
+
 #[test]
 fn test_generate_mqtt_code_integration() {
 	// Test the main orchestration function with different configurations
@@ -123,7 +123,10 @@ fn test_generate_mqtt_code_integration() {
 				"TOPIC_PATTERN",
 				"MQTT_PATTERN",
 			],
-			expected_not_contains: vec!["pub async fn publish", "pub fn get_publisher"],
+			expected_not_contains: vec![
+				"pub async fn publish",
+				"pub fn get_publisher",
+			],
 		},
 		IntegrationTestCase {
 			name: "publisher_only_success",
@@ -141,7 +144,10 @@ fn test_generate_mqtt_code_integration() {
 				"TOPIC_PATTERN",
 				"MQTT_PATTERN",
 			],
-			expected_not_contains: vec!["FromMqttMessage", "pub async fn subscribe"],
+			expected_not_contains: vec![
+				"FromMqttMessage",
+				"pub async fn subscribe",
+			],
 		},
 		IntegrationTestCase {
 			name: "both_modes_success",
@@ -195,10 +201,8 @@ fn test_generate_mqtt_code_integration() {
 		let result = generate_mqtt_code(macro_args, &test_struct);
 
 		if test_case.should_succeed {
-			let generated = result.expect(&format!(
-				"Test '{}' should succeed",
-				test_case.name
-			));
+			let generated = result
+				.expect(&format!("Test '{}' should succeed", test_case.name));
 			let code = generated.to_string();
 
 			for expected in test_case.expected_contains {
@@ -219,16 +223,10 @@ fn test_generate_mqtt_code_integration() {
 				);
 			}
 		} else {
-			assert!(
-				result.is_err(),
-				"Test '{}' should fail",
-				test_case.name
-			);
+			assert!(result.is_err(), "Test '{}' should fail", test_case.name);
 		}
 	}
 }
-
-
 
 #[test]
 fn test_complex_patterns() {
@@ -236,7 +234,8 @@ fn test_complex_patterns() {
 	let complex_cases = vec![
 		(
 			"multi_level_named",
-			"buildings/{building}/floors/{floor}/rooms/{room}/sensors/{sensor_id}",
+			"buildings/{building}/floors/{floor}/rooms/{room}/sensors/\
+			 {sensor_id}",
 			quote! {
 				building: String,
 				floor: u32,
@@ -361,7 +360,7 @@ fn test_macro_args_validation() {
 
 		let pattern = pattern_result.unwrap();
 		let has_hash = pattern.contains_hash();
-		
+
 		let macro_args = MacroArgs {
 			pattern,
 			generate_subscriber: test_case.subscriber,
@@ -421,7 +420,7 @@ fn test_struct_analysis_context_utility() {
 	assert!(param_names.contains(&"room"));
 }
 
-#[test] 
+#[test]
 fn test_real_world_scenarios() {
 	// Test scenarios that mimic real usage patterns
 	struct RealWorldTest {
@@ -490,7 +489,7 @@ fn test_real_world_scenarios() {
 		};
 
 		let result = generate_mqtt_code(macro_args, &test_struct);
-		
+
 		// Hash patterns should only work with subscriber-only
 		let has_hash = scenario.pattern.contains('#');
 		if has_hash && scenario.modes.1 {

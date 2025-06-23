@@ -11,6 +11,6 @@ pub mod subscription_manager;
 pub use error::{SendError, SubscriptionError};
 pub use subscriber::Subscriber;
 pub use subscription_manager::{
-	SubscriptionManagerActor, SubscriptionManagerController,
-	SubscriptionManagerHandler, CacheStrategy, SubscriptionConfig
+	CacheStrategy, SubscriptionConfig, SubscriptionManagerActor,
+	SubscriptionManagerController, SubscriptionManagerHandler,
 };

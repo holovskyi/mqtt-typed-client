@@ -29,15 +29,15 @@ enum AnalysisResult {
 }
 
 /// Helper to create a topic pattern for testing
-fn create_topic_pattern(pattern: &str) -> mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath {
+fn create_topic_pattern(
+	pattern: &str,
+) -> mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath {
 	mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
 		.expect("Invalid test pattern")
 }
 
 /// Helper to create a test struct
-fn create_test_struct(
-	fields: proc_macro2::TokenStream,
-) -> syn::DeriveInput {
+fn create_test_struct(fields: proc_macro2::TokenStream) -> syn::DeriveInput {
 	parse_quote! {
 		struct TestStruct {
 			#fields
@@ -209,10 +209,9 @@ fn test_topic_param_build() {
 		);
 
 		// Check named parameters
-		let named_params: Vec<_> = params.iter()
-			.filter(|p| p.name.is_some())
-			.collect();
-		
+		let named_params: Vec<_> =
+			params.iter().filter(|p| p.name.is_some()).collect();
+
 		assert_eq!(
 			named_params.len(),
 			test_case.expected_named.len(),
@@ -225,10 +224,14 @@ fn test_topic_param_build() {
 			let found_param = params.iter().find(|p| {
 				p.name.as_ref().map(|n| n.as_str()) == Some(expected_name)
 			});
-			
-			assert!(found_param.is_some(), 
-				"Test case {}: missing parameter '{}'", i, expected_name);
-				
+
+			assert!(
+				found_param.is_some(),
+				"Test case {}: missing parameter '{}'",
+				i,
+				expected_name
+			);
+
 			let param = found_param.unwrap();
 			assert_eq!(
 				param.wildcard_index, expected_index,
@@ -251,17 +254,22 @@ fn test_field_type_mapping() {
 		}
 	};
 
-	let context = StructAnalysisContext::analyze(&test_struct, &pattern).unwrap();
-	
+	let context =
+		StructAnalysisContext::analyze(&test_struct, &pattern).unwrap();
+
 	// Check that field types are mapped correctly
-	let sensor_param = context.topic_params.iter()
+	let sensor_param = context
+		.topic_params
+		.iter()
 		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("sensor_id"))
 		.unwrap();
 	assert!(sensor_param.has_struct_field());
 	let sensor_type = sensor_param.field_type.as_ref().unwrap();
 	assert_eq!(quote::quote!(#sensor_type).to_string(), "u32");
 
-	let room_param = context.topic_params.iter()
+	let room_param = context
+		.topic_params
+		.iter()
 		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("room"))
 		.unwrap();
 	assert!(room_param.has_struct_field());
@@ -272,7 +280,8 @@ fn test_field_type_mapping() {
 #[test]
 fn test_named_param_without_struct_field() {
 	// Test when pattern has named parameter but struct doesn't have corresponding field
-	let pattern = create_topic_pattern("sensors/{sensor_id}/{missing_field}/data");
+	let pattern =
+		create_topic_pattern("sensors/{sensor_id}/{missing_field}/data");
 	let test_struct: syn::DeriveInput = parse_quote! {
 		struct TestStruct {
 			sensor_id: u32,
@@ -281,20 +290,28 @@ fn test_named_param_without_struct_field() {
 		}
 	};
 
-	let context = StructAnalysisContext::analyze(&test_struct, &pattern).unwrap();
-	
+	let context =
+		StructAnalysisContext::analyze(&test_struct, &pattern).unwrap();
+
 	// sensor_id should have field type
-	let sensor_param = context.topic_params.iter()
+	let sensor_param = context
+		.topic_params
+		.iter()
 		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("sensor_id"))
 		.unwrap();
 	assert!(sensor_param.has_struct_field());
 
 	// missing_field should not have field type
-	let missing_param = context.topic_params.iter()
+	let missing_param = context
+		.topic_params
+		.iter()
 		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("missing_field"))
 		.unwrap();
 	assert!(!missing_param.has_struct_field());
-	assert_eq!(missing_param.get_publisher_param_type(), syn::parse_quote!(&str));
+	assert_eq!(
+		missing_param.get_publisher_param_type(),
+		syn::parse_quote!(&str)
+	);
 }
 
 #[test]
@@ -373,7 +390,9 @@ fn test_topic_field_validation() {
 			);
 			let error = result.unwrap_err();
 			assert!(
-				error.to_string().contains("must be of type Arc<TopicMatch>"),
+				error
+					.to_string()
+					.contains("must be of type Arc<TopicMatch>"),
 				"Test '{}': wrong error message: {}",
 				test_case.name,
 				error
@@ -397,7 +416,7 @@ fn test_complex_wildcard_patterns() {
 			5, // {building}, +, {floor}, +, +
 		),
 		(
-			"+/{param1}/+/{param2}/+", 
+			"+/{param1}/+/{param2}/+",
 			vec![("param1", 1), ("param2", 3)],
 			5, // +, {param1}, +, {param2}, +
 		),
@@ -408,24 +427,37 @@ fn test_complex_wildcard_patterns() {
 		let field_types = std::collections::HashMap::new();
 		let params = TopicParam::build_topic_params(&pattern, &field_types);
 
-		assert_eq!(params.len(), expected_total, 
-			"Pattern '{}': wrong total wildcard count", pattern_str);
+		assert_eq!(
+			params.len(),
+			expected_total,
+			"Pattern '{}': wrong total wildcard count",
+			pattern_str
+		);
 
 		let named_count = expected_named.len();
 		// Check named parameters
 		for (expected_name, expected_index) in expected_named {
-			let found = params.iter().find(|p| {
-				p.name.as_deref() == Some(expected_name)
-			}).unwrap();
-			assert_eq!(found.wildcard_index, expected_index,
-				"Pattern '{}': wrong index for '{}'", pattern_str, expected_name);
+			let found = params
+				.iter()
+				.find(|p| p.name.as_deref() == Some(expected_name))
+				.unwrap();
+			assert_eq!(
+				found.wildcard_index, expected_index,
+				"Pattern '{}': wrong index for '{}'",
+				pattern_str, expected_name
+			);
 		}
 
 		// Count anonymous wildcards
-		let anonymous_count = params.iter().filter(|p| p.is_anonymous()).count();
-		
-		assert_eq!(anonymous_count + named_count, expected_total,
-			"Pattern '{}': anonymous + named != total", pattern_str);
+		let anonymous_count =
+			params.iter().filter(|p| p.is_anonymous()).count();
+
+		assert_eq!(
+			anonymous_count + named_count,
+			expected_total,
+			"Pattern '{}': anonymous + named != total",
+			pattern_str
+		);
 	}
 }
 
@@ -553,7 +585,8 @@ fn test_comprehensive_analysis() {
 #[test]
 fn test_custom_field_types() {
 	// Test various custom field types in topic parameters
-	let pattern = create_topic_pattern("api/{version}/{user_id}/{category}/{item_id}");
+	let pattern =
+		create_topic_pattern("api/{version}/{user_id}/{category}/{item_id}");
 	let test_struct: syn::DeriveInput = parse_quote! {
 		struct ApiRequest {
 			version: String,
@@ -564,8 +597,9 @@ fn test_custom_field_types() {
 		}
 	};
 
-	let context = StructAnalysisContext::analyze(&test_struct, &pattern).unwrap();
-	
+	let context =
+		StructAnalysisContext::analyze(&test_struct, &pattern).unwrap();
+
 	// Verify all parameters have correct field types
 	let types = [
 		("version", "String"),
@@ -575,13 +609,19 @@ fn test_custom_field_types() {
 	];
 
 	for (param_name, expected_type) in types {
-		let param = context.topic_params.iter()
+		let param = context
+			.topic_params
+			.iter()
 			.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some(param_name))
 			.unwrap();
 		assert!(param.has_struct_field());
 		let field_type = param.field_type.as_ref().unwrap();
 		let actual_type = quote::quote!(#field_type).to_string();
-		assert_eq!(actual_type, expected_type, "Wrong type for parameter '{}'", param_name);
+		assert_eq!(
+			actual_type, expected_type,
+			"Wrong type for parameter '{}'",
+			param_name
+		);
 	}
 
 	assert_eq!(context.param_count(), 4);
@@ -600,11 +640,14 @@ fn test_publisher_param_generation() {
 		}
 	};
 
-	let context = StructAnalysisContext::analyze(&test_struct, &pattern).unwrap();
+	let context =
+		StructAnalysisContext::analyze(&test_struct, &pattern).unwrap();
 	assert_eq!(context.param_count(), 4); // +, {device_id}, +, {room}
 
 	// Check anonymous wildcard names
-	let anonymous_params: Vec<_> = context.topic_params.iter()
+	let anonymous_params: Vec<_> = context
+		.topic_params
+		.iter()
 		.filter(|p| p.is_anonymous())
 		.collect();
 	assert_eq!(anonymous_params.len(), 2);
@@ -612,7 +655,9 @@ fn test_publisher_param_generation() {
 	assert_eq!(anonymous_params[1].get_publisher_param_name(), "wildcard_3"); // index 2
 
 	// Check named parameter with field
-	let device_param = context.topic_params.iter()
+	let device_param = context
+		.topic_params
+		.iter()
 		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("device_id"))
 		.unwrap();
 	assert_eq!(device_param.get_publisher_param_name(), "device_id");
@@ -620,7 +665,9 @@ fn test_publisher_param_generation() {
 	assert_eq!(quote::quote!(#device_type).to_string(), "u32");
 
 	// Check named parameter without field
-	let room_param = context.topic_params.iter()
+	let room_param = context
+		.topic_params
+		.iter()
 		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("room"))
 		.unwrap();
 	assert_eq!(room_param.get_publisher_param_name(), "room");
@@ -642,10 +689,10 @@ fn test_invalid_struct_types() {
 	let result = StructAnalysisContext::analyze(&test_enum, &pattern);
 	assert!(result.is_err());
 	assert!(
-	result
-	.unwrap_err()
-	.to_string()
-	.contains("mqtt_topic can only be applied to structs")
+		result
+			.unwrap_err()
+			.to_string()
+			.contains("mqtt_topic can only be applied to structs")
 	);
 
 	// Test tuple struct

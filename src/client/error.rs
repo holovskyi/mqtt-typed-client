@@ -1,6 +1,6 @@
 use rumqttc::{ClientError, OptionError};
 
-use crate::{routing::SubscriptionError, TopicPatternError, TopicRouterError};
+use crate::{TopicPatternError, TopicRouterError, routing::SubscriptionError};
 
 /// Errors that can occur in MQTT client operations
 #[derive(Debug)]
@@ -16,7 +16,7 @@ pub enum MqttClientError {
 	/// Invalid topic pattern errors
 	TopicPattern(TopicPatternError),
 	/// Topic routing errors
-    TopicRouting(TopicRouterError),
+	TopicRouting(TopicRouterError),
 	/// Channel communication errors
 	Channel(String),
 }
@@ -76,13 +76,13 @@ impl From<SubscriptionError> for MqttClientError {
 }
 
 impl From<TopicPatternError> for MqttClientError {
-    fn from(err: TopicPatternError) -> Self {
-        MqttClientError::TopicPattern(err)
-    }
+	fn from(err: TopicPatternError) -> Self {
+		MqttClientError::TopicPattern(err)
+	}
 }
 
 impl From<TopicRouterError> for MqttClientError {
-    fn from(err: TopicRouterError) -> Self {
-        MqttClientError::TopicRouting(err)
-    }
+	fn from(err: TopicRouterError) -> Self {
+		MqttClientError::TopicRouting(err)
+	}
 }

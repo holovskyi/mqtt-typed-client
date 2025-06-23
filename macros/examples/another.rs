@@ -1,4 +1,3 @@
-
 use std::sync::Arc;
 
 use mqtt_typed_client::topic::topic_match::TopicMatch;
@@ -19,10 +18,8 @@ struct SensorReading {
 	room: String,
 	temp: f32,
 
-	payload: SensorData, // optional filed
+	payload: SensorData,    // optional filed
 	topic: Arc<TopicMatch>, // optional filed
 }
 
-fn main() {
-
-}
+fn main() {}

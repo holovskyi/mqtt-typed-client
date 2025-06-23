@@ -2,7 +2,10 @@ use std::{marker::PhantomData, sync::Arc};
 
 use thiserror::Error;
 use tracing::{debug, error, info};
-use crate::{topic::topic_match::TopicMatch, MessageSerializer, TypedSubscriber};
+
+use crate::{
+	MessageSerializer, TypedSubscriber, topic::topic_match::TopicMatch,
+};
 // use {
 // 	BincodeSerializer, MessageSerializer, MqttClient, TypedSubscriber,
 // 	topic::topic_match::TopicMatch,
@@ -55,7 +58,7 @@ where
 	}
 
 	pub async fn receive(
-		&mut self
+		&mut self,
 	) -> Option<
 		Result<
 			MessageType,

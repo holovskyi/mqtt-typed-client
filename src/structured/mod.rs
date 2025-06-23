@@ -1,6 +1,6 @@
 mod subscriber;
 
 pub use subscriber::{
-	MessageConversionError, FromMqttMessage, MqttStructuredSubscriber,
+	FromMqttMessage, MessageConversionError, MqttStructuredSubscriber,
 	extract_topic_parameter,
 };

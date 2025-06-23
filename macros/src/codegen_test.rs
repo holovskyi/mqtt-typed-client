@@ -4,9 +4,9 @@ use mqtt_typed_client::routing::subscription_manager::CacheStrategy;
 use quote::quote;
 use syn::parse_quote;
 
+use super::MacroArgs;
 use super::analysis::StructAnalysisContext;
 use super::codegen::CodeGenerator;
-use super::MacroArgs;
 
 /// Test case for code generation
 struct CodegenTestCase {
@@ -58,7 +58,9 @@ enum CodeCheck {
 }
 
 /// Helper to create a topic pattern for testing
-fn create_topic_pattern(pattern: &str) -> mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath {
+fn create_topic_pattern(
+	pattern: &str,
+) -> mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath {
 	mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
 		.expect("Invalid test pattern")
 }
@@ -76,9 +78,9 @@ fn create_test_struct(fields: proc_macro2::TokenStream) -> syn::DeriveInput {
 fn create_macro_args(pattern: &str, config: GenerationConfig) -> MacroArgs {
 	let topic_pattern = create_topic_pattern(pattern);
 	let (generate_subscriber, generate_publisher) = match config {
-		GenerationConfig::Both => (true, true),
-		GenerationConfig::SubscriberOnly => (true, false),
-		GenerationConfig::PublisherOnly => (false, true),
+		| GenerationConfig::Both => (true, true),
+		| GenerationConfig::SubscriberOnly => (true, false),
+		| GenerationConfig::PublisherOnly => (false, true),
 	};
 
 	MacroArgs {
@@ -96,8 +98,9 @@ fn create_generator(
 ) -> (CodeGenerator, syn::DeriveInput) {
 	let test_struct = create_test_struct(struct_fields);
 	let macro_args = create_macro_args(pattern, config);
-	let context = StructAnalysisContext::analyze(&test_struct, &macro_args.pattern)
-		.expect("Analysis should succeed");
+	let context =
+		StructAnalysisContext::analyze(&test_struct, &macro_args.pattern)
+			.expect("Analysis should succeed");
 	let generator = CodeGenerator::new(context, macro_args);
 
 	(generator, test_struct)
@@ -107,9 +110,10 @@ fn create_generator(
 fn verify_generated_code(code: &str, checks: Vec<CodeCheck>, test_name: &str) {
 	for check in checks {
 		match check {
-			CodeCheck::ParamExtraction { param_name, index } => {
+			| CodeCheck::ParamExtraction { param_name, index } => {
 				let has_extract_call = code.contains("extract_topic_parameter");
-				let has_param_name = code.contains(&format!("\"{}\"", param_name));
+				let has_param_name =
+					code.contains(&format!("\"{}\"", param_name));
 				let has_index = code.contains(&format!("&topic, {}, ", index))
 					|| code.contains(&format!("&topic, {}usize,", index))
 					|| code.contains(&format!("& topic , {} ,", index))
@@ -118,82 +122,113 @@ fn verify_generated_code(code: &str, checks: Vec<CodeCheck>, test_name: &str) {
 				let found = has_extract_call && has_param_name && has_index;
 				assert!(
 					found,
-					"Test '{}': missing parameter extraction for '{}' at index {}\nGenerated code: {}",
+					"Test '{}': missing parameter extraction for '{}' at \
+					 index {}\nGenerated code: {}",
 					test_name, param_name, index, code
 				);
 			}
-			CodeCheck::FieldAssignment(field) => {
-				let patterns = vec![format!("{} ,", field), format!("{},", field)];
-				let found = patterns.iter().any(|pattern| code.contains(pattern));
+			| CodeCheck::FieldAssignment(field) => {
+				let patterns =
+					vec![format!("{} ,", field), format!("{},", field)];
+				let found =
+					patterns.iter().any(|pattern| code.contains(pattern));
 				assert!(
 					found,
-					"Test '{}': missing field assignment for '{}'\nGenerated code: {}",
+					"Test '{}': missing field assignment for '{}'\nGenerated \
+					 code: {}",
 					test_name, field, code
 				);
 			}
-			CodeCheck::Constant { name, value } => {
+			| CodeCheck::Constant { name, value } => {
 				let patterns = vec![
-					format!("pub const {} : & 'static str = \"{}\" ;", name, value),
-					format!("pub const {}: &'static str = \"{}\";", name, value),
-					format!("pub const {} : &'static str = \"{}\" ;", name, value),
+					format!(
+						"pub const {} : & 'static str = \"{}\" ;",
+						name, value
+					),
+					format!(
+						"pub const {}: &'static str = \"{}\";",
+						name, value
+					),
+					format!(
+						"pub const {} : &'static str = \"{}\" ;",
+						name, value
+					),
 				];
-				let found = patterns.iter().any(|pattern| code.contains(pattern));
+				let found =
+					patterns.iter().any(|pattern| code.contains(pattern));
 				assert!(
 					found,
-					"Test '{}': missing constant '{}' with value '{}'\nGenerated code: {}",
+					"Test '{}': missing constant '{}' with value \
+					 '{}'\nGenerated code: {}",
 					test_name, name, value, code
 				);
 			}
-			CodeCheck::Method(method_name) => {
+			| CodeCheck::Method(method_name) => {
 				let patterns = vec![
 					format!("pub async fn {}", method_name),
 					format!("pub async fn {}(", method_name),
 					format!("pub fn {}", method_name),
 					format!("pub fn {}(", method_name),
 				];
-				let found = patterns.iter().any(|pattern| code.contains(pattern));
+				let found =
+					patterns.iter().any(|pattern| code.contains(pattern));
 				assert!(
 					found,
 					"Test '{}': missing method '{}'\nGenerated code: {}",
 					test_name, method_name, code
 				);
 			}
-			CodeCheck::TraitImpl(trait_name) => {
+			| CodeCheck::TraitImpl(trait_name) => {
 				assert!(
 					code.contains(trait_name),
-					"Test '{}': missing trait implementation for '{}'\nGenerated code: {}",
-					test_name, trait_name, code
+					"Test '{}': missing trait implementation for \
+					 '{}'\nGenerated code: {}",
+					test_name,
+					trait_name,
+					code
 				);
 			}
-			CodeCheck::PayloadType(type_name) => {
+			| CodeCheck::PayloadType(type_name) => {
 				assert!(
 					code.contains(type_name),
 					"Test '{}': missing payload type '{}'\nGenerated code: {}",
-					test_name, type_name, code
+					test_name,
+					type_name,
+					code
 				);
 			}
-			CodeCheck::PublisherParam { param_name, param_type } => {
+			| CodeCheck::PublisherParam {
+				param_name,
+				param_type,
+			} => {
 				let param_pattern = format!("{} : {}", param_name, param_type);
-				let param_pattern_spaced = format!("{}: {}", param_name, param_type);
-				let found = code.contains(&param_pattern) || code.contains(&param_pattern_spaced);
+				let param_pattern_spaced =
+					format!("{}: {}", param_name, param_type);
+				let found = code.contains(&param_pattern)
+					|| code.contains(&param_pattern_spaced);
 				assert!(
 					found,
-					"Test '{}': missing publisher parameter '{}' with type '{}'\nGenerated code: {}",
+					"Test '{}': missing publisher parameter '{}' with type \
+					 '{}'\nGenerated code: {}",
 					test_name, param_name, param_type, code
 				);
 			}
-			CodeCheck::FormatString(format_str) => {
+			| CodeCheck::FormatString(format_str) => {
 				assert!(
 					code.contains(format_str),
 					"Test '{}': missing format string '{}'\nGenerated code: {}",
-					test_name, format_str, code
+					test_name,
+					format_str,
+					code
 				);
 			}
-			CodeCheck::NotPresent(text) => {
+			| CodeCheck::NotPresent(text) => {
 				assert!(
 					!code.contains(text),
 					"Test '{}': found unexpected text '{}'\nGenerated code: {}",
-					test_name, text, code
+					test_name,
+					text,
+					code
 				);
 			}
 		}
@@ -222,8 +257,18 @@ fn run_codegen_test(test_case: CodegenTestCase) {
 #[test]
 fn test_generator_configuration_modes() {
 	let test_cases = vec![
-		("subscriber_only", GenerationConfig::SubscriberOnly, true, false),
-		("publisher_only", GenerationConfig::PublisherOnly, false, true),
+		(
+			"subscriber_only",
+			GenerationConfig::SubscriberOnly,
+			true,
+			false,
+		),
+		(
+			"publisher_only",
+			GenerationConfig::PublisherOnly,
+			false,
+			true,
+		),
 		("both_modes", GenerationConfig::Both, true, true),
 	];
 
@@ -448,7 +493,8 @@ fn test_mixed_parameter_types() {
 fn test_complex_publisher_pattern() {
 	let test_case = CodegenTestCase {
 		name: "complex_publisher",
-		pattern: "buildings/{building}/floors/{floor}/rooms/{room}/devices/{device_id}/data",
+		pattern: "buildings/{building}/floors/{floor}/rooms/{room}/devices/\
+		          {device_id}/data",
 		struct_fields: quote! {
 			building: String,
 			floor: u32,
@@ -474,7 +520,9 @@ fn test_complex_publisher_pattern() {
 				param_name: "device_id",
 				param_type: "uuid :: Uuid",
 			},
-			CodeCheck::FormatString("buildings/{}/floors/{}/rooms/{}/devices/{}/data"),
+			CodeCheck::FormatString(
+				"buildings/{}/floors/{}/rooms/{}/devices/{}/data",
+			),
 		],
 	};
 
@@ -585,7 +633,8 @@ fn test_generator_info_methods() {
 		expected_names,
 	) in test_cases
 	{
-		let (generator, _) = create_generator(fields, pattern, GenerationConfig::Both);
+		let (generator, _) =
+			create_generator(fields, pattern, GenerationConfig::Both);
 
 		assert_eq!(
 			generator.param_count(),
@@ -650,7 +699,10 @@ fn test_custom_field_types_in_publisher() {
 	// This is more of an integration test - we'd need to check the actual
 	// generated code to verify the types are correct
 	assert_eq!(generator.param_count(), 4);
-	assert_eq!(generator.param_names(), vec!["version", "user_id", "category", "item_id"]);
+	assert_eq!(
+		generator.param_names(),
+		vec!["version", "user_id", "category", "item_id"]
+	);
 }
 
 #[test]
@@ -729,9 +781,18 @@ fn test_comprehensive_integration() {
 			// Subscriber parts
 			CodeCheck::TraitImpl("FromMqttMessage"),
 			CodeCheck::Method("subscribe"),
-			CodeCheck::ParamExtraction { param_name: "room", index: 0 },
-			CodeCheck::ParamExtraction { param_name: "sensor_id", index: 1 },
-			CodeCheck::ParamExtraction { param_name: "temp", index: 2 },
+			CodeCheck::ParamExtraction {
+				param_name: "room",
+				index: 0,
+			},
+			CodeCheck::ParamExtraction {
+				param_name: "sensor_id",
+				index: 1,
+			},
+			CodeCheck::ParamExtraction {
+				param_name: "temp",
+				index: 2,
+			},
 			CodeCheck::FieldAssignment("sensor_id"),
 			CodeCheck::FieldAssignment("room"),
 			CodeCheck::FieldAssignment("temp"),
@@ -740,9 +801,18 @@ fn test_comprehensive_integration() {
 			// Publisher parts
 			CodeCheck::Method("publish"),
 			CodeCheck::Method("get_publisher"),
-			CodeCheck::PublisherParam { param_name: "sensor_id", param_type: "u32" },
-			CodeCheck::PublisherParam { param_name: "room", param_type: "String" },
-			CodeCheck::PublisherParam { param_name: "temp", param_type: "f32" },
+			CodeCheck::PublisherParam {
+				param_name: "sensor_id",
+				param_type: "u32",
+			},
+			CodeCheck::PublisherParam {
+				param_name: "room",
+				param_type: "String",
+			},
+			CodeCheck::PublisherParam {
+				param_name: "temp",
+				param_type: "f32",
+			},
 			CodeCheck::FormatString("typed/{}/{}/some/{}"),
 			// Constants
 			CodeCheck::Constant {

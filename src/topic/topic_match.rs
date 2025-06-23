@@ -21,9 +21,9 @@ impl TopicPath {
 		Self { path, segments }
 	}
 
-    pub fn path(&self) -> ArcStr {
-        self.path.clone()
-    }
+	pub fn path(&self) -> ArcStr {
+		self.path.clone()
+	}
 }
 
 impl fmt::Display for TopicPath {
@@ -47,23 +47,22 @@ pub enum TopicMatchError {
 
 pub struct TopicMatch {
 	topic: Arc<TopicPath>,
-	params: SmallVec<[Range<usize>;3]>,
-	named_params: SmallVec<[(Substr, Range<usize>);3]>,
+	params: SmallVec<[Range<usize>; 3]>,
+	named_params: SmallVec<[(Substr, Range<usize>); 3]>,
 }
 
 impl TopicMatch {
-    pub(crate) fn from_match_result(
-        topic: Arc<TopicPath>,
-        params: SmallVec<[Range<usize>;3]>,
-        named_params: SmallVec<[(Substr, Range<usize>);3]>,
-    ) -> Self {
-        Self {
-            topic,
-            params,
-            named_params,
-        }
-    }
-	
+	pub(crate) fn from_match_result(
+		topic: Arc<TopicPath>,
+		params: SmallVec<[Range<usize>; 3]>,
+		named_params: SmallVec<[(Substr, Range<usize>); 3]>,
+	) -> Self {
+		Self {
+			topic,
+			params,
+			named_params,
+		}
+	}
 
 	pub fn path_segments(&self) -> &Vec<Substr> {
 		&self.topic.segments
@@ -88,45 +87,44 @@ impl TopicMatch {
 		}
 	}
 
-    pub fn get_param(&self, index: usize) -> Option<Substr> {
-        self.params.get(index).map(|range| self.get_param_range(range))
-    }
+	pub fn get_param(&self, index: usize) -> Option<Substr> {
+		self.params
+			.get(index)
+			.map(|range| self.get_param_range(range))
+	}
 
-    pub fn get_named_param(
-        &self,
-        name: &str,
-    ) -> Option<Substr> {
-        self.named_params
-            .iter()
-            .find(|(n, _)| n.as_str() == name)
-            .map(|(_, range)| self.get_param_range(range))
+	pub fn get_named_param(&self, name: &str) -> Option<Substr> {
+		self.named_params
+			.iter()
+			.find(|(n, _)| n.as_str() == name)
+			.map(|(_, range)| self.get_param_range(range))
 
-        //self.named_params.get(name).map(|range| self.get_param_range(range))
-    }
+		//self.named_params.get(name).map(|range| self.get_param_range(range))
+	}
 }
 
 //Implement Debug for TopicMatch, using get_param and get_named_param
 impl fmt::Debug for TopicMatch {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TopicMatch {{ topic: {}, params: [", self.topic.path)?;
-        for (i, param) in self.params.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", ")?;
-            }
-            write!(f, "{}", self.get_param_range(param))?;
-        }
-        write!(f, "]")?;
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "TopicMatch {{ topic: {}, params: [", self.topic.path)?;
+		for (i, param) in self.params.iter().enumerate() {
+			if i > 0 {
+				write!(f, ", ")?;
+			}
+			write!(f, "{}", self.get_param_range(param))?;
+		}
+		write!(f, "]")?;
 
-        if !self.named_params.is_empty() {
-            write!(f, ", named_params: {{")?;
-            for (name, range) in &self.named_params {
-                write!(f, "{}: {}, ", name, self.get_param_range(range))?;
-            }
-            write!(f, "}}")?;
-        }
+		if !self.named_params.is_empty() {
+			write!(f, ", named_params: {{")?;
+			for (name, range) in &self.named_params {
+				write!(f, "{}: {}, ", name, self.get_param_range(range))?;
+			}
+			write!(f, "}}")?;
+		}
 
-        write!(f, " }}")
-    }
+		write!(f, " }}")
+	}
 }
 
 impl fmt::Display for TopicMatch {

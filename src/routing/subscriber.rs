@@ -2,7 +2,9 @@ use tokio::sync::mpsc::{Receiver, Sender, error::TrySendError};
 use tracing::{debug, warn};
 
 use super::subscription_manager::{Command, RawMessageType};
-use crate::{routing::subscription_manager::MessageType, topic::SubscriptionId};
+use crate::{
+	routing::subscription_manager::MessageType, topic::SubscriptionId,
+};
 
 #[derive(Debug)]
 pub struct Subscriber<T> {

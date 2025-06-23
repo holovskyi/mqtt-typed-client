@@ -1,11 +1,10 @@
-use std::{
-	num::NonZeroUsize, sync::Arc,
-	time::Duration,
-};
+use std::{num::NonZeroUsize, sync::Arc, time::Duration};
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
-	extract_topic_parameter, topic::topic_match::TopicMatch, BincodeSerializer, FromMqttMessage, MessageConversionError, MessageSerializer, MqttClient, MqttStructuredSubscriber, TypedSubscriber
+	BincodeSerializer, FromMqttMessage, MessageConversionError,
+	MessageSerializer, MqttClient, MqttStructuredSubscriber, TypedSubscriber,
+	extract_topic_parameter, topic::topic_match::TopicMatch,
 };
 //use mqtt_async_client::MqttAsyncClient;
 use serde::{Deserialize, Serialize};
@@ -42,8 +41,9 @@ impl SensorReading {
 		mqtt_typed_client::client::error::MqttClientError,
 	>
 	where F: Default + Clone + Send + Sync + MessageSerializer<SensorData> {
-		let subscriber =
-			client.subscribe::<SensorData>(Self::MQTT_SUBSCRIPTION_PATTERN).await?;
+		let subscriber = client
+			.subscribe::<SensorData>(Self::MQTT_SUBSCRIPTION_PATTERN)
+			.await?;
 		Ok(MqttStructuredSubscriber::new(subscriber))
 	}
 }
@@ -64,7 +64,7 @@ struct SensorReading {
 	room: String,
 	temp: f32,
 
-	payload: SensorData, // optional filed
+	payload: SensorData,    // optional filed
 	topic: Arc<TopicMatch>, // optional filed
 }
 

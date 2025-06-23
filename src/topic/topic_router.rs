@@ -4,10 +4,9 @@ use std::collections::HashMap;
 
 use thiserror::Error;
 
-use crate::topic::topic_match::TopicPath;
-
 use super::topic_matcher::{TopicMatcherError, TopicMatcherNode};
 use super::topic_pattern_path::{TopicPatternError, TopicPatternPath};
+use crate::topic::topic_match::TopicPath;
 
 /// Errors that can occur during topic routing operations
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
@@ -172,7 +171,9 @@ impl<T> TopicRouter<T> {
 			.collect()
 	}
 
-	pub fn get_active_subscriptions(&self) -> impl Iterator<Item = &TopicPatternPath> {
+	pub fn get_active_subscriptions(
+		&self,
+	) -> impl Iterator<Item = &TopicPatternPath> {
 		self.subscriptions.values()
 	}
 

@@ -20,7 +20,11 @@ where F: MessageSerializer<T>
 {
 	// TODO parametric topic - for example "devices/{device_id}/status/+"
 	// and publish with device_id and positional parameters
-	pub fn new(client: AsyncClient, serializer: F, topic: impl Into<ArcStr>) -> Self {
+	pub fn new(
+		client: AsyncClient,
+		serializer: F,
+		topic: impl Into<ArcStr>,
+	) -> Self {
 		Self {
 			client,
 			topic: topic.into(),

@@ -113,29 +113,29 @@ where T: Send + Sync + 'static
 
 	async fn run(mut self) {
 		loop {
-			tokio::select! {
-			_ = &mut self.shutdown_rx => {
-			info!("SubscriptionManagerActor: Shutdown signal received");
-			break;
-			}
-					Some(slow_send_res) = self.slow_send_futures.next() => {
-						self.handle_slow_send(slow_send_res).await;
+				tokio::select! {
+				_ = &mut self.shutdown_rx => {
+				info!("SubscriptionManagerActor: Shutdown signal received");
+				break;
+				}
+				Some(slow_send_res) = self.slow_send_futures.next() => {
+					self.handle_slow_send(slow_send_res).await;
+				}
+				cmd = self.command_rx.recv() => {
+					if let Some(cmd) = cmd {
+						match cmd {
+						Command::Unsubscribe(id) => self.handle_unsubscribe(&id).await,
+						Command::Send(message) => self.handle_send(message).await,
+						Command::Subscribe(topic, config, response_tx) => {
+							self.handle_subscribe(topic, config, response_tx).await
+						}
 					}
-					cmd = self.command_rx.recv() => {
-						if let Some(cmd) = cmd {
-							match cmd {
-							Command::Unsubscribe(id) => self.handle_unsubscribe(&id).await,
-							Command::Send(message) => self.handle_send(message).await,
-							Command::Subscribe(topic, config, response_tx) => {
-								self.handle_subscribe(topic, config, response_tx).await
-							}
-						}
-						} else {
-							info!("SubscriptionManagerActor: Command channel closed, exiting");
-							break;
-						}
+					} else {
+						info!("SubscriptionManagerActor: Command channel closed, exiting");
+						break;
 					}
 				}
+			}
 		}
 		info!("SubscriptionManagerActor: Exiting run loop");
 		// Cleanup remaining subscriptions
@@ -179,7 +179,9 @@ where T: Send + Sync + 'static
 		let active_subscriptions = self.topic_router.get_active_subscriptions();
 
 		for topic in active_subscriptions {
-			if let Err(err) = self.client.unsubscribe(topic.mqtt_pattern().as_str()).await {
+			if let Err(err) =
+				self.client.unsubscribe(topic.mqtt_pattern().as_str()).await
+			{
 				error!(
 					topic_pattern = %topic,
 					error = ?err,
