@@ -1,7 +1,6 @@
 use tokio::sync::mpsc::{Receiver, Sender, error::TrySendError};
 use tracing::{debug, warn};
 
-use super::subscription_manager::{Command, RawMessageType};
 use crate::{
 	routing::subscription_manager::MessageType, topic::SubscriptionId,
 };
@@ -9,20 +8,19 @@ use crate::{
 #[derive(Debug)]
 pub struct Subscriber<T> {
 	receiver: Receiver<MessageType<T>>,
-	//TODO chhange cancel_tx on abstract interface for canceling subscription
-	cancel_tx: Option<Sender<Command<T>>>,
+	unsubscribe_tx: Option<Sender<SubscriptionId>>,
 	id: SubscriptionId,
 }
 
 impl<T> Subscriber<T> {
 	pub fn new(
 		receiver: Receiver<MessageType<T>>,
-		cancel_tx: Sender<Command<T>>,
+		unsubscribe_tx: Sender<SubscriptionId>,
 		id: SubscriptionId,
 	) -> Self {
 		Self {
 			receiver,
-			cancel_tx: Some(cancel_tx),
+			unsubscribe_tx: Some(unsubscribe_tx),
 			id,
 		}
 	}
@@ -32,9 +30,9 @@ impl<T> Subscriber<T> {
 	}
 	//TODO map error to custom error
 	pub async fn unsubscribe(mut self) -> Result<(), String> {
-		if let Some(cancel_tx) = self.cancel_tx.take() {
-			cancel_tx
-				.send(Command::Unsubscribe(self.id))
+		if let Some(unsubscribe_tx) = self.unsubscribe_tx.take() {
+			unsubscribe_tx
+				.send(self.id)
 				.await
 				.map_err(|_| "Can't send unsubscribe command".to_string())
 		} else {
@@ -45,11 +43,11 @@ impl<T> Subscriber<T> {
 
 	pub fn unsubscribe_immediate(
 		&mut self,
-	) -> Result<(), TrySendError<Command<T>>> {
-		if let Some(cancel_tx) = self.cancel_tx.take() {
-			let err = cancel_tx.try_send(Command::Unsubscribe(self.id));
+	) -> Result<(), TrySendError<SubscriptionId>> {
+		if let Some(unsubscribe_tx) = self.unsubscribe_tx.take() {
+			let err = unsubscribe_tx.try_send(self.id);
 			if err.is_err() {
-				self.cancel_tx = Some(cancel_tx);
+				self.unsubscribe_tx = Some(unsubscribe_tx);
 				warn!(
 					subscription_id = ?self.id,
 					"Failed to send unsubscribe command"
@@ -65,8 +63,8 @@ impl<T> Subscriber<T> {
 
 impl<T> Drop for Subscriber<T> {
 	fn drop(&mut self) {
-		if let Some(cancel_tx) = self.cancel_tx.take() {
-			match cancel_tx.try_send(Command::Unsubscribe(self.id)) {
+		if let Some(unsubscribe_tx) = self.unsubscribe_tx.take() {
+			match unsubscribe_tx.try_send(self.id) {
 				| Ok(_) => {
 					debug!(
 						subscription_id = ?self.id,

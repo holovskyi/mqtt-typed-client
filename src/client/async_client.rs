@@ -41,6 +41,7 @@ where F: Default + Clone + Send + Sync + 'static
 		topic_path_cache_capacity: NonZeroUsize,
 		event_loop_capacity: usize,
 		command_channel_capacity: usize,
+		unsubscribe_channel_capacity: usize,
 	) -> Result<(Self, MqttConnection), MqttClientError> {
 		let mut mqttoptions = MqttOptions::parse_url(url)?;
 		mqttoptions.set_keep_alive(Duration::from_secs(10));
@@ -52,6 +53,7 @@ where F: Default + Clone + Send + Sync + 'static
 			client.clone(),
 			topic_path_cache_capacity,
 			command_channel_capacity,
+			unsubscribe_channel_capacity,
 		);
 
 		// Spawn the event loop in a separate task to handle MQTT messages

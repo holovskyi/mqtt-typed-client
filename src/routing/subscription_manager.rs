@@ -56,7 +56,6 @@ impl Default for SubscriptionConfig {
 
 #[derive(Debug)]
 pub enum Command<T> {
-	Unsubscribe(SubscriptionId),
 	Subscribe(
 		TopicPatternPath,
 		SubscriptionConfig,
@@ -75,7 +74,8 @@ pub struct SubscriptionManagerActor<T> {
 	topic_path_cache: LruCache<ArcStr, Arc<TopicPath>>,
 	client: AsyncClient,
 	command_rx: Receiver<Command<T>>,
-	command_tx: Sender<Command<T>>, //For unsubscribe message
+	unsubscribe_tx: Sender<SubscriptionId>,
+	unsubscribe_rx: Receiver<SubscriptionId>,
 	shutdown_rx: oneshot::Receiver<()>,
 	slow_send_futures:
 		FuturesUnordered<tokio::task::JoinHandle<SlowSendResult<T>>>,
@@ -88,15 +88,19 @@ where T: Send + Sync + 'static
 		client: AsyncClient,
 		topic_path_cache_capacity: NonZeroUsize,
 		command_channel_capacity: usize,
+		unsubscribe_channel_capacity: usize,
 	) -> (SubscriptionManagerController, SubscriptionManagerHandler<T>) {
 		let (command_tx, command_rx) = channel(command_channel_capacity);
+		let (unsubscribe_tx, unsubscribe_rx) =
+			channel(unsubscribe_channel_capacity);
 		let (shutdown_tx, shutdown_rx) = oneshot::channel();
 		let actor = Self {
 			topic_router: TopicRouterType::<T>::new(),
 			topic_path_cache: LruCache::new(topic_path_cache_capacity),
 			client,
 			command_rx,
-			command_tx: command_tx.clone(),
+			unsubscribe_tx,
+			unsubscribe_rx,
 			shutdown_rx,
 			slow_send_futures: FuturesUnordered::new(),
 		};
@@ -113,7 +117,7 @@ where T: Send + Sync + 'static
 
 	async fn run(mut self) {
 		loop {
-				tokio::select! {
+			tokio::select! {
 				_ = &mut self.shutdown_rx => {
 				info!("SubscriptionManagerActor: Shutdown signal received");
 				break;
@@ -124,7 +128,6 @@ where T: Send + Sync + 'static
 				cmd = self.command_rx.recv() => {
 					if let Some(cmd) = cmd {
 						match cmd {
-						Command::Unsubscribe(id) => self.handle_unsubscribe(&id).await,
 						Command::Send(message) => self.handle_send(message).await,
 						Command::Subscribe(topic, config, response_tx) => {
 							self.handle_subscribe(topic, config, response_tx).await
@@ -133,6 +136,15 @@ where T: Send + Sync + 'static
 					} else {
 						info!("SubscriptionManagerActor: Command channel closed, exiting");
 						break;
+					}
+				}
+				subs_id = self.unsubscribe_rx.recv() => {
+					if let Some(subs_id) = subs_id {
+						self.handle_unsubscribe(&subs_id).await;
+					} else {
+						// NOTE: This should never happen since actor holds unsubscribe_tx
+						// But keeping for defensive programming
+						warn!("Unsubscribe channel unexpectedly closed");
 					}
 				}
 			}
@@ -255,7 +267,7 @@ where T: Send + Sync + 'static
 			}
 		}
 		let subscriber =
-			Subscriber::new(channel_rx, self.command_tx.clone(), id);
+			Subscriber::new(channel_rx, self.unsubscribe_tx.clone(), id);
 		if response_tx.send(Ok(subscriber)).is_err() {
 			warn!(
 				subscription_id = ?id,

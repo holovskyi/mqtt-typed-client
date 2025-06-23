@@ -22,6 +22,7 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 		NonZeroUsize::new(100).unwrap(),
 		10,
 		100,
+		10
 	)
 	.await?;
 	info!("MQTT client created successfully");

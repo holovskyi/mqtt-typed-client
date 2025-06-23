@@ -73,10 +73,10 @@ pub struct TopicMatcherNode<T> {
 	exact_children: HashMap<Substr, TopicMatcherNode<T>>,
 
 	/// Node for '+' pattern wildcard match (single segment)
-	plus_wildcard_node: Option<Box<TopicMatcherNode<T>>>,
+	single_level_wildcard_node: Option<Box<TopicMatcherNode<T>>>,
 
 	/// Data for '#' pattern wildcard match (multiple segments)
-	hash_wildcard_data: Option<T>,
+	multi_level_wildcard_data: Option<T>,
 }
 
 pub trait IsEmpty {
@@ -123,16 +123,16 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 		Self {
 			exact_match_data: None,
 			exact_children: HashMap::new(),
-			plus_wildcard_node: None,
-			hash_wildcard_data: None,
+			single_level_wildcard_node: None,
+			multi_level_wildcard_data: None,
 		}
 	}
 
 	pub fn is_empty(&self) -> bool {
 		self.exact_match_data.as_ref().is_none_or(T::is_empty)
 			&& self.exact_children.is_empty()
-			&& self.plus_wildcard_node.is_none()
-			&& self.hash_wildcard_data.as_ref().is_none_or(T::is_empty)
+			&& self.single_level_wildcard_node.is_none()
+			&& self.multi_level_wildcard_data.as_ref().is_none_or(T::is_empty)
 	}
 	/// Finds or creates a subscription data entry matching the given topic pattern
 	pub fn subscribe_to_pattern(
@@ -151,14 +151,14 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 				}
 				| TopicPatternItem::Plus(_) => {
 					current_node =
-						current_node.plus_wildcard_node.get_or_insert_with(
+						current_node.single_level_wildcard_node.get_or_insert_with(
 							|| Box::new(TopicMatcherNode::new()),
 						)
 				}
 				| TopicPatternItem::Hash(_) => {
 					// Hash wildcard must be the last segment, so we can return immediately
 					return current_node
-						.hash_wildcard_data
+						.multi_level_wildcard_data
 						.get_or_insert_with(T::default);
 				}
 			}
@@ -204,22 +204,22 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 			}
 			| TopicPatternItem::Plus(_) => {
 				let child_node =
-					self.plus_wildcard_node.as_mut().ok_or_else(|| {
+					self.single_level_wildcard_node.as_mut().ok_or_else(|| {
 						TopicMatcherError::invalid_segment("+".to_string(), 0)
 					})?;
 				if child_node.update_node(rest_segments, f)? {
-					self.plus_wildcard_node = None;
+					self.single_level_wildcard_node = None;
 					return Ok(self.is_empty());
 				}
 			}
 			| TopicPatternItem::Hash(_) => {
 				let hash_wildcard_data =
-					self.hash_wildcard_data.as_mut().ok_or_else(|| {
+					self.multi_level_wildcard_data.as_mut().ok_or_else(|| {
 						TopicMatcherError::invalid_segment("#".to_string(), 0)
 					})?;
 				f(hash_wildcard_data);
 				if hash_wildcard_data.is_empty() {
-					self.hash_wildcard_data = None;
+					self.multi_level_wildcard_data = None;
 					return Ok(self.is_empty());
 				}
 			}
@@ -239,7 +239,7 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 				self.exact_match_data
 					.iter()
 					.for_each(|data| matching_data.push(data));
-				self.hash_wildcard_data
+				self.multi_level_wildcard_data
 					.iter()
 					.for_each(|data| matching_data.push(data))
 			}
@@ -252,14 +252,14 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 					);
 				}
 				// Check for + wildcard match (matches any single segment)
-				self.plus_wildcard_node.iter().for_each(|plus_node| {
+				self.single_level_wildcard_node.iter().for_each(|plus_node| {
 					plus_node.collect_matching_subscriptions(
 						remaining_segments,
 						matching_data,
 					)
 				});
 				// # wildcard matches remainder of path
-				self.hash_wildcard_data
+				self.multi_level_wildcard_data
 					.iter()
 					.for_each(|hash_data| matching_data.push(hash_data));
 			}
@@ -294,7 +294,7 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 			result.push((path, data))
 		};
 		// Collect hash wildcard data if present
-		if let Some(data) = &self.hash_wildcard_data {
+		if let Some(data) = &self.multi_level_wildcard_data {
 			current_path.push(TopicPatternItem::Hash(None));
 			let topic_path =
 				TopicPatternPath::new_from_segments(current_path.as_slice())
@@ -302,7 +302,7 @@ impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
 			result.push((topic_path, data));
 			current_path.pop();
 		};
-		if let Some(plus_node) = &self.plus_wildcard_node {
+		if let Some(plus_node) = &self.single_level_wildcard_node {
 			current_path.push(TopicPatternItem::Plus(None));
 			plus_node.collect_active_subscriptions(current_path, result);
 			current_path.pop();

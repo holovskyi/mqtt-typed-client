@@ -50,6 +50,7 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 		NonZeroUsize::new(100).unwrap(),
 		10,
 		100,
+		10,
 	)
 	.await?;
 	info!("MQTT client created successfully");
@@ -90,6 +91,7 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 		NonZeroUsize::new(100).unwrap(),
 		10,
 		100,
+		10,
 	)
 	.await?;
 	info!("MQTT client created successfully");
@@ -127,6 +129,7 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 		NonZeroUsize::new(100).unwrap(),
 		10,
 		100,
+		10,
 	)
 	.await?;
 	info!("MQTT client created successfully");

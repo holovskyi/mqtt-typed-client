@@ -155,8 +155,8 @@ impl TryFrom<Substr> for TopicPatternItem {
 
 #[derive(Debug)]
 pub struct TopicPatternPath {
-	topic_pattern: ArcStr, // original topic pattern as a string
-	mqtt_pattern: ArcStr,  // mqtt topic pattern with wildcards "sensors/+/data"
+	template_pattern: ArcStr, // original topic pattern as a string
+	mqtt_topic_subscription: ArcStr,  // mqtt topic pattern with wildcards "sensors/+/data"
 	segments: Vec<TopicPatternItem>,
 	match_cache: Option<Mutex<LruCache<ArcStr, Arc<TopicMatch>>>>,
 }
@@ -209,8 +209,8 @@ impl TopicPatternPath {
 			| CacheStrategy::NoCache => None,
 		};
 		Ok(Self {
-			topic_pattern,
-			mqtt_pattern: ArcStr::from(Self::to_mqtt_subscription_pattern(
+			template_pattern: topic_pattern,
+			mqtt_topic_subscription: ArcStr::from(Self::to_mqtt_subscription_pattern(
 				&segments,
 			)),
 			segments,
@@ -224,10 +224,10 @@ impl TopicPatternPath {
 	) -> Result<Self, TopicPatternError> {
 		let topic_pattern = ArcStr::from(Self::to_template_pattern(segments));
 		let pattern = Self {
-			mqtt_pattern: ArcStr::from(Self::to_mqtt_subscription_pattern(
+			mqtt_topic_subscription: ArcStr::from(Self::to_mqtt_subscription_pattern(
 				segments,
 			)),
-			topic_pattern: topic_pattern.clone(),
+			template_pattern: topic_pattern.clone(),
 			segments: segments.to_vec(),
 			match_cache: None,
 		};
@@ -245,11 +245,11 @@ impl TopicPatternPath {
 	}
 
 	pub fn mqtt_pattern(&self) -> ArcStr {
-		self.mqtt_pattern.clone()
+		self.mqtt_topic_subscription.clone()
 	}
 
 	pub fn topic_pattern(&self) -> ArcStr {
-		self.topic_pattern.clone()
+		self.template_pattern.clone()
 	}
 
 	pub fn is_empty(&self) -> bool {
