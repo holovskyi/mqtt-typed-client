@@ -3,7 +3,7 @@ use std::{num::NonZeroUsize, sync::Arc, time::Duration};
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
 	BincodeSerializer, MessageSerializer, MqttClient, MqttClientError,
-	TopicPublisher,
+	MqttPublisher,
 	topic::topic_match::TopicMatch,
 	errors::TopicRouterError,
 };
@@ -71,7 +71,7 @@ impl SensorReading {
 	pub async fn subscribe<F>(
 		client: &::mqtt_typed_client::MqttClient<F>,
 	) -> ::std::result::Result<
-		::mqtt_typed_client::MqttStructuredSubscriber<Self, SensorData, F>,
+		::mqtt_typed_client::MqttTopicSubscriber<Self, SensorData, F>,
 		::mqtt_typed_client::MqttClientError,
 	>
 	where F: ::std::default::Default
@@ -81,7 +81,7 @@ impl SensorReading {
 			+ ::mqtt_typed_client::MessageSerializer<SensorData> {
 		let subscriber =
 			client.subscribe::<SensorData>(Self::MQTT_PATTERN).await?;
-		Ok(::mqtt_typed_client::MqttStructuredSubscriber::new(
+		Ok(::mqtt_typed_client::MqttTopicSubscriber::new(
 			subscriber,
 		))
 	}
@@ -116,7 +116,7 @@ impl SensorReading {
 		sensor_id: u32,
 		room: &str,
 		temp: f32,
-	) -> Result<TopicPublisher<SensorData, F>, TopicRouterError>
+	) -> Result<MqttPublisher<SensorData, F>, TopicRouterError>
 	where
 		F: MessageSerializer<SensorData>,
 	{

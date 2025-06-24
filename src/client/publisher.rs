@@ -6,7 +6,7 @@ use rumqttc::{AsyncClient, QoS};
 use super::error::MqttClientError;
 use crate::message_serializer::MessageSerializer;
 
-pub struct TopicPublisher<T, F> {
+pub struct MqttPublisher<T, F> {
 	client: AsyncClient,
 	topic: ArcStr,
 	qos: QoS,
@@ -15,7 +15,7 @@ pub struct TopicPublisher<T, F> {
 	_phantom: PhantomData<T>,
 }
 
-impl<T, F> TopicPublisher<T, F>
+impl<T, F> MqttPublisher<T, F>
 where F: MessageSerializer<T>
 {
 	// Note: For parametric topics, use #[mqtt_topic] macro which generates 

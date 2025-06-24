@@ -14,13 +14,13 @@ pub type IncomingMessage<T, F> = (
 	Result<T, <F as MessageSerializer<T>>::DeserializeError>,
 );
 
-pub struct TypedSubscriber<T, F> {
+pub struct MqttSubscriber<T, F> {
 	subscriber: Subscriber<Bytes>,
 	serializer: F,
 	_phantom: PhantomData<T>,
 }
 
-impl<T, F> TypedSubscriber<T, F>
+impl<T, F> MqttSubscriber<T, F>
 where
 	T: Send + Sync + 'static,
 	F: MessageSerializer<T>,

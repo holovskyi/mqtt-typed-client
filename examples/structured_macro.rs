@@ -3,7 +3,7 @@ use std::{num::NonZeroUsize, sync::Arc, time::Duration};
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
 	BincodeSerializer, FromMqttMessage, MessageConversionError,
-	MessageSerializer, MqttClient, MqttStructuredSubscriber, TypedSubscriber,
+	MessageSerializer, MqttClient, MqttTopicSubscriber, MqttSubscriber,
 	extract_topic_parameter, topic::topic_match::TopicMatch,
 	errors::TopicRouterError,
 };
@@ -42,7 +42,7 @@ fn get_server(server: &str, client_id: &str) -> String {
 }
 const SERVER_COOL: &str = "mqtt://broker.mqtt.cool:1883";
 const SERVER_MODSQITO: &str = "mqtt://test.mosquitto.org:1883";
-const SERVER: &str = SERVER_MODSQITO;
+const SERVER: &str = SERVER_COOL;
 
 async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");

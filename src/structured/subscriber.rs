@@ -4,7 +4,7 @@ use thiserror::Error;
 use tracing::{debug, error, info};
 
 use crate::{
-	MessageSerializer, TypedSubscriber, topic::topic_match::TopicMatch,
+	MessageSerializer, MqttSubscriber, topic::topic_match::TopicMatch,
 };
 // use {
 // 	BincodeSerializer, MessageSerializer, MqttClient, TypedSubscriber,
@@ -37,20 +37,20 @@ pub trait FromMqttMessage<T, DE> {
 		Self: Sized;
 }
 
-pub struct MqttStructuredSubscriber<MessageType, PayloadType, SerializerType> {
-	inner: TypedSubscriber<PayloadType, SerializerType>,
+pub struct MqttTopicSubscriber<MessageType, PayloadType, SerializerType> {
+	inner: MqttSubscriber<PayloadType, SerializerType>,
 	_phantom: PhantomData<MessageType>,
 }
 
 impl<MessageType, PayloadType, SerializerType>
-	MqttStructuredSubscriber<MessageType, PayloadType, SerializerType>
+	MqttTopicSubscriber<MessageType, PayloadType, SerializerType>
 where
 	MessageType: FromMqttMessage<PayloadType, SerializerType::DeserializeError>,
 	PayloadType: Send + Sync + 'static,
 	SerializerType:
 		Default + Clone + Send + Sync + MessageSerializer<PayloadType>,
 {
-	pub fn new(inner: TypedSubscriber<PayloadType, SerializerType>) -> Self {
+	pub fn new(inner: MqttSubscriber<PayloadType, SerializerType>) -> Self {
 		Self {
 			inner,
 			_phantom: PhantomData,

@@ -13,8 +13,8 @@ pub mod config;
 pub use async_client::MqttClient;
 pub use error::MqttClientError;
 pub use config::MqttClientConfig;
-pub use publisher::TopicPublisher;
-pub use subscriber::TypedSubscriber;
+pub use publisher::MqttPublisher;
+pub use subscriber::MqttSubscriber;
 
 // Connection type is re-exported from the root level
 pub use crate::connection::MqttConnection;

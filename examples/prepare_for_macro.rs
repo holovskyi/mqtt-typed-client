@@ -3,7 +3,7 @@ use std::{num::NonZeroUsize, sync::Arc, time::Duration};
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
 	BincodeSerializer, FromMqttMessage, MessageConversionError,
-	MessageSerializer, MqttClient, MqttStructuredSubscriber, TypedSubscriber,
+	MessageSerializer, MqttClient, MqttTopicSubscriber, MqttSubscriber,
 	extract_topic_parameter, topic::topic_match::TopicMatch,
 };
 //use mqtt_async_client::MqttAsyncClient;
@@ -36,14 +36,14 @@ impl SensorReading {
 	pub async fn subscribe<F>(
 		client: &MqttClient<F>,
 	) -> Result<
-		MqttStructuredSubscriber<SensorReading, SensorData, F>,
+		MqttTopicSubscriber<SensorReading, SensorData, F>,
 		mqtt_typed_client::client::error::MqttClientError,
 	>
 	where F: Default + Clone + Send + Sync + MessageSerializer<SensorData> {
 		let subscriber = client
 			.subscribe::<SensorData>(Self::MQTT_SUBSCRIPTION_PATTERN)
 			.await?;
-		Ok(MqttStructuredSubscriber::new(subscriber))
+		Ok(MqttTopicSubscriber::new(subscriber))
 	}
 }
 

@@ -112,7 +112,7 @@ pub use message_serializer::{BincodeSerializer, MessageSerializer};
 
 // Structured subscribers (macro support)
 pub use structured::{
-	FromMqttMessage, MessageConversionError, MqttStructuredSubscriber,
+	FromMqttMessage, MessageConversionError, MqttTopicSubscriber,
 	extract_topic_parameter,
 };
 
@@ -124,7 +124,7 @@ pub use rumqttc::QoS;
 pub use routing::{CacheStrategy, SubscriptionConfig};
 
 // Low-level subscriber types (for advanced usage)
-pub use client::{TopicPublisher, TypedSubscriber};
+pub use client::{MqttPublisher, MqttSubscriber};
 
 // Topic pattern types (for manual pattern handling)
 pub use topic::{TopicPatternPath, TopicPatternError};
@@ -164,7 +164,7 @@ pub mod advanced {
 	//! Advanced types for complex use cases
 
 	pub use crate::{
-		TopicPatternPath, TopicPatternError, TopicPublisher, TypedSubscriber,
+		TopicPatternPath, TopicPatternError, MqttPublisher, MqttSubscriber,
 		CacheStrategy, SubscriptionConfig,
 	};
 	

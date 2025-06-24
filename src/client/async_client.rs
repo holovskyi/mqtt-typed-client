@@ -10,8 +10,8 @@ use tracing::{debug, error, info, warn};
 
 use super::config::MqttClientConfig;
 use super::error::MqttClientError;
-use super::publisher::TopicPublisher;
-use super::subscriber::TypedSubscriber;
+use super::publisher::MqttPublisher;
+use super::subscriber::MqttSubscriber;
 use crate::connection::MqttConnection;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::subscription_manager::SubscriptionConfig;
@@ -160,14 +160,14 @@ where F: Default + Clone + Send + Sync + 'static
 	pub fn get_publisher<T>(
 		&self,
 		topic: impl Into<ArcStr>,
-	) -> Result<TopicPublisher<T, F>, topic::TopicRouterError>
+	) -> Result<MqttPublisher<T, F>, topic::TopicRouterError>
 	where
 		F: MessageSerializer<T>,
 	{
 		let topic = topic.into();
 		//Add type illegal topic
 		validate_mqtt_topic(topic.as_str())?;
-		Ok(TopicPublisher::new(
+		Ok(MqttPublisher::new(
 			self.client.clone(),
 			self.serializer.clone(),
 			topic,
@@ -177,7 +177,7 @@ where F: Default + Clone + Send + Sync + 'static
 	pub async fn subscribe<T>(
 		&self,
 		topic: impl Into<ArcStr>,
-	) -> Result<TypedSubscriber<T, F>, MqttClientError>
+	) -> Result<MqttSubscriber<T, F>, MqttClientError>
 	where
 		T: 'static + Send + Sync,
 		F: MessageSerializer<T>,
@@ -190,7 +190,7 @@ where F: Default + Clone + Send + Sync + 'static
 		&self,
 		topic: impl Into<ArcStr>,
 		config: SubscriptionConfig,
-	) -> Result<TypedSubscriber<T, F>, MqttClientError>
+	) -> Result<MqttSubscriber<T, F>, MqttClientError>
 	where
 		T: 'static + Send + Sync,
 		F: MessageSerializer<T>,
@@ -201,7 +201,7 @@ where F: Default + Clone + Send + Sync + 'static
 			.subscription_manager_handler
 			.subscribe(topic_pattern, config)
 			.await?;
-		Ok(TypedSubscriber::new(subscriber, self.serializer.clone()))
+		Ok(MqttSubscriber::new(subscriber, self.serializer.clone()))
 	}
 }
 

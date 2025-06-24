@@ -159,7 +159,7 @@ impl CodeGenerator {
 				pub async fn subscribe<F>(
 					client: &::mqtt_typed_client::MqttClient<F>,
 				) -> ::std::result::Result<
-					::mqtt_typed_client::MqttStructuredSubscriber<Self, #payload_type, F>,
+					::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
 					::mqtt_typed_client::MqttClientError,
 				>
 				where
@@ -170,7 +170,7 @@ impl CodeGenerator {
 						+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
 				{
 					let subscriber = client.subscribe::<#payload_type>(Self::MQTT_PATTERN).await?;
-					Ok(::mqtt_typed_client::MqttStructuredSubscriber::new(subscriber))
+					Ok(::mqtt_typed_client::MqttTopicSubscriber::new(subscriber))
 				}
 		}
 	}
@@ -243,7 +243,7 @@ impl CodeGenerator {
 				client: &::mqtt_typed_client::MqttClient<F>,
 				#(#method_params,)*
 			) -> ::std::result::Result<
-				::mqtt_typed_client::TopicPublisher<#payload_type, F>,
+				::mqtt_typed_client::MqttPublisher<#payload_type, F>,
 				::mqtt_typed_client::errors::TopicRouterError,
 			>
 			where
