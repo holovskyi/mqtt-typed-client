@@ -45,12 +45,8 @@ const SERVER: &str = SERVER_MODSQITO;
 
 async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
-	let (client, connection) = MqttClient::<BincodeSerializer>::new(
+	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
 		&get_server(SERVER, "rust-publisher"),
-		NonZeroUsize::new(100).unwrap(),
-		10,
-		100,
-		10,
 	)
 	.await?;
 	info!("MQTT client created successfully");
@@ -86,12 +82,8 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
-	let (client, connection) = MqttClient::<BincodeSerializer>::new(
+	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
 		&get_server(SERVER, "rust-subscriber"),
-		NonZeroUsize::new(100).unwrap(),
-		10,
-		100,
-		10,
 	)
 	.await?;
 	info!("MQTT client created successfully");
@@ -124,12 +116,8 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 
 pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
-	let (client, connection) = MqttClient::<BincodeSerializer>::new(
+	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
 		&get_server(SERVER, "rust-pub-sub"),
-		NonZeroUsize::new(100).unwrap(),
-		10,
-		100,
-		10,
 	)
 	.await?;
 	info!("MQTT client created successfully");

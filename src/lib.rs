@@ -102,7 +102,8 @@ pub mod structured;
 pub mod topic;
 // Re-export commonly used types for convenience
 pub use client::{
-	MqttClient, MqttClientError, TopicPublisher, TypedSubscriber,
+	MqttClient, MqttClientConfig, MqttClientError, TopicPublisher,
+	TypedSubscriber,
 };
 pub use message_serializer::{BincodeSerializer, MessageSerializer};
 pub use routing::{
@@ -135,8 +136,8 @@ pub mod prelude {
 	//! ```
 
 	pub use crate::{
-		BincodeSerializer, MessageSerializer, MqttClient, MqttClientError, QoS,
-		Result, SubscriptionId, TopicPatternPath, TopicPublisher,
-		TypedSubscriber,
+		BincodeSerializer, MessageSerializer, MqttClient, MqttClientConfig,
+		MqttClientError, QoS, Result, SubscriptionId, TopicPatternPath,
+		TopicPublisher, TypedSubscriber,
 	};
 }

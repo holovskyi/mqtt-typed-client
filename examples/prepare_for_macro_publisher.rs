@@ -126,12 +126,8 @@ impl SensorReading {
 
 pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
-	let (client, connection) = MqttClient::<BincodeSerializer>::new(
+	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
 		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async",
-		NonZeroUsize::new(100).unwrap(),
-		10,
-		100,
-		10,
 	)
 	.await?;
 	info!("MQTT client created successfully");

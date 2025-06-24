@@ -9,6 +9,8 @@ pub enum MqttClientError {
 	Connection(ClientError),
 	/// Configuration errors when parsing MQTT options
 	Configuration(OptionError),
+	/// Invalid configuration parameter values
+	ConfigurationValue(String),
 	/// Serialization errors when converting data to bytes
 	Serialization(String),
 	/// Subscription management errors
@@ -29,6 +31,9 @@ impl std::fmt::Display for MqttClientError {
 			}
 			| MqttClientError::Configuration(e) => {
 				write!(f, "Configuration error: {}", e)
+			}
+			| MqttClientError::ConfigurationValue(e) => {
+				write!(f, "Invalid configuration value: {}", e)
 			}
 			| MqttClientError::Serialization(e) => {
 				write!(f, "Serialization error: {}", e)
