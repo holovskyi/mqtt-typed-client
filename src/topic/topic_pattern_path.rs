@@ -233,6 +233,7 @@ impl TopicPatternPath {
 	}
 
 	#[cfg(test)]
+	/// Creates a topic pattern from segments directly, useful for testing.
 	pub fn new_from_segments(
 		segments: &[TopicPatternItem],
 	) -> Result<Self, TopicPatternError> {
