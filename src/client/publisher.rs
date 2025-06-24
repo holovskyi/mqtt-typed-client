@@ -18,8 +18,8 @@ pub struct TopicPublisher<T, F> {
 impl<T, F> TopicPublisher<T, F>
 where F: MessageSerializer<T>
 {
-	// TODO parametric topic - for example "devices/{device_id}/status/+"
-	// and publish with device_id and positional parameters
+	// Note: For parametric topics, use #[mqtt_topic] macro which generates 
+	// get_publisher() method with typed parameters
 	pub fn new(
 		client: AsyncClient,
 		serializer: F,

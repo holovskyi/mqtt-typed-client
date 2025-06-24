@@ -32,6 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		NonZeroUsize::new(100).unwrap(),
 		10,
 		10,
+		10
 	)
 	.await
 	{
