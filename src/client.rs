@@ -20,5 +20,5 @@ pub use config::MqttClientConfig;
 pub use publisher::MqttPublisher;
 pub use subscriber::MqttSubscriber;
 
-// Connection type is re-exported from the root level
-pub use crate::connection::MqttConnection;
+// Connection type is available from the root level
+// Use: mqtt_typed_client::MqttConnection
