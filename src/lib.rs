@@ -135,6 +135,7 @@ pub type Result<T> = std::result::Result<T, MqttClientError>;
 
 /// Prelude module for convenient imports
 ///
+/// Essential types for most MQTT applications.
 /// This module provides the most commonly used types for typical MQTT applications.
 /// Use this when you want to import everything you need with a single line:
 ///
@@ -142,7 +143,6 @@ pub type Result<T> = std::result::Result<T, MqttClientError>;
 /// use mqtt_typed_client::prelude::*;
 /// ```
 pub mod prelude {
-	//! Essential types for most MQTT applications
 
 	pub use crate::{
 		BincodeSerializer, MqttClient, MqttClientConfig, MqttClientError,
@@ -152,6 +152,7 @@ pub mod prelude {
 
 /// Advanced types and utilities for complex use cases
 ///
+/// Advanced types for complex use cases.
 /// This module contains types that are useful for advanced scenarios:
 /// - Custom topic pattern handling
 /// - Low-level subscription management 
@@ -162,7 +163,6 @@ pub mod prelude {
 /// use mqtt_typed_client::advanced::*;
 /// ```
 pub mod advanced {
-	//! Advanced types for complex use cases
 
 	pub use crate::{
 		TopicPatternPath, TopicPatternError, MqttPublisher, MqttSubscriber,
@@ -182,13 +182,13 @@ pub mod advanced {
 
 /// Error types used throughout the library
 ///
+/// All error types used in the library.
 /// Re-exports all error types in one convenient location for error handling.
 ///
 /// ```rust
 /// use mqtt_typed_client::errors::*;
 /// ```
 pub mod errors {
-	//! All error types used in the library
 
 	pub use crate::{
 		MqttClientError, MessageConversionError, TopicPatternError,
