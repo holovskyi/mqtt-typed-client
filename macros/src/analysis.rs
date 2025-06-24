@@ -51,11 +51,6 @@ impl TopicParam {
 		self.name.is_none()
 	}
 
-	/// Is this a named parameter that has a corresponding struct field?
-	pub fn has_struct_field(&self) -> bool {
-		self.field_type.is_some()
-	}
-
 	/// Build topic parameters from pattern and struct field types
 	///
 	/// Maps wildcard positions in the topic pattern to corresponding struct fields,
@@ -81,6 +76,45 @@ impl TopicParam {
 					field_type,
 				}
 			})
+			.collect()
+	}
+}
+
+#[cfg(test)]
+/// Test utilities for StructAnalysisContext
+impl StructAnalysisContext {
+	
+	/// Create a context from components
+	/// 
+	/// Useful for testing and advanced usage where you need to construct
+	/// the analysis context manually.
+	pub fn from_components(
+		payload_type: Option<syn::Type>,
+		has_topic_field: bool,
+		topic_params: Vec<TopicParam>,
+	) -> Self {
+		Self {
+			payload_type,
+			has_topic_field,
+			topic_params,
+		}
+	}
+
+	/// Get the number of topic parameters that need to be extracted
+	pub fn param_count(&self) -> usize {
+		self.topic_params.len()
+	}
+
+	/// Check if the struct has any fields that need special handling
+	pub fn has_special_fields(&self) -> bool {
+		self.payload_type.is_some() || self.has_topic_field
+	}
+
+	/// Get all topic parameter names
+	pub fn param_names(&self) -> Vec<&str> {
+		self.topic_params
+			.iter()
+			.filter_map(|p| p.name.as_deref())
 			.collect()
 	}
 }
@@ -256,21 +290,5 @@ impl StructAnalysisContext {
 		false
 	}
 
-	/// Get the number of topic parameters that need to be extracted
-	pub fn param_count(&self) -> usize {
-		self.topic_params.len()
-	}
 
-	/// Check if the struct has any fields that need special handling
-	pub fn has_special_fields(&self) -> bool {
-		self.payload_type.is_some() || self.has_topic_field
-	}
-
-	/// Get all topic parameter names
-	pub fn param_names(&self) -> Vec<&str> {
-		self.topic_params
-			.iter()
-			.filter_map(|p| p.name.as_ref().map(|name| name.as_str()))
-			.collect()
-	}
 }

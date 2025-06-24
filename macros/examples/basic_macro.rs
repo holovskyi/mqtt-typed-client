@@ -1,5 +1,6 @@
 use mqtt_typed_client_macros::mqtt_topic;
 
+#[allow(dead_code)]
 #[derive(Debug, Default)]
 #[mqtt_topic("sensors/{sensor_id}/+/+/data/{room}")]
 struct SensorReading {
@@ -11,7 +12,7 @@ struct SensorReading {
 fn main() {
 	println!("Topic pattern: {}", SensorReading::TOPIC_PATTERN);
 	println!("MQTT pattern: {}", SensorReading::MQTT_PATTERN);
-	let reading = SensorReading {
+	let _reading = SensorReading {
 		sensor_id: 1,
 		room: "Living Room".to_string(),
 		payload: "Temperature: 22C".to_string(),

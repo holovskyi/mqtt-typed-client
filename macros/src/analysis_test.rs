@@ -58,10 +58,8 @@ fn run_analysis_test(test_case: AnalysisTestCase) {
 			has_topic_field,
 			param_names,
 		} => {
-			let context = result.expect(&format!(
-				"Test '{}' should succeed but failed",
-				test_case.name
-			));
+			let context = result.unwrap_or_else(|_| panic!("Test '{}' should succeed but failed",
+				test_case.name));
 
 			assert_eq!(
 				context.param_count(),
@@ -158,9 +156,9 @@ fn test_topic_param_methods() {
 	assert!(!named_param.is_anonymous());
 	assert!(anonymous_param.is_anonymous());
 
-	// Test has_struct_field
-	assert!(!named_param.has_struct_field());
-	assert!(typed_param.has_struct_field());
+	// Test has_struct_field (field_type.is_some())
+	assert!(named_param.field_type.is_none());
+	assert!(typed_param.field_type.is_some());
 }
 
 #[test]
@@ -222,7 +220,7 @@ fn test_topic_param_build() {
 
 		for (expected_name, expected_index) in test_case.expected_named {
 			let found_param = params.iter().find(|p| {
-				p.name.as_ref().map(|n| n.as_str()) == Some(expected_name)
+				p.name.as_deref() == Some(expected_name)
 			});
 
 			assert!(
@@ -261,18 +259,18 @@ fn test_field_type_mapping() {
 	let sensor_param = context
 		.topic_params
 		.iter()
-		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("sensor_id"))
+		.find(|p| p.name.as_deref() == Some("sensor_id"))
 		.unwrap();
-	assert!(sensor_param.has_struct_field());
+	assert!(sensor_param.field_type.is_some());
 	let sensor_type = sensor_param.field_type.as_ref().unwrap();
 	assert_eq!(quote::quote!(#sensor_type).to_string(), "u32");
 
 	let room_param = context
 		.topic_params
 		.iter()
-		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("room"))
+		.find(|p| p.name.as_deref() == Some("room"))
 		.unwrap();
-	assert!(room_param.has_struct_field());
+	assert!(room_param.field_type.is_some());
 	let room_type = room_param.field_type.as_ref().unwrap();
 	assert_eq!(quote::quote!(#room_type).to_string(), "String");
 }
@@ -297,17 +295,17 @@ fn test_named_param_without_struct_field() {
 	let sensor_param = context
 		.topic_params
 		.iter()
-		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("sensor_id"))
+		.find(|p| p.name.as_deref() == Some("sensor_id"))
 		.unwrap();
-	assert!(sensor_param.has_struct_field());
+	assert!(sensor_param.field_type.is_some());
 
 	// missing_field should not have field type
 	let missing_param = context
 		.topic_params
 		.iter()
-		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("missing_field"))
+		.find(|p| p.name.as_deref() == Some("missing_field"))
 		.unwrap();
-	assert!(!missing_param.has_struct_field());
+	assert!(missing_param.field_type.is_none());
 	assert_eq!(
 		missing_param.get_publisher_param_type(),
 		syn::parse_quote!(&str)
@@ -612,9 +610,9 @@ fn test_custom_field_types() {
 		let param = context
 			.topic_params
 			.iter()
-			.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some(param_name))
+			.find(|p| p.name.as_deref() == Some(param_name))
 			.unwrap();
-		assert!(param.has_struct_field());
+		assert!(param.field_type.is_some());
 		let field_type = param.field_type.as_ref().unwrap();
 		let actual_type = quote::quote!(#field_type).to_string();
 		assert_eq!(
@@ -624,7 +622,10 @@ fn test_custom_field_types() {
 		);
 	}
 
-	assert_eq!(context.param_count(), 4);
+	#[cfg(test)]
+	{
+		assert_eq!(context.param_count(), 4);
+	}
 	assert!(context.payload_type.is_some());
 }
 
@@ -642,7 +643,10 @@ fn test_publisher_param_generation() {
 
 	let context =
 		StructAnalysisContext::analyze(&test_struct, &pattern).unwrap();
-	assert_eq!(context.param_count(), 4); // +, {device_id}, +, {room}
+	#[cfg(test)]
+	{
+		assert_eq!(context.param_count(), 4); // +, {device_id}, +, {room}
+	}
 
 	// Check anonymous wildcard names
 	let anonymous_params: Vec<_> = context
@@ -658,7 +662,7 @@ fn test_publisher_param_generation() {
 	let device_param = context
 		.topic_params
 		.iter()
-		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("device_id"))
+		.find(|p| p.name.as_deref() == Some("device_id"))
 		.unwrap();
 	assert_eq!(device_param.get_publisher_param_name(), "device_id");
 	let device_type = device_param.get_publisher_param_type();
@@ -668,7 +672,7 @@ fn test_publisher_param_generation() {
 	let room_param = context
 		.topic_params
 		.iter()
-		.find(|p| p.name.as_ref().map(|n| n.as_str()) == Some("room"))
+		.find(|p| p.name.as_deref() == Some("room"))
 		.unwrap();
 	assert_eq!(room_param.get_publisher_param_name(), "room");
 	let room_type = room_param.get_publisher_param_type();

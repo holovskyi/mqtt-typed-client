@@ -30,6 +30,7 @@ impl<DE> FromMqttMessage<SensorData, DE> for SensorReading {
 }
 
 impl SensorReading {
+	#[allow(dead_code)]
 	const TOPIC_TEMPLATE: &'static str = "typed/{room}/{sensor_id}/some/{temp}";
 	const MQTT_SUBSCRIPTION_PATTERN: &'static str = "typed/+/+/some/+";
 
@@ -57,6 +58,7 @@ struct SensorData {
 
 /* MQTT message with all data */
 //#[mqtt_topic_subscriber("typed/{room}/{sensor_id}/some/{temp}")]
+#[allow(dead_code)]
 #[derive(Debug)]
 struct SensorReading {
 	sensor_id: u32, // extracted from topic field. Other fiellds not allowed here

@@ -11,6 +11,7 @@ struct SensorData {
 }
 
 /* MQTT message with all data */
+#[allow(dead_code)]
 #[mqtt_topic("typed/{room}/{sensor_id}/some/+/{temp}")]
 #[derive(Debug)]
 struct SensorReading {

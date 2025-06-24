@@ -21,7 +21,7 @@ struct SensorData {
 
 // Recursive expansion of mqtt_topic_subscriber macro
 // ===================================================
-
+#[allow(dead_code)]
 #[derive(Debug)]
 struct SensorReading {
 	sensor_id: u32,
@@ -63,6 +63,7 @@ impl<DE> ::mqtt_typed_client::FromMqttMessage<SensorData, DE>
 	}
 }
 impl SensorReading {
+	#[allow(dead_code)]
 	pub const TOPIC_PATTERN: &'static str =
 		"typed/{room}/{sensor_id}/some/{temp}";
 	pub const MQTT_PATTERN: &'static str = "typed/+/+/some/+";
@@ -94,6 +95,7 @@ impl SensorReading {
 	// Also if named paramteter in pattern not have field in struct it
 	// also has &str type (we can generate warning for this case)
 	// # wildcard not allowed for publish interface
+	#[allow(dead_code)]
 	pub async fn publish<F>(
 		client: &MqttClient<F>,
 		sensor_id: u32,
@@ -110,6 +112,7 @@ impl SensorReading {
 		publisher.publish(data).await
 	}
 
+	#[allow(dead_code)]
 	pub fn get_publisher<F>(
 		client: &MqttClient<F>,
 		sensor_id: u32,

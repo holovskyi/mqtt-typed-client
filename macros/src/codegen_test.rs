@@ -129,7 +129,7 @@ fn verify_generated_code(code: &str, checks: Vec<CodeCheck>, test_name: &str) {
 			}
 			| CodeCheck::FieldAssignment(field) => {
 				let patterns =
-					vec![format!("{} ,", field), format!("{},", field)];
+					[format!("{} ,", field), format!("{},", field)];
 				let found =
 					patterns.iter().any(|pattern| code.contains(pattern));
 				assert!(
@@ -140,7 +140,7 @@ fn verify_generated_code(code: &str, checks: Vec<CodeCheck>, test_name: &str) {
 				);
 			}
 			| CodeCheck::Constant { name, value } => {
-				let patterns = vec![
+				let patterns = [
 					format!(
 						"pub const {} : & 'static str = \"{}\" ;",
 						name, value
@@ -164,7 +164,7 @@ fn verify_generated_code(code: &str, checks: Vec<CodeCheck>, test_name: &str) {
 				);
 			}
 			| CodeCheck::Method(method_name) => {
-				let patterns = vec![
+				let patterns = [
 					format!("pub async fn {}", method_name),
 					format!("pub async fn {}(", method_name),
 					format!("pub fn {}", method_name),
@@ -245,10 +245,12 @@ fn run_codegen_test(test_case: CodegenTestCase) {
 
 	let complete = generator
 		.generate_complete_implementation(&test_struct)
-		.expect(&format!(
-			"Test '{}' should generate code successfully",
-			test_case.name
-		));
+		.unwrap_or_else(|_| {
+			panic!(
+				"Test '{}' should generate code successfully",
+				test_case.name
+			)
+		});
 
 	let code = complete.to_string();
 	verify_generated_code(&code, test_case.expected_checks, test_case.name);
@@ -637,25 +639,30 @@ fn test_generator_info_methods() {
 			create_generator(fields, pattern, GenerationConfig::Both);
 
 		assert_eq!(
-			generator.param_count(),
+			generator.context.topic_params.len(),
 			expected_count,
 			"Test '{}': param count mismatch",
 			name
 		);
 		assert_eq!(
-			generator.has_payload(),
+			generator.context.payload_type.is_some(),
 			expected_payload,
 			"Test '{}': payload presence mismatch",
 			name
 		);
 		assert_eq!(
-			generator.has_topic_field(),
-			expected_topic,
+			generator.context.has_topic_field, expected_topic,
 			"Test '{}': topic field presence mismatch",
 			name
 		);
 
-		let actual_names = generator.param_names();
+		let actual_names: Vec<&str> = generator
+			.context
+			.topic_params
+			.iter()
+			.filter_map(|p| p.name.as_ref())
+			.map(|name| name.as_str())
+			.collect();
 		assert_eq!(
 			actual_names.len(),
 			expected_names.len(),
@@ -689,7 +696,7 @@ fn test_custom_field_types_in_publisher() {
 	);
 
 	// Verify parameter names and types
-	let expected_types = [
+	let _expected_types = [
 		("version", "semver :: Version"),
 		("user_id", "u64"),
 		("category", "std :: borrow :: Cow < 'static , str >"),
@@ -698,9 +705,16 @@ fn test_custom_field_types_in_publisher() {
 
 	// This is more of an integration test - we'd need to check the actual
 	// generated code to verify the types are correct
-	assert_eq!(generator.param_count(), 4);
+	assert_eq!(generator.context.topic_params.len(), 4);
+	let param_names: Vec<&str> = generator
+		.context
+		.topic_params
+		.iter()
+		.filter_map(|p| p.name.as_ref())
+		.map(|name| name.as_str())
+		.collect();
 	assert_eq!(
-		generator.param_names(),
+		param_names,
 		vec!["version", "user_id", "category", "item_id"]
 	);
 }

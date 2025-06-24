@@ -4,6 +4,7 @@ use mqtt_typed_client::client::async_client::MqttClient;
 use mqtt_typed_client::message_serializer::BincodeSerializer;
 use mqtt_typed_client_macros::mqtt_topic;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 #[mqtt_topic("sensors/{sensor_id}/temperature")]
 struct TemperatureReading {
@@ -29,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			println!("✅ MQTT client created successfully!");
 
 			match TemperatureReading::subscribe(&client).await {
-				| Ok(subscriber) => {
+				| Ok(_subscriber) => {
 					println!(
 						"🎉 Successfully subscribed using macro-generated \
 						 method!"

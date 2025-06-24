@@ -21,6 +21,7 @@ struct SensorData {
 }
 
 /* MQTT message with all data */
+#[allow(dead_code)]
 #[mqtt_topic("typed/{room}/pl/{sensor_id}/some/{temp}")]
 #[derive(Debug)]
 struct SensorReading {
@@ -35,9 +36,9 @@ struct SensorReading {
 fn get_server(server: &str, client_id: &str) -> String {
 	format!("{}?client_id={}&clean_session=true", server, client_id)
 }
-const SERVER_COOL: &str = "mqtt://broker.mqtt.cool:1883";
-const SERVER_MODSQITO: &str = "mqtt://test.mosquitto.org:1883";
-const SERVER: &str = SERVER_COOL;
+const _SERVER_COOL: &str = "mqtt://broker.mqtt.cool:1883";
+const _SERVER_MODSQITO: &str = "mqtt://test.mosquitto.org:1883";
+const SERVER: &str = _SERVER_COOL;
 
 async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");

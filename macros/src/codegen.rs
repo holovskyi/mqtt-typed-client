@@ -16,7 +16,7 @@ use crate::{
 /// Takes validated analysis context and generates the necessary Rust code
 /// including trait implementations and helper methods.
 pub struct CodeGenerator {
-	context: StructAnalysisContext,
+	pub context: StructAnalysisContext,
 	macro_args: MacroArgs,
 }
 
@@ -393,28 +393,5 @@ impl CodeGenerator {
 			.unwrap_or_else(|| quote! { Vec<u8> })
 	}
 
-	/// Get the number of topic parameters that will be extracted
-	pub fn param_count(&self) -> usize {
-		self.context.topic_params.len()
-	}
 
-	/// Check if the struct has a payload field
-	pub fn has_payload(&self) -> bool {
-		self.context.payload_type.is_some()
-	}
-
-	/// Check if the struct has a topic field
-	pub fn has_topic_field(&self) -> bool {
-		self.context.has_topic_field
-	}
-
-	/// Get the names of all topic parameters
-	pub fn param_names(&self) -> Vec<&str> {
-		self.context
-			.topic_params
-			.iter()
-			.filter_map(|p| p.name.as_ref())
-			.map(|name| name.as_str())
-			.collect()
-	}
 }

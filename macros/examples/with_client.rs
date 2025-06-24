@@ -11,5 +11,15 @@ struct SensorReading {
 async fn main() {
 	println!("Testing MQTT subscription with macro...");
 
+	// Create a sample sensor reading
+	let reading = SensorReading {
+		sensor_id: 42,
+		payload: vec![0x01, 0x02, 0x03, 0x04],
+	};
+
+	println!("Created sensor reading: {:?}", reading);
+	println!("Sensor ID: {}", reading.sensor_id);
+	println!("Payload length: {} bytes", reading.payload.len());
+
 	println!("Success! Macro generates working code.");
 }

@@ -34,7 +34,7 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 		qos: rumqttc::QoS::AtLeastOnce,
 		cache_strategy: CacheStrategy::Lru(NonZeroUsize::new(1000).unwrap()),
 	};
-	let high_freq_subscriber = client
+	let _high_freq_subscriber = client
 		.subscribe_with_config::<MyData>(
 			"sensors/+/temperature",
 			config_high_freq,

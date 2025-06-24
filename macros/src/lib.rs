@@ -71,8 +71,6 @@ use mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath;
 use proc_macro::TokenStream;
 use syn::{LitStr, parse::Parser, parse_macro_input};
 
-use crate::analysis::{StructAnalysisContext, TopicParam};
-
 // Re-export key types for testing and advanced usage
 // pub use analysis::{StructAnalysisContext, TopicParam};
 // pub use codegen::{CodeGenerator, GenerationInfo};
@@ -417,22 +415,4 @@ struct MacroArgs {
 	generate_publisher: bool,
 }
 
-/// Utility functions for advanced usage and testing
-impl StructAnalysisContext {
-	/// Create a context from components
-	///
-	/// Useful for testing and advanced usage where you need to construct
-	/// the analysis context manually.
-	#[doc(hidden)]
-	pub fn from_components(
-		payload_type: Option<syn::Type>,
-		has_topic_field: bool,
-		topic_params: Vec<TopicParam>,
-	) -> Self {
-		Self {
-			payload_type,
-			has_topic_field,
-			topic_params,
-		}
-	}
-}
+
