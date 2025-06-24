@@ -100,6 +100,9 @@ impl TopicRouterError {
 }
 
 /// A subscription identifier.
+///
+/// Used for tracking individual subscriptions and handling cancellation errors.
+/// Primarily useful for advanced error handling and debugging.
 #[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
 pub struct SubscriptionId(usize);
 

@@ -123,7 +123,7 @@ pub use rumqttc::QoS;
 // Advanced subscription configuration
 pub use routing::{CacheStrategy, SubscriptionConfig};
 
-// Low-level subscriber types (for advanced usage)
+// High-level typed publishers and subscribers
 pub use client::{MqttPublisher, MqttSubscriber};
 
 // Topic pattern types (for manual pattern handling)
@@ -154,8 +154,7 @@ pub mod prelude {
 /// Advanced types for complex use cases.
 /// This module contains types that are useful for advanced scenarios:
 /// - Custom topic pattern handling
-/// - Low-level subscription management 
-/// - Internal error types
+/// - Advanced error types
 /// - Validation utilities
 ///
 /// ```rust
@@ -173,9 +172,9 @@ pub mod advanced {
 		limits, validation, TopicError, TopicRouterError, SubscriptionId,
 	};
 	
-	// Routing internals for power users
+	// High-level routing errors only
 	pub use crate::routing::{
-		SendError, SubscriptionError, Subscriber,
+		SubscriptionError,
 	};
 }
 
@@ -196,6 +195,6 @@ pub mod errors {
 	// Topic-related errors
 	pub use crate::topic::{TopicError, TopicRouterError};
 	
-	// Routing errors
-	pub use crate::routing::{SendError, SubscriptionError};
+	// High-level routing errors
+	pub use crate::routing::{SubscriptionError};
 }
