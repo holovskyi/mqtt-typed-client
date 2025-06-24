@@ -12,6 +12,7 @@ use super::config::MqttClientConfig;
 use super::error::MqttClientError;
 use super::publisher::TopicPublisher;
 use super::subscriber::TypedSubscriber;
+use crate::connection::MqttConnection;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::subscription_manager::SubscriptionConfig;
 use crate::routing::{
@@ -27,11 +28,7 @@ pub struct MqttClient<F> {
 	serializer: F,
 }
 
-pub struct MqttConnection {
-	client: AsyncClient,
-	subscription_manager_controller: Option<SubscriptionManagerController>,
-	event_loop_handle: Option<tokio::task::JoinHandle<()>>,
-}
+
 
 impl<F> MqttClient<F>
 where F: Default + Clone + Send + Sync + 'static
@@ -80,11 +77,11 @@ where F: Default + Clone + Send + Sync + 'static
 			subscription_manager_handler: handler.clone(),
 			serializer: F::default(),
 		};
-		let connection = MqttConnection {
+		let connection = MqttConnection::new(
 			client,
-			subscription_manager_controller: Some(controller),
-			event_loop_handle: Some(event_loop_handle),
-		};
+			controller,
+			event_loop_handle,
+		);
 		Ok((fresh_client, connection))
 	}
 
@@ -208,56 +205,7 @@ where F: Default + Clone + Send + Sync + 'static
 	}
 }
 
-impl MqttConnection {
-	/// Gracefully shutdown the MQTT client by:
-	/// 1. Shutting down subscription manager (sends unsubscribe commands for all topics)
-	/// 2. Sending MQTT Disconnect packet (triggers event loop termination)
-	/// 3. Waiting for event loop to finish processing
-	pub async fn shutdown(mut self) -> Result<(), MqttClientError> {
-		// Step 1: Shutdown subscription manager first to clean up subscriptions
-		// This will send unsubscribe commands to the broker for all active topics
-		if let Some(controller) = self.subscription_manager_controller.take() {
-			// Ensure we have a controller to shutdown
-			if let Err(e) = controller.shutdown().await {
-				warn!(error = %e, "Failed to shutdown subscription manager");
-			}
-		} else {
-			warn!("No subscription manager controller available for shutdown");
-		}
 
-		// Step 2: Send Disconnect packet to MQTT broker
-		// This will cause the event loop to receive Outgoing(Disconnect) and break
-		if let Err(e) = self.client.disconnect().await {
-			warn!(error = %e, "Failed to disconnect MQTT client");
-		}
-
-		// Step 3: Wait for event loop to terminate naturally after processing Disconnect
-		if let Some(handle) = self.event_loop_handle.take() {
-			// Ensure we have a handle to wait on
-			if let Err(e) = handle.await {
-				warn!(error = %e, "Event loop task failed");
-			}
-		} else {
-			warn!("No event loop handle available to await");
-		}
-
-		Ok(())
-	}
-}
-
-// implement Drop for MqttAsyncClient to ensure graceful shutdown
-impl Drop for MqttConnection {
-	fn drop(&mut self) {
-		if self.subscription_manager_controller.is_some()
-			|| self.event_loop_handle.is_some()
-		{
-			error!(
-				"MqttAsyncClient dropped without calling shutdown(). Please \
-				 call shutdown() and await its completion before dropping."
-			);
-		}
-	}
-}
 fn validate_mqtt_topic(topic_str: &str) -> Result<(), TopicRouterError> {
 	//let topic_str = topic.as_ref();
 	if topic_str.is_empty() || topic_str.len() > 65535 {

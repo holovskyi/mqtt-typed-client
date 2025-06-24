@@ -16,7 +16,7 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use mqtt_typed_client::{MqttAsyncClient, BincodeSerializer};
+//! use mqtt_typed_client::{MqttClient, BincodeSerializer};
 //! use serde::{Deserialize, Serialize};
 //! use bincode::{Encode, Decode};
 //!
@@ -29,7 +29,7 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Create MQTT client
-//!     let client = MqttAsyncClient::<BincodeSerializer>::new(
+//!     let (client, connection) = MqttClient::<BincodeSerializer>::connect(
 //!         "mqtt://broker.hivemq.com:1883"
 //!     ).await?;
 //!
@@ -52,7 +52,7 @@
 //!     }
 //!
 //!     // Graceful shutdown
-//!     client.shutdown().await?;
+//!     connection.shutdown().await?;
 //!     Ok(())
 //! }
 //! ```
@@ -96,48 +96,106 @@
 
 // Core modules
 pub mod client;
+pub mod connection;
 pub mod message_serializer;
 pub mod routing;
 pub mod structured;
 pub mod topic;
-// Re-export commonly used types for convenience
-pub use client::{
-	MqttClient, MqttClientConfig, MqttClientError, TopicPublisher,
-	TypedSubscriber,
-};
+
+// === Core Public API ===
+// Main client types
+pub use client::{MqttClient, MqttClientConfig, MqttClientError};
+pub use connection::MqttConnection;
+
+// Message serialization
 pub use message_serializer::{BincodeSerializer, MessageSerializer};
-pub use routing::{
-	CacheStrategy, SendError, Subscriber, SubscriptionConfig,
-	SubscriptionError, SubscriptionManagerHandler,
-};
-// Re-export external types that users commonly need
-pub use rumqttc::QoS;
+
+// Structured subscribers (macro support)
 pub use structured::{
 	FromMqttMessage, MessageConversionError, MqttStructuredSubscriber,
 	extract_topic_parameter,
 };
-pub use topic::{
-	SubscriptionId, TopicError, TopicPatternError, TopicPatternPath,
-	TopicRouter, TopicRouterError, limits, validation,
-};
+
+// Essential external types
+pub use rumqttc::QoS;
+
+// === Advanced API ===
+// Advanced subscription configuration
+pub use routing::{CacheStrategy, SubscriptionConfig};
+
+// Low-level subscriber types (for advanced usage)
+pub use client::{TopicPublisher, TypedSubscriber};
+
+// Topic pattern types (for manual pattern handling)
+pub use topic::{TopicPatternPath, TopicPatternError};
 
 /// Result type alias for operations that may fail with MqttClientError
 pub type Result<T> = std::result::Result<T, MqttClientError>;
 
 /// Prelude module for convenient imports
+///
+/// This module provides the most commonly used types for typical MQTT applications.
+/// Use this when you want to import everything you need with a single line:
+///
+/// ```rust
+/// use mqtt_typed_client::prelude::*;
+/// ```
 pub mod prelude {
-	//! Convenience re-exports for common functionality
-	//!
-	//! This module provides a convenient way to import the most commonly used
-	//! types and traits from the mqtt_typed_client library.
-	//!
-	//! ```rust
-	//! use mqtt_typed_client::prelude::*;
-	//! ```
+	//! Essential types for most MQTT applications
 
 	pub use crate::{
-		BincodeSerializer, MessageSerializer, MqttClient, MqttClientConfig,
-		MqttClientError, QoS, Result, SubscriptionId, TopicPatternPath,
-		TopicPublisher, TypedSubscriber,
+		BincodeSerializer, MqttClient, MqttClientConfig, MqttClientError,
+		MqttConnection, MessageSerializer, QoS, Result,
 	};
+}
+
+/// Advanced types and utilities for complex use cases
+///
+/// This module contains types that are useful for advanced scenarios:
+/// - Custom topic pattern handling
+/// - Low-level subscription management 
+/// - Internal error types
+/// - Validation utilities
+///
+/// ```rust
+/// use mqtt_typed_client::advanced::*;
+/// ```
+pub mod advanced {
+	//! Advanced types for complex use cases
+
+	pub use crate::{
+		TopicPatternPath, TopicPatternError, TopicPublisher, TypedSubscriber,
+		CacheStrategy, SubscriptionConfig,
+	};
+	
+	// Topic utilities
+	pub use crate::topic::{
+		limits, validation, TopicError, TopicRouterError, SubscriptionId,
+	};
+	
+	// Routing internals for power users
+	pub use crate::routing::{
+		SendError, SubscriptionError,
+	};
+}
+
+/// Error types used throughout the library
+///
+/// Re-exports all error types in one convenient location for error handling.
+///
+/// ```rust
+/// use mqtt_typed_client::errors::*;
+/// ```
+pub mod errors {
+	//! All error types used in the library
+
+	pub use crate::{
+		MqttClientError, MessageConversionError, TopicPatternError,
+	};
+	
+	// Topic-related errors
+	pub use crate::topic::{TopicError, TopicRouterError};
+	
+	// Routing errors
+	pub use crate::routing::{SendError, SubscriptionError};
 }

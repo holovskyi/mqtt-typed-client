@@ -2,8 +2,7 @@ use rumqttc::{ClientError, OptionError};
 use tokio::sync::mpsc::error::SendError;
 
 use crate::{
-	SubscriptionId, TopicPatternError, TopicRouterError,
-	routing::SubscriptionError,
+	routing::SubscriptionError, topic::{SubscriptionId, TopicRouterError}, TopicPatternError
 };
 
 /// Errors that can occur in MQTT client operations

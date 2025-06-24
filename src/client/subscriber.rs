@@ -4,10 +4,10 @@ use std::sync::Arc;
 use bytes::Bytes;
 use tokio::sync::mpsc::error::SendError;
 
-use crate::SubscriptionId;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::Subscriber;
 use crate::topic::topic_match::TopicMatch;
+use crate::topic::SubscriptionId;
 
 pub type IncomingMessage<T, F> = (
 	Arc<TopicMatch>,

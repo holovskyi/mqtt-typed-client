@@ -3,8 +3,9 @@ use std::{num::NonZeroUsize, sync::Arc, time::Duration};
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
 	BincodeSerializer, MessageSerializer, MqttClient, MqttClientError,
-	TopicPublisher, TopicRouterError,
-	topic::{self, topic_match::TopicMatch},
+	TopicPublisher,
+	topic::topic_match::TopicMatch,
+	errors::TopicRouterError,
 };
 use mqtt_typed_client_macros::mqtt_topic;
 use tokio::time;

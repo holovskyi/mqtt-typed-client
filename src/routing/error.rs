@@ -1,9 +1,7 @@
-use crate::SubscriptionId;
 
 #[derive(Debug)]
 pub enum SendError {
 	ChannelClosed,
-	//InvalidTopic(String),
 }
 
 #[derive(Debug)]

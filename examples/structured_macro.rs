@@ -5,6 +5,7 @@ use mqtt_typed_client::{
 	BincodeSerializer, FromMqttMessage, MessageConversionError,
 	MessageSerializer, MqttClient, MqttStructuredSubscriber, TypedSubscriber,
 	extract_topic_parameter, topic::topic_match::TopicMatch,
+	errors::TopicRouterError,
 };
 //extern crate mqtt_typed_client_macros;
 use mqtt_typed_client_macros::mqtt_topic;

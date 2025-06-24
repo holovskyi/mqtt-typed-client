@@ -15,3 +15,6 @@ pub use error::MqttClientError;
 pub use config::MqttClientConfig;
 pub use publisher::TopicPublisher;
 pub use subscriber::TypedSubscriber;
+
+// Connection type is re-exported from the root level
+pub use crate::connection::MqttConnection;
