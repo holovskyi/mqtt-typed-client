@@ -1,7 +1,12 @@
+//! Message serialization traits and implementations.
+
 use std::fmt::Debug;
 
 use bincode::{Decode, Encode};
 
+/// Trait for serializing and deserializing MQTT message payloads.
+///
+/// Implement this trait to use custom serialization formats.
 pub trait MessageSerializer<T>:
 	Default + Clone + Send + Sync + 'static
 {
@@ -12,6 +17,9 @@ pub trait MessageSerializer<T>:
 	fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError>;
 }
 
+/// Default serializer using bincode format.
+///
+/// Requires types to implement `bincode::Encode` and `bincode::Decode`.
 #[derive(Clone, Default)]
 pub struct BincodeSerializer {
 	config: bincode::config::Configuration,

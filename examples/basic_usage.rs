@@ -5,13 +5,13 @@
 //!
 //! Run with: cargo run --example basic_usage --features examples
 
-use std::{time::Duration};
+use std::time::Duration;
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient};
 use serde::{Deserialize, Serialize};
 use tokio::time;
-use tracing::{debug, error, info,};
+use tracing::{debug, error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]

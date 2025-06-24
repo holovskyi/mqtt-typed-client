@@ -18,6 +18,10 @@ use crate::routing::subscription_manager::SubscriptionConfig;
 use crate::routing::{SubscriptionManagerActor, SubscriptionManagerHandler};
 use crate::topic::{self, TopicPatternPath, TopicRouterError};
 
+/// Type-safe MQTT client with automatic subscription management.
+///
+/// Provides typed publishers and subscribers with automatic serialization.
+/// Connection lifecycle is managed separately via `MqttConnection`.
 #[derive(Clone)]
 pub struct MqttClient<F> {
 	client: AsyncClient,
@@ -28,7 +32,10 @@ pub struct MqttClient<F> {
 impl<F> MqttClient<F>
 where F: Default + Clone + Send + Sync + 'static
 {
-	/// Create a new MQTT client with default configuration
+	/// Create MQTT client with default configuration.
+	///
+	/// Returns both client and connection handle. Keep connection alive
+	/// for the session duration, call `connection.shutdown()` when done.
 	pub async fn connect(
 		url: &str,
 	) -> Result<(Self, MqttConnection), MqttClientError> {
@@ -149,6 +156,9 @@ where F: Default + Clone + Send + Sync + 'static
 		// This ensures all MQTT messages were properly processed before shutdown
 	}
 
+	/// Create typed publisher for specific topic.
+	///
+	/// Topic must not contain wildcard characters (`+`, `#`).
 	pub fn get_publisher<T>(
 		&self,
 		topic: impl Into<ArcStr>,
@@ -166,6 +176,9 @@ where F: Default + Clone + Send + Sync + 'static
 		))
 	}
 
+	/// Subscribe to topic pattern with default configuration.
+	///
+	/// Supports MQTT wildcards: `+` (single level), `#` (multi-level).
 	pub async fn subscribe<T>(
 		&self,
 		topic: impl Into<ArcStr>,

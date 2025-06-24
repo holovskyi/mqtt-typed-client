@@ -1,3 +1,5 @@
+//! Structured MQTT subscribers with automatic topic parameter extraction.
+
 use std::{marker::PhantomData, sync::Arc};
 
 use thiserror::Error;
@@ -12,6 +14,7 @@ use crate::{
 // };
 
 // enum for error message during recieving and conversion of incoming messages
+/// Errors that occur during message conversion from MQTT topics.
 #[derive(Error, Debug)]
 pub enum MessageConversionError<DE> {
 	#[error("Failed to deserialize payload: {0}")]
@@ -28,6 +31,9 @@ pub enum MessageConversionError<DE> {
 	},
 }
 
+/// Trait for converting MQTT messages into structured types.
+///
+/// Typically implemented via `#[mqtt_topic]` macro for automatic topic parameter extraction.
 pub trait FromMqttMessage<T, DE> {
 	fn from_mqtt_message(
 		topic: Arc<TopicMatch>,
@@ -37,6 +43,9 @@ pub trait FromMqttMessage<T, DE> {
 		Self: Sized;
 }
 
+/// Structured MQTT subscriber with automatic topic parameter extraction.
+///
+/// Created via `#[mqtt_topic]` macro. Converts raw MQTT messages into structured types.
 pub struct MqttTopicSubscriber<MessageType, PayloadType, SerializerType> {
 	inner: MqttSubscriber<PayloadType, SerializerType>,
 	_phantom: PhantomData<MessageType>,

@@ -6,6 +6,9 @@ use rumqttc::{AsyncClient, QoS};
 use super::error::MqttClientError;
 use crate::message_serializer::MessageSerializer;
 
+/// Typed MQTT publisher for a specific topic.
+///
+/// Created via `MqttClient::get_publisher()`. Supports QoS and retain configuration.
 pub struct MqttPublisher<T, F> {
 	client: AsyncClient,
 	topic: ArcStr,
@@ -18,8 +21,8 @@ pub struct MqttPublisher<T, F> {
 impl<T, F> MqttPublisher<T, F>
 where F: MessageSerializer<T>
 {
-	// Note: For parametric topics, use #[mqtt_topic] macro which generates 
-	// get_publisher() method with typed parameters
+	// Internal constructor. Use MqttClient::get_publisher() instead.
+	// For parametric topics, use #[mqtt_topic] macro.
 	pub fn new(
 		client: AsyncClient,
 		serializer: F,
