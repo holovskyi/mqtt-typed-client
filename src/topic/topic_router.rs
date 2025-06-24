@@ -118,6 +118,12 @@ pub struct TopicRouter<T> {
 	next_id: usize,
 }
 
+impl<T> Default for TopicRouter<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> TopicRouter<T> {
 	pub fn new() -> Self {
 		Self {

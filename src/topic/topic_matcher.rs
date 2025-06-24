@@ -79,17 +79,10 @@ pub struct TopicMatcherNode<T> {
 	multi_level_wildcard_data: Option<T>,
 }
 
-pub trait IsEmpty {
-	fn is_empty(&self) -> bool;
-}
-
 pub trait Len {
 	fn len(&self) -> usize;
-}
-
-impl<T> IsEmpty for HashSet<T> {
 	fn is_empty(&self) -> bool {
-		self.is_empty()
+		self.len() == 0
 	}
 }
 
@@ -97,9 +90,6 @@ impl<T> Len for HashSet<T> {
 	fn len(&self) -> usize {
 		self.len()
 	}
-}
-
-impl<K, V> IsEmpty for HashMap<K, V> {
 	fn is_empty(&self) -> bool {
 		self.is_empty()
 	}
@@ -109,15 +99,18 @@ impl<K, V> Len for HashMap<K, V> {
 	fn len(&self) -> usize {
 		self.len()
 	}
+	fn is_empty(&self) -> bool {
+		self.is_empty()
+	}
 }
 
-impl<T: Default + IsEmpty + Len> Default for TopicMatcherNode<T> {
+impl<T: Default + Len> Default for TopicMatcherNode<T> {
 	fn default() -> Self {
 		Self::new()
 	}
 }
 
-impl<T: Default + IsEmpty + Len> TopicMatcherNode<T> {
+impl<T: Default + Len> TopicMatcherNode<T> {
 	/// Creates a new empty topic matcher node
 	pub fn new() -> Self {
 		Self {

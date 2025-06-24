@@ -277,7 +277,7 @@ impl TopicPatternPath {
 	pub fn contains_hash(&self) -> bool {
 		self.segments
 			.last()
-			.map_or(false, |s| matches!(s, TopicPatternItem::Hash(_)))
+			.is_some_and(|s| matches!(s, TopicPatternItem::Hash(_)))
 	}
 
 	/// Returns iterator over pattern segments.
