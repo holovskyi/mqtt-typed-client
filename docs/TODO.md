@@ -4,7 +4,7 @@
 
 ## Publish Checklist
 
-- [ ] Remove all TODOs from public API
+- [x] Remove all TODOs from public API
 - [ ] Write README.md with clear getting started guide
 - [ ] Fix Cargo.toml (repository, keywords, description)
 - [ ] Comprehensive testing - cover main scenarios

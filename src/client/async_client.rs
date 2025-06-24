@@ -22,13 +22,13 @@ use crate::topic::{self, TopicPatternPath, TopicRouterError};
 
 #[derive(Clone)]
 pub struct MqttClient<F> {
-	pub client: AsyncClient,
+	client: AsyncClient,
 	subscription_manager_handler: SubscriptionManagerHandler<Bytes>,
 	serializer: F,
 }
 
 pub struct MqttConnection {
-	pub client: AsyncClient,
+	client: AsyncClient,
 	subscription_manager_controller: Option<SubscriptionManagerController>,
 	event_loop_handle: Option<tokio::task::JoinHandle<()>>,
 }
