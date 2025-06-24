@@ -2,8 +2,8 @@
 #![allow(missing_docs)]
 
 use std::fmt;
+use std::ops::Range;
 use std::sync::Arc;
-use std::{collections::HashMap, ops::Range};
 
 use arcstr::{ArcStr, Substr};
 use smallvec::SmallVec;

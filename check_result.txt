@@ -1,0 +1,564 @@
+warning: unused import: `SubscriptionManagerController`
+  --> src\client\async_client.rs:19:28
+   |
+19 |     SubscriptionManagerActor, SubscriptionManagerController,
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused imports: `debug` and `info`
+ --> src\structured\subscriber.rs:4:15
+  |
+4 | use tracing::{debug, error, info};
+  |               ^^^^^         ^^^^
+
+warning: unused import: `collections::HashMap`
+ --> src\topic\topic_match.rs:6:11
+  |
+6 | use std::{collections::HashMap, ops::Range};
+  |           ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::collections::HashMap`
+ --> src\topic\topic_pattern_path.rs:2:5
+  |
+2 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::num::NonZeroUsize`
+ --> src\topic\topic_pattern_path.rs:5:5
+  |
+5 | use std::num::NonZeroUsize;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `IsEmpty`, `Len`, and `TopicMatcherNode`
+  --> src\topic.rs:29:32
+   |
+29 | pub(crate) use topic_matcher::{IsEmpty, Len, TopicMatcherNode};
+   |                                ^^^^^^^  ^^^  ^^^^^^^^^^^^^^^^
+
+warning: associated function `to_template_pattern` is never used
+   --> src\topic\topic_pattern_path.rs:300:5
+    |
+164 | impl TopicPatternPath {
+    | --------------------- associated function in this implementation
+...
+300 |     fn to_template_pattern(segments: &[TopicPatternItem]) -> String {
+    |        ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: missing documentation for a module
+   --> src\lib.rs:100:1
+    |
+100 | pub mod message_serializer;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the lint level is defined here
+   --> src\lib.rs:94:9
+    |
+94  | #![warn(missing_docs)]
+    |         ^^^^^^^^^^^^
+
+warning: missing documentation for a module
+   --> src\lib.rs:102:1
+    |
+102 | pub mod structured;
+    | ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> src\client.rs:6:1
+  |
+6 | pub mod async_client;
+  | ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> src\client.rs:7:1
+  |
+7 | pub mod error;
+  | ^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> src\client.rs:8:1
+  |
+8 | pub mod publisher;
+  | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> src\client.rs:9:1
+  |
+9 | pub mod subscriber;
+  | ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> src\client\async_client.rs:25:1
+   |
+25 | pub struct MqttClient<F> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> src\client\async_client.rs:160:2
+    |
+160 | /     pub fn get_publisher<T>(
+161 | |         &self,
+162 | |         topic: impl Into<ArcStr>,
+163 | |     ) -> Result<MqttPublisher<T, F>, topic::TopicRouterError>
+164 | |     where
+165 | |         F: MessageSerializer<T>,
+    | |________________________________^
+
+warning: missing documentation for a method
+   --> src\client\async_client.rs:177:2
+    |
+177 | /     pub async fn subscribe<T>(
+178 | |         &self,
+179 | |         topic: impl Into<ArcStr>,
+180 | |     ) -> Result<MqttSubscriber<T, F>, MqttClientError>
+181 | |     where
+182 | |         T: 'static + Send + Sync,
+183 | |         F: MessageSerializer<T>,
+    | |________________________________^
+
+warning: missing documentation for a method
+   --> src\client\async_client.rs:189:2
+    |
+189 | /     pub async fn subscribe_with_config<T>(
+190 | |         &self,
+191 | |         topic: impl Into<ArcStr>,
+192 | |         config: SubscriptionConfig,
+...   |
+195 | |         T: 'static + Send + Sync,
+196 | |         F: MessageSerializer<T>,
+    | |________________________________^
+
+warning: missing documentation for a struct
+ --> src\client\publisher.rs:9:1
+  |
+9 | pub struct MqttPublisher<T, F> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> src\client\publisher.rs:23:2
+   |
+23 | /     pub fn new(
+24 | |         client: AsyncClient,
+25 | |         serializer: F,
+26 | |         topic: impl Into<ArcStr>,
+27 | |     ) -> Self {
+   | |_____________^
+
+warning: missing documentation for a method
+  --> src\client\publisher.rs:37:2
+   |
+37 |     pub fn with_qos(mut self, qos: QoS) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\client\publisher.rs:42:2
+   |
+42 |     pub fn with_retain(mut self, retain: bool) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\client\publisher.rs:47:2
+   |
+47 |     pub async fn publish(&self, data: &T) -> Result<(), MqttClientError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+  --> src\client\subscriber.rs:12:1
+   |
+12 | pub type IncomingMessage<T, F> = (
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> src\client\subscriber.rs:17:1
+   |
+17 | pub struct MqttSubscriber<T, F> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> src\client\subscriber.rs:28:2
+   |
+28 |     pub fn new(subscriber: Subscriber<Bytes>, serializer: F) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\client\subscriber.rs:36:2
+   |
+36 |     pub async fn receive(&mut self) -> Option<IncomingMessage<T, F>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\client\subscriber.rs:45:2
+   |
+45 |     pub async fn cancel(self) -> Result<(), SendError<SubscriptionId>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a trait
+ --> src\message_serializer.rs:5:1
+  |
+5 | / pub trait MessageSerializer<T>:
+6 | |     Default + Clone + Send + Sync + 'static
+  | |___________________________________________^
+
+warning: missing documentation for an associated type
+ --> src\message_serializer.rs:8:2
+  |
+8 |     type SerializeError: Debug + Send + Sync + 'static;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated type
+ --> src\message_serializer.rs:9:2
+  |
+9 |     type DeserializeError: Debug + Send + Sync + 'static;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\message_serializer.rs:11:2
+   |
+11 |     fn serialize(&self, data: &T) -> Result<Vec<u8>, Self::SerializeError>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\message_serializer.rs:12:2
+   |
+12 |     fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> src\message_serializer.rs:16:1
+   |
+16 | pub struct BincodeSerializer {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> src\message_serializer.rs:21:2
+   |
+21 |     pub fn new() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> src\message_serializer.rs:25:2
+   |
+25 |     pub fn with_config(config: bincode::config::Configuration) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> src\routing.rs:6:1
+  |
+6 | pub mod error;
+  | ^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> src\routing.rs:7:1
+  |
+7 | pub mod subscriber;
+  | ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+ --> src\routing\error.rs:3:1
+  |
+3 | pub enum SendError {
+  | ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+ --> src\routing\error.rs:4:2
+  |
+4 |     ChannelClosed,
+  |     ^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+ --> src\routing\error.rs:8:1
+  |
+8 | pub enum SubscriptionError {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+ --> src\routing\error.rs:9:2
+  |
+9 |     ChannelClosed,
+  |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\routing\error.rs:10:2
+   |
+10 |     ResponseLost,
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\routing\error.rs:11:2
+   |
+11 |     SubscribeFailed,
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+ --> src\routing\subscriber.rs:9:1
+  |
+9 | pub struct Subscriber<T> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> src\routing\subscriber.rs:16:2
+   |
+16 | /     pub fn new(
+17 | |         receiver: Receiver<MessageType<T>>,
+18 | |         unsubscribe_tx: Sender<SubscriptionId>,
+19 | |         id: SubscriptionId,
+20 | |     ) -> Self {
+   | |_____________^
+
+warning: missing documentation for a method
+  --> src\routing\subscriber.rs:28:2
+   |
+28 |     pub async fn recv(&mut self) -> Option<MessageType<T>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\routing\subscriber.rs:32:2
+   |
+32 |     pub async fn unsubscribe(mut self) -> Result<(), SendError<SubscriptionId>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\routing\subscriber.rs:43:2
+   |
+43 | /     pub fn unsubscribe_immediate(
+44 | |         &mut self,
+45 | |     ) -> Result<(), TrySendError<SubscriptionId>> {
+   | |_________________________________________________^
+
+warning: missing documentation for an enum
+  --> src\structured\subscriber.rs:16:1
+   |
+16 | pub enum MessageConversionError<DE> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\structured\subscriber.rs:18:2
+   |
+18 |     PayloadDeserializationError(DE),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\structured\subscriber.rs:21:2
+   |
+21 |     TopicParameterMissing { param: String, position: usize },
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\structured\subscriber.rs:21:26
+   |
+21 |     TopicParameterMissing { param: String, position: usize },
+   |                             ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\structured\subscriber.rs:21:41
+   |
+21 |     TopicParameterMissing { param: String, position: usize },
+   |                                            ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\structured\subscriber.rs:24:2
+   |
+24 |     TopicParameterParseError {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\structured\subscriber.rs:25:3
+   |
+25 |         param: String,
+   |         ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\structured\subscriber.rs:27:3
+   |
+27 |         source: Box<dyn std::error::Error + Send + Sync>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a trait
+  --> src\structured\subscriber.rs:31:1
+   |
+31 | pub trait FromMqttMessage<T, DE> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> src\structured\subscriber.rs:32:2
+   |
+32 | /     fn from_mqtt_message(
+33 | |         topic: Arc<TopicMatch>,
+34 | |         payload: T,
+35 | |     ) -> Result<Self, MessageConversionError<DE>>
+36 | |     where
+37 | |         Self: Sized;
+   | |____________________^
+
+warning: missing documentation for a struct
+  --> src\structured\subscriber.rs:40:1
+   |
+40 | pub struct MqttTopicSubscriber<MessageType, PayloadType, SerializerType> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> src\structured\subscriber.rs:53:2
+   |
+53 |     pub fn new(inner: MqttSubscriber<PayloadType, SerializerType>) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\structured\subscriber.rs:60:2
+   |
+60 | /     pub async fn receive(
+61 | |         &mut self,
+62 | |     ) -> Option<
+63 | |         Result<
+...  |
+66 | |         >,
+67 | |     > {
+   | |_____^
+
+warning: missing documentation for a function
+  --> src\structured\subscriber.rs:85:1
+   |
+85 | / pub fn extract_topic_parameter<T, DE>(
+86 | |     topic: &TopicMatch,
+87 | |     index: usize,
+88 | |     param_name: &str,
+...  |
+91 | |     T: std::str::FromStr,
+92 | |     T::Err: std::error::Error + Send + Sync + 'static,
+   | |______________________________________________________^
+
+warning: missing documentation for a module
+  --> src\topic.rs:10:1
+   |
+10 | pub mod topic_pattern_path;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+  --> src\topic\topic_pattern_path.rs:19:1
+   |
+19 | pub enum TopicPatternItem {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\topic\topic_pattern_path.rs:20:2
+   |
+20 |     Str(Substr),
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> src\topic\topic_pattern_path.rs:21:2
+   |
+21 |     Plus(Option<Substr>),
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> src\topic\topic_pattern_path.rs:22:2
+   |
+22 |     Hash(Option<Substr>),
+   |     ^^^^
+
+warning: missing documentation for a struct field
+  --> src\topic\topic_pattern_path.rs:33:17
+   |
+33 |     HashPosition { pattern: String },
+   |                    ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\topic\topic_pattern_path.rs:37:18
+   |
+37 |     WildcardUsage { usage: String },
+   |                     ^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\topic\topic_pattern_path.rs:75:2
+   |
+75 |     pub fn as_str(&self) -> &str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\topic\topic_pattern_path.rs:83:2
+   |
+83 |     pub fn as_wildcard(&self) -> Cow<str> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> src\topic\topic_pattern_path.rs:97:2
+   |
+97 |     pub fn param_name(&self) -> Option<Substr> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> src\topic\topic_pattern_path.rs:105:2
+    |
+105 |     pub fn is_wildcard(&self) -> bool {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+   --> src\topic\topic_pattern_path.rs:157:1
+    |
+157 | pub struct TopicPatternPath {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> src\topic\topic_pattern_path.rs:165:2
+    |
+165 | /     pub fn new_from_string(
+166 | |         topic_pattern: impl Into<ArcStr>,
+167 | |         cache_strategy: CacheStrategy,
+168 | |     ) -> Result<Self, TopicPatternError> {
+    | |________________________________________^
+
+warning: missing documentation for a method
+   --> src\topic\topic_pattern_path.rs:247:2
+    |
+247 |     pub fn mqtt_pattern(&self) -> ArcStr {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> src\topic\topic_pattern_path.rs:251:2
+    |
+251 |     pub fn topic_pattern(&self) -> ArcStr {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> src\topic\topic_pattern_path.rs:255:2
+    |
+255 |     pub fn is_empty(&self) -> bool {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> src\topic\topic_pattern_path.rs:259:2
+    |
+259 |     pub fn contains_hash(&self) -> bool {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> src\topic\topic_pattern_path.rs:265:2
+    |
+265 |     pub fn iter(&self) -> Iter<TopicPatternItem> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> src\topic\topic_pattern_path.rs:269:2
+    |
+269 |     pub fn len(&self) -> usize {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> src\topic\topic_pattern_path.rs:281:2
+    |
+281 |     pub fn slice(&self) -> &[TopicPatternItem] {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> src\topic\topic_pattern_path.rs:347:2
+    |
+347 | /     pub fn try_match(
+348 | |         &self,
+349 | |         topic: Arc<TopicPath>,
+350 | |     ) -> Result<Arc<TopicMatch>, TopicMatchError> {
+    | |_________________________________________________^
+
+warning: `mqtt_typed_client` (lib) generated 83 warnings (run `cargo fix --lib -p mqtt_typed_client` to apply 6 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.51s

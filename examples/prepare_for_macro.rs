@@ -1,9 +1,9 @@
-use std::{num::NonZeroUsize, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
 	BincodeSerializer, FromMqttMessage, MessageConversionError,
-	MessageSerializer, MqttClient, MqttTopicSubscriber, MqttSubscriber,
+	MessageSerializer, MqttClient, MqttTopicSubscriber,
 	extract_topic_parameter, topic::topic_match::TopicMatch,
 };
 //use mqtt_async_client::MqttAsyncClient;

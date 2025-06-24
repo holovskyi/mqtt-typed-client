@@ -4,7 +4,6 @@
 //! and topic pattern information. It generates trait implementations and helper
 //! methods for MQTT topic subscribers.
 
-use mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath;
 use quote::{format_ident, quote};
 
 use crate::{

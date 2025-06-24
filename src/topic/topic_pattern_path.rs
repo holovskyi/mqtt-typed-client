@@ -1,8 +1,6 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
-use std::num::NonZeroUsize;
 use std::slice::Iter;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -156,7 +154,7 @@ impl TryFrom<Substr> for TopicPatternItem {
 #[derive(Debug)]
 pub struct TopicPatternPath {
 	template_pattern: ArcStr, // original topic pattern as a string
-	mqtt_topic_subscription: ArcStr,  // mqtt topic pattern with wildcards "sensors/+/data"
+	mqtt_topic_subscription: ArcStr, // mqtt topic pattern with wildcards "sensors/+/data"
 	segments: Vec<TopicPatternItem>,
 	match_cache: Option<Mutex<LruCache<ArcStr, Arc<TopicMatch>>>>,
 }
@@ -210,9 +208,9 @@ impl TopicPatternPath {
 		};
 		Ok(Self {
 			template_pattern: topic_pattern,
-			mqtt_topic_subscription: ArcStr::from(Self::to_mqtt_subscription_pattern(
-				&segments,
-			)),
+			mqtt_topic_subscription: ArcStr::from(
+				Self::to_mqtt_subscription_pattern(&segments),
+			),
 			segments,
 			match_cache,
 		})
@@ -224,9 +222,9 @@ impl TopicPatternPath {
 	) -> Result<Self, TopicPatternError> {
 		let topic_pattern = ArcStr::from(Self::to_template_pattern(segments));
 		let pattern = Self {
-			mqtt_topic_subscription: ArcStr::from(Self::to_mqtt_subscription_pattern(
-				segments,
-			)),
+			mqtt_topic_subscription: ArcStr::from(
+				Self::to_mqtt_subscription_pattern(segments),
+			),
 			template_pattern: topic_pattern.clone(),
 			segments: segments.to_vec(),
 			match_cache: None,
@@ -297,6 +295,7 @@ impl TopicPatternPath {
 		mqtt_topic
 	}
 
+	#[cfg(test)]
 	fn to_template_pattern(segments: &[TopicPatternItem]) -> String {
 		// Convert to named wildcards: sensors/{sensor_id}/data
 		if segments.is_empty() {
@@ -430,22 +429,6 @@ impl TopicPatternPath {
 		Ok(TopicMatch::from_match_result(topic, params, named_params))
 	}
 }
-
-// impl TryFrom<String> for TopicPatternPath {
-// 	type Error = TopicPatternError;
-
-// 	fn try_from(topic_pattern: String) -> Result<Self, Self::Error> {
-// 		TopicPatternPath::new_from_string(topic_pattern)
-// 	}
-// }
-
-// impl TryFrom<&[TopicPatternItem]> for TopicPatternPath {
-// 	type Error = TopicPatternError;
-
-// 	fn try_from(segments: &[TopicPatternItem]) -> Result<Self, Self::Error> {
-// 		Self::new_from_segments(segments)
-// 	}
-// }
 
 impl std::fmt::Display for TopicPatternPath {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -175,7 +175,7 @@ pub mod advanced {
 	
 	// Routing internals for power users
 	pub use crate::routing::{
-		SendError, SubscriptionError,
+		SendError, SubscriptionError, Subscriber,
 	};
 }
 

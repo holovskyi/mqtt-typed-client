@@ -1,5 +1,3 @@
-use mqtt_typed_client::client::async_client::MqttClient;
-use mqtt_typed_client::message_serializer::BincodeSerializer;
 use mqtt_typed_client_macros::mqtt_topic;
 
 #[derive(Debug, Default)]

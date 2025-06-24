@@ -7,7 +7,7 @@ use mqtt_typed_client::{
 //use mqtt_async_client::MqttAsyncClient;
 use serde::{Deserialize, Serialize};
 use tokio::time;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]
@@ -34,7 +34,7 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 		qos: rumqttc::QoS::AtLeastOnce,
 		cache_strategy: CacheStrategy::Lru(NonZeroUsize::new(1000).unwrap()),
 	};
-	let mut high_freq_subscriber = client
+	let high_freq_subscriber = client
 		.subscribe_with_config::<MyData>(
 			"sensors/+/temperature",
 			config_high_freq,

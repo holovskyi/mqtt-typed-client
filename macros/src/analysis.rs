@@ -5,7 +5,7 @@
 //! for code generation.
 
 use mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath;
-use syn::{Data, DataStruct, Fields, Path, PathSegment, TypePath};
+use syn::{Data, DataStruct, Fields};
 
 /// Represents a topic parameter with its name and position in the wildcard sequence
 #[derive(Debug, Clone, PartialEq, Eq)]

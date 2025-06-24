@@ -1,4 +1,4 @@
-use std::{num::NonZeroUsize, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
@@ -7,7 +7,6 @@ use mqtt_typed_client::{
 	topic::topic_match::TopicMatch,
 	errors::TopicRouterError,
 };
-use mqtt_typed_client_macros::mqtt_topic;
 use tokio::time;
 use tracing::{debug, error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

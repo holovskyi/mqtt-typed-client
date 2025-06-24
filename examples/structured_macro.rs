@@ -1,11 +1,8 @@
-use std::{num::NonZeroUsize, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
-	BincodeSerializer, FromMqttMessage, MessageConversionError,
-	MessageSerializer, MqttClient, MqttTopicSubscriber, MqttSubscriber,
-	extract_topic_parameter, topic::topic_match::TopicMatch,
-	errors::TopicRouterError,
+	BincodeSerializer, MqttClient, topic::topic_match::TopicMatch,
 };
 //extern crate mqtt_typed_client_macros;
 use mqtt_typed_client_macros::mqtt_topic;
@@ -13,9 +10,7 @@ use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
 use tokio::time;
 use tracing::{debug, error, info};
-use tracing_subscriber::{
-	fmt::format, layer::SubscriberExt, util::SubscriberInitExt,
-};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /* payload concrete type */
 #[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]

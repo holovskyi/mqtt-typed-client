@@ -15,10 +15,7 @@ use super::subscriber::MqttSubscriber;
 use crate::connection::MqttConnection;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::subscription_manager::SubscriptionConfig;
-use crate::routing::{
-	SubscriptionManagerActor, SubscriptionManagerController,
-	SubscriptionManagerHandler,
-};
+use crate::routing::{SubscriptionManagerActor, SubscriptionManagerHandler};
 use crate::topic::{self, TopicPatternPath, TopicRouterError};
 
 #[derive(Clone)]
@@ -27,8 +24,6 @@ pub struct MqttClient<F> {
 	subscription_manager_handler: SubscriptionManagerHandler<Bytes>,
 	serializer: F,
 }
-
-
 
 impl<F> MqttClient<F>
 where F: Default + Clone + Send + Sync + 'static
@@ -77,11 +72,8 @@ where F: Default + Clone + Send + Sync + 'static
 			subscription_manager_handler: handler.clone(),
 			serializer: F::default(),
 		};
-		let connection = MqttConnection::new(
-			client,
-			controller,
-			event_loop_handle,
-		);
+		let connection =
+			MqttConnection::new(client, controller, event_loop_handle);
 		Ok((fresh_client, connection))
 	}
 
@@ -204,7 +196,6 @@ where F: Default + Clone + Send + Sync + 'static
 		Ok(MqttSubscriber::new(subscriber, self.serializer.clone()))
 	}
 }
-
 
 fn validate_mqtt_topic(topic_str: &str) -> Result<(), TopicRouterError> {
 	//let topic_str = topic.as_ref();

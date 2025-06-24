@@ -19,7 +19,7 @@ pub use error::{
 };
 // Re-export constants and validation utilities
 pub use error::{limits, validation};
-pub use topic_matcher::{IsEmpty, Len, TopicMatcherError, TopicMatcherNode};
+pub use topic_matcher::TopicMatcherError;
 pub use topic_pattern_path::{
 	TopicPatternError, TopicPatternItem, TopicPatternPath,
 };
