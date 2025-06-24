@@ -3,7 +3,9 @@
 //! This module provides functionality for managing MQTT subscriptions,
 //! routing messages to subscribers, and handling subscription lifecycle.
 
+/// Routing and subscription error types
 pub mod error;
+/// Low-level subscriber implementation
 pub mod subscriber;
 pub mod subscription_manager;
 

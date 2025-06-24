@@ -13,10 +13,14 @@ use thiserror::Error;
 use crate::routing::subscription_manager::CacheStrategy;
 use crate::topic::topic_match::{TopicMatch, TopicMatchError, TopicPath};
 
+/// MQTT topic pattern segment: literal string or wildcard
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TopicPatternItem {
+	/// Literal string segment
 	Str(Substr),
+	/// Single-level wildcard `+` or named `{param}`
 	Plus(Option<Substr>),
+	/// Multi-level wildcard `#` or named `{param:#}`
 	Hash(Option<Substr>),
 }
 
@@ -28,11 +32,17 @@ pub enum TopicPatternError {
 		"Invalid topic pattern '{pattern}': # wildcard can only be the last \
 		 segment"
 	)]
-	HashPosition { pattern: String },
+	HashPosition { 
+		/// The invalid pattern
+		pattern: String 
+	},
 
 	/// Wildcard characters (+ or #) used incorrectly
 	#[error("Invalid wildcard usage: {usage}")]
-	WildcardUsage { usage: String },
+	WildcardUsage { 
+		/// Description of invalid usage
+		usage: String 
+	},
 
 	/// Empty topic is not valid
 	#[error("Topic pattern cannot be empty")]
@@ -70,6 +80,7 @@ impl TopicPatternError {
 }
 
 impl TopicPatternItem {
+	/// Returns string representation of the pattern item.
 	pub fn as_str(&self) -> &str {
 		match self {
 			| TopicPatternItem::Str(s) => s,
@@ -78,6 +89,7 @@ impl TopicPatternItem {
 		}
 	}
 
+	/// Returns pattern representation with named parameters in braces.
 	pub fn as_wildcard(&self) -> Cow<str> {
 		match self {
 			| TopicPatternItem::Plus(None) => Cow::Borrowed("+"),
@@ -92,6 +104,7 @@ impl TopicPatternItem {
 		}
 	}
 
+	/// Returns parameter name for named wildcards.
 	pub fn param_name(&self) -> Option<Substr> {
 		match self {
 			| TopicPatternItem::Plus(Some(name))
@@ -100,6 +113,7 @@ impl TopicPatternItem {
 		}
 	}
 
+	/// Returns true if this item is a wildcard (+ or #).
 	pub fn is_wildcard(&self) -> bool {
 		matches!(self, TopicPatternItem::Plus(_) | TopicPatternItem::Hash(_))
 	}
@@ -151,6 +165,7 @@ impl TryFrom<Substr> for TopicPatternItem {
 	}
 }
 
+/// Parsed MQTT topic pattern with wildcard support
 #[derive(Debug)]
 pub struct TopicPatternPath {
 	template_pattern: ArcStr, // original topic pattern as a string
@@ -160,6 +175,7 @@ pub struct TopicPatternPath {
 }
 
 impl TopicPatternPath {
+	/// Creates a topic pattern from string with optional caching.
 	pub fn new_from_string(
 		topic_pattern: impl Into<ArcStr>,
 		cache_strategy: CacheStrategy,
@@ -242,28 +258,34 @@ impl TopicPatternPath {
 		Ok(pattern)
 	}
 
+	/// Returns MQTT pattern with wildcards for broker subscription.
 	pub fn mqtt_pattern(&self) -> ArcStr {
 		self.mqtt_topic_subscription.clone()
 	}
 
+	/// Returns original pattern with named parameters.
 	pub fn topic_pattern(&self) -> ArcStr {
 		self.template_pattern.clone()
 	}
 
+	/// Returns true if pattern has no segments.
 	pub fn is_empty(&self) -> bool {
 		self.segments.is_empty()
 	}
 
+	/// Returns true if pattern contains multi-level wildcard (#).
 	pub fn contains_hash(&self) -> bool {
 		self.segments
 			.last()
 			.map_or(false, |s| matches!(s, TopicPatternItem::Hash(_)))
 	}
 
+	/// Returns iterator over pattern segments.
 	pub fn iter(&self) -> Iter<TopicPatternItem> {
 		self.segments.iter()
 	}
 
+	/// Returns number of segments in pattern.
 	pub fn len(&self) -> usize {
 		self.segments.len()
 	}
@@ -276,6 +298,7 @@ impl TopicPatternPath {
 		segments.iter().map(|s| s.as_str().len()).sum::<usize>()
 	}
 
+	/// Returns pattern segments as slice.
 	pub fn slice(&self) -> &[TopicPatternItem] {
 		&self.segments
 	}
@@ -343,6 +366,7 @@ impl TopicPatternPath {
 	// 	named_params
 	// }
 
+	/// Matches topic path against this pattern, extracting parameters.
 	pub fn try_match(
 		&self,
 		topic: Arc<TopicPath>,

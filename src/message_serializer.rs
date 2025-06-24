@@ -10,10 +10,14 @@ use bincode::{Decode, Encode};
 pub trait MessageSerializer<T>:
 	Default + Clone + Send + Sync + 'static
 {
+	/// Error type for serialization failures
 	type SerializeError: Debug + Send + Sync + 'static;
+	/// Error type for deserialization failures
 	type DeserializeError: Debug + Send + Sync + 'static;
 
+	/// Convert data to bytes for MQTT transmission
 	fn serialize(&self, data: &T) -> Result<Vec<u8>, Self::SerializeError>;
+	/// Convert bytes from MQTT into typed data
 	fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError>;
 }
 
@@ -26,10 +30,12 @@ pub struct BincodeSerializer {
 }
 
 impl BincodeSerializer {
+	/// Creates a new serializer with default configuration.
 	pub fn new() -> Self {
 		Self::default()
 	}
 
+	/// Creates a serializer with custom bincode configuration.
 	pub fn with_config(config: bincode::config::Configuration) -> Self {
 		Self { config }
 	}

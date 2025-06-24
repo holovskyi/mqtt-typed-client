@@ -29,6 +29,7 @@ where
 	T: Send + Sync + 'static,
 	F: MessageSerializer<T>,
 {
+	/// Creates typed subscriber from raw byte subscriber.
 	pub fn new(subscriber: Subscriber<Bytes>, serializer: F) -> Self {
 		Self {
 			subscriber,
@@ -49,6 +50,7 @@ where
 		}
 	}
 
+	/// Cancels subscription and unsubscribes from MQTT broker.
 	pub async fn cancel(self) -> Result<(), SendError<SubscriptionId>> {
 		self.subscriber.unsubscribe().await
 	}

@@ -99,6 +99,7 @@ pub mod client;
 pub mod connection;
 pub mod message_serializer;
 pub mod routing;
+/// Structured MQTT subscribers with automatic topic parameter extraction
 pub mod structured;
 pub mod topic;
 

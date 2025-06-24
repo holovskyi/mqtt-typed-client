@@ -21,8 +21,7 @@ pub struct MqttPublisher<T, F> {
 impl<T, F> MqttPublisher<T, F>
 where F: MessageSerializer<T>
 {
-	// Internal constructor. Use MqttClient::get_publisher() instead.
-	// For parametric topics, use #[mqtt_topic] macro.
+	/// Internal constructor. Use MqttClient::get_publisher() instead.
 	pub fn new(
 		client: AsyncClient,
 		serializer: F,
@@ -37,16 +36,19 @@ where F: MessageSerializer<T>
 			_phantom: PhantomData,
 		}
 	}
+	/// Sets Quality of Service level for published messages.
 	pub fn with_qos(mut self, qos: QoS) -> Self {
 		self.qos = qos;
 		self
 	}
 
+	/// Sets retain flag for published messages.
 	pub fn with_retain(mut self, retain: bool) -> Self {
 		self.retain = retain;
 		self
 	}
 
+	/// Publishes data to the configured topic.
 	pub async fn publish(&self, data: &T) -> Result<(), MqttClientError> {
 		let payload = self
 			.serializer

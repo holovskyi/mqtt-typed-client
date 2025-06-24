@@ -191,6 +191,7 @@ where F: Default + Clone + Send + Sync + 'static
 			.await
 	}
 
+	/// Subscribe with custom configuration (QoS, caching strategy)
 	pub async fn subscribe_with_config<T>(
 		&self,
 		topic: impl Into<ArcStr>,

@@ -3,9 +3,13 @@
 //! This module provides high-level MQTT client functionality including
 //! typed publishers, subscribers, and async client management.
 
+/// Asynchronous MQTT client implementation
 pub mod async_client;
+/// Client error types
 pub mod error;
+/// Typed MQTT publishers
 pub mod publisher;
+/// Typed MQTT subscribers
 pub mod subscriber;
 pub mod config;
 

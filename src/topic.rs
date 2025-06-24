@@ -7,6 +7,7 @@
 pub mod error;
 pub mod topic_match;
 pub mod topic_matcher;
+/// Topic pattern parsing and matching
 pub mod topic_pattern_path;
 pub mod topic_router;
 

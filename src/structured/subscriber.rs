@@ -17,15 +17,25 @@ use crate::{
 /// Errors that occur during message conversion from MQTT topics.
 #[derive(Error, Debug)]
 pub enum MessageConversionError<DE> {
+	/// Failed to deserialize message payload
 	#[error("Failed to deserialize payload: {0}")]
 	PayloadDeserializationError(DE),
 
+	/// Topic parameter expected but not found
 	#[error("Missing required parameter '{param}' at position {position}")]
-	TopicParameterMissing { param: String, position: usize },
+	TopicParameterMissing { 
+		/// Parameter name
+		param: String, 
+		/// Wildcard position in pattern
+		position: usize 
+	},
 
+	/// Topic parameter found but couldn't parse to target type
 	#[error("Failed to parse parameter '{param}': {source}")]
 	TopicParameterParseError {
+		/// Parameter name
 		param: String,
+		/// Parse error details
 		#[source]
 		source: Box<dyn std::error::Error + Send + Sync>,
 	},
@@ -35,6 +45,7 @@ pub enum MessageConversionError<DE> {
 ///
 /// Typically implemented via `#[mqtt_topic]` macro for automatic topic parameter extraction.
 pub trait FromMqttMessage<T, DE> {
+	/// Convert MQTT topic and payload into a structured message
 	fn from_mqtt_message(
 		topic: Arc<TopicMatch>,
 		payload: T,
@@ -59,6 +70,7 @@ where
 	SerializerType:
 		Default + Clone + Send + Sync + MessageSerializer<PayloadType>,
 {
+	/// Creates a structured subscriber from a typed MQTT subscriber.
 	pub fn new(inner: MqttSubscriber<PayloadType, SerializerType>) -> Self {
 		Self {
 			inner,
@@ -66,6 +78,7 @@ where
 		}
 	}
 
+	/// Receives and converts the next MQTT message into structured type.
 	pub async fn receive(
 		&mut self,
 	) -> Option<
@@ -91,6 +104,7 @@ where
 	}
 }
 
+/// Extract and parse a topic parameter by wildcard index
 pub fn extract_topic_parameter<T, DE>(
 	topic: &TopicMatch,
 	index: usize,
