@@ -1,6 +1,10 @@
 use rumqttc::{ClientError, OptionError};
+use tokio::sync::mpsc::error::SendError;
 
-use crate::{TopicPatternError, TopicRouterError, routing::SubscriptionError};
+use crate::{
+	SubscriptionId, TopicPatternError, TopicRouterError,
+	routing::SubscriptionError,
+};
 
 /// Errors that can occur in MQTT client operations
 #[derive(Debug)]
@@ -20,7 +24,7 @@ pub enum MqttClientError {
 	/// Topic routing errors
 	TopicRouting(TopicRouterError),
 	/// Channel communication errors
-	Channel(String),
+	UnsubscribeFailed(SubscriptionId),
 }
 
 impl std::fmt::Display for MqttClientError {
@@ -47,7 +51,11 @@ impl std::fmt::Display for MqttClientError {
 			| MqttClientError::TopicRouting(e) => {
 				write!(f, "Topic routing error: {}", e)
 			}
-			| MqttClientError::Channel(e) => write!(f, "Channel error: {}", e),
+			| MqttClientError::UnsubscribeFailed(s_id) => write!(
+				f,
+				"Failed to unsubscribe: subscription {} channel closed",
+				s_id
+			),
 		}
 	}
 }
@@ -89,5 +97,11 @@ impl From<TopicPatternError> for MqttClientError {
 impl From<TopicRouterError> for MqttClientError {
 	fn from(err: TopicRouterError) -> Self {
 		MqttClientError::TopicRouting(err)
+	}
+}
+
+impl From<SendError<SubscriptionId>> for MqttClientError {
+	fn from(SendError(sub_id): SendError<SubscriptionId>) -> Self {
+		MqttClientError::UnsubscribeFailed(sub_id)
 	}
 }

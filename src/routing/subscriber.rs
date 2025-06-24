@@ -1,4 +1,4 @@
-use tokio::sync::mpsc::{Receiver, Sender, error::TrySendError};
+use tokio::sync::mpsc::{error::{SendError, TrySendError}, Receiver, Sender};
 use tracing::{debug, warn};
 
 use crate::{
@@ -28,13 +28,12 @@ impl<T> Subscriber<T> {
 	pub async fn recv(&mut self) -> Option<MessageType<T>> {
 		self.receiver.recv().await
 	}
-	//TODO map error to custom error
-	pub async fn unsubscribe(mut self) -> Result<(), String> {
+
+	pub async fn unsubscribe(mut self) -> Result<(), SendError<SubscriptionId>> {
 		if let Some(unsubscribe_tx) = self.unsubscribe_tx.take() {
 			unsubscribe_tx
 				.send(self.id)
 				.await
-				.map_err(|_| "Can't send unsubscribe command".to_string())
 		} else {
 			warn!(subscription_id = ?self.id, "Subscription already canceled");
 			Ok(())

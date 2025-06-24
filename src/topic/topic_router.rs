@@ -1,6 +1,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(missing_docs)]
 use std::collections::HashMap;
+use std::fmt::Display;
 
 use thiserror::Error;
 
@@ -101,6 +102,12 @@ impl TopicRouterError {
 /// A subscription identifier.
 #[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
 pub struct SubscriptionId(usize);
+
+impl Display for SubscriptionId {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "SubscriptionId({})", self.0)
+	}
+}
 
 type SubscriptionTable<T> = HashMap<SubscriptionId, T>;
 //type RouteCallback = Box<dyn for<'a, 'b> Fn(&'a str, &'b [u8]) + Send + Sync>;

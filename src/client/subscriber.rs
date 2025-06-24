@@ -2,8 +2,9 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use bytes::Bytes;
+use tokio::sync::mpsc::error::SendError;
 
-use super::error::MqttClientError;
+use crate::SubscriptionId;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::Subscriber;
 use crate::topic::topic_match::TopicMatch;
@@ -41,10 +42,7 @@ where
 		}
 	}
 
-	pub async fn cancel(self) -> Result<(), MqttClientError> {
-		self.subscriber
-			.unsubscribe()
-			.await
-			.map_err(MqttClientError::Channel)
+	pub async fn cancel(self) -> Result<(), SendError<SubscriptionId>> {
+		self.subscriber.unsubscribe().await
 	}
 }

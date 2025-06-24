@@ -19,7 +19,6 @@ impl<DE> FromMqttMessage<SensorData, DE> for SensorReading {
 		payload: SensorData,
 	) -> Result<Self, MessageConversionError<DE>> {
 		let res = SensorReading {
-			//TODO check error on illegal index/topic match
 			room: extract_topic_parameter(&topic, 0, "room")?,
 			sensor_id: extract_topic_parameter(&topic, 1, "sensor_id")?,
 			temp: extract_topic_parameter(&topic, 2, "temp")?,
