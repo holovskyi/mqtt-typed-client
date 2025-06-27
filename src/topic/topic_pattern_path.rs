@@ -171,6 +171,13 @@ pub struct TopicPatternPath {
 	template_pattern: ArcStr, // original topic pattern as a string
 	mqtt_topic_subscription: ArcStr, // mqtt topic pattern with wildcards "sensors/+/data"
 	segments: Vec<TopicPatternItem>,
+	/// Optional LRU cache for topic match results.
+	/// 
+	/// Uses `Mutex` instead of `RefCell` for interior mutability because:
+	/// 1. This struct needs to be `Send + Sync` to work in the actor-based subscription manager
+	/// 2. Although used in single-threaded actor context, `RefCell` is not `Send`
+	/// 3. No contention occurs since access is serialized within the actor's event loop
+	/// 4. `Mutex` provides the same interior mutability as `RefCell` but with `Send + Sync`
 	match_cache: Option<Mutex<LruCache<ArcStr, Arc<TopicMatch>>>>,
 }
 

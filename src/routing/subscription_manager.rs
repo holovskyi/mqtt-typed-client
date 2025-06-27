@@ -71,6 +71,8 @@ type SlowSendResult<T> = (
 
 pub struct SubscriptionManagerActor<T> {
 	topic_router: TopicRouterType<T>,
+	/// LRU cache for TopicPath instances to avoid repeated parsing of topic strings.
+	/// Used in single-threaded actor context - no synchronization needed here.
 	topic_path_cache: LruCache<ArcStr, Arc<TopicPath>>,
 	client: AsyncClient,
 	command_rx: Receiver<Command<T>>,
@@ -303,6 +305,7 @@ where T: Send + Sync + 'static
 
 	async fn handle_send(&mut self, (topic_str, data): RawMessageType<T>) {
 		let topic_arcstr = ArcStr::from(topic_str);
+		// First level cache: TopicPath creation from string (this actor's cache)
 		let topic_path = match self.topic_path_cache.get(&topic_arcstr) {
 			| Some(path) => path.clone(),
 			| None => {
@@ -311,6 +314,8 @@ where T: Send + Sync + 'static
 				path
 			}
 		};
+
+		// Second level cache: TopicMatch results are cached inside TopicPatternPath (per-pattern cache)
 
 		let subscribers = self.topic_router.get_subscribers(&topic_path);
 		let mut closed_subscribers = Vec::new();
