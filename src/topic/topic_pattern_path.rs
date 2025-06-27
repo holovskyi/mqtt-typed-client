@@ -47,6 +47,20 @@ pub enum TopicPatternError {
 	/// Empty topic is not valid
 	#[error("Topic pattern cannot be empty")]
 	EmptyTopic,
+
+	/// Topic pattern structure mismatch when trying to use compatible pattern
+	#[error(
+		"Topic pattern structure mismatch.\n\
+		 Original: '{original}'\n\
+		 Custom:   '{custom}'\n\
+		 Hint: Both patterns must have the same parameter structure (same wildcards in same positions)"
+	)]
+	PatternStructureMismatch {
+		/// Original pattern from the struct
+		original: String,
+		/// Custom pattern that doesn't match
+		custom: String,
+	},
 }
 
 impl TopicPatternError {
@@ -61,6 +75,17 @@ impl TopicPatternError {
 	pub fn wildcard_usage(usage: impl Into<String>) -> Self {
 		Self::WildcardUsage {
 			usage: usage.into(),
+		}
+	}
+
+	/// Creates a new PatternStructureMismatch error
+	pub fn pattern_mismatch(
+		original: impl Into<String>,
+		custom: impl Into<String>,
+	) -> Self {
+		Self::PatternStructureMismatch {
+			original: original.into(),
+			custom: custom.into(),
 		}
 	}
 }
@@ -359,6 +384,34 @@ impl TopicPatternPath {
 	// 	}
 	// 	named_params
 	// }
+
+	/// Creates a new pattern with custom template if wildcard structures match
+	/// 
+	/// Static segments can differ, but wildcards must be identical in type,
+	/// order, and names (if named).
+	pub fn with_compatible_pattern(
+		&self,
+		custom_pattern: impl Into<ArcStr>,
+		cache_strategy: CacheStrategy,
+	) -> Result<Self, TopicPatternError> {
+		let candidate = TopicPatternPath::new_from_string(
+			custom_pattern.into(),
+			cache_strategy,
+		)?;
+		
+		// Validate wildcard structure compatibility
+		let self_wildcards = self.segments.iter().filter(|item| item.is_wildcard());
+		let candidate_wildcards = candidate.segments.iter().filter(|item| item.is_wildcard());
+		
+		if !self_wildcards.eq(candidate_wildcards) {
+			return Err(TopicPatternError::pattern_mismatch(
+				self.template_pattern.as_str(),
+				candidate.template_pattern.as_str(),
+			));
+		}
+		
+		Ok(candidate)
+	}
 
 	/// Matches topic path against this pattern, extracting parameters.
 	pub fn try_match(

@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use arcstr::{ArcStr, Substr};
 use smallvec::SmallVec;
+use thiserror::Error;
 
 #[derive(Debug, Clone)]
 pub struct TopicPath {
@@ -32,16 +33,33 @@ impl fmt::Display for TopicPath {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum TopicMatchError {
+	/// Pattern ended unexpectedly while matching topic
+	#[error("Pattern ended unexpectedly while matching topic")]
 	UnexpectedEndOfPattern,
+	
+	/// Topic ended unexpectedly while matching pattern
+	#[error("Topic ended unexpectedly while matching pattern")]
 	UnexpectedEndOfTopic,
+	
+	/// Hash wildcard (#) found in unexpected position
+	#[error("Hash wildcard (#) found in unexpected position")]
 	UnexpectedHashSegment,
+	
+	/// Segment mismatch during topic matching
+	#[error("Segment mismatch at position {position}: expected '{expected}', found '{found}'")]
 	SegmentMismatch {
+		/// Expected segment value
 		expected: String,
+		/// Actually found segment value
 		found: String,
+		/// Position where mismatch occurred
 		position: usize,
 	},
+	
+	/// Duplicate parameter name found in pattern
+	#[error("Duplicate parameter name found in pattern")]
 	DuplicateParameterName,
 }
 

@@ -25,6 +25,13 @@ pub enum MqttClientError {
 	UnsubscribeFailed(SubscriptionId),
 }
 
+impl MqttClientError {
+	/// Create a TopicPattern error
+	pub fn topic_pattern(err: TopicPatternError) -> Self {
+		MqttClientError::Topic(TopicError::Pattern(err))
+	}
+}
+
 impl std::fmt::Display for MqttClientError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {

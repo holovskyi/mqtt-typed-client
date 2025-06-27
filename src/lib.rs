@@ -147,7 +147,7 @@ pub use routing::{CacheStrategy, SubscriptionConfig};
 pub use client::{MqttPublisher, MqttSubscriber};
 
 // Topic pattern types (for manual pattern handling)
-pub use topic::{TopicPatternPath, TopicError};
+pub use topic::{TopicPatternPath, TopicPatternError, TopicError};
 
 /// Result type alias for operations that may fail with MqttClientError
 pub type Result<T> = std::result::Result<T, MqttClientError>;
@@ -209,12 +209,12 @@ pub mod advanced {
 pub mod errors {
 
 	pub use crate::{
-		MqttClientError, MessageConversionError, TopicError,
+		MqttClientError, MessageConversionError, TopicError, TopicPatternError,
 	};
 	
 	// Topic-related errors - specific types for advanced usage
 	pub use crate::topic::{
-		TopicPatternError, TopicMatcherError, TopicRouterError
+		TopicMatcherError, TopicRouterError
 	};
 	
 	// High-level routing errors

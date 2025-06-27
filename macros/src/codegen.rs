@@ -119,58 +119,157 @@ impl CodeGenerator {
 				pub const MQTT_PATTERN: &'static str = #mqtt_pattern_literal;
 		}
 	}
-	/// Generate helper methods and constants for the struct
+	/// Generate helper methods for subscription
 	///
-	/// Creates:
-	/// - `TOPIC_PATTERN`: Original pattern with named parameters
-	/// - `MQTT_PATTERN`: MQTT subscription pattern with wildcards
-	/// - `subscribe()`: Async method to create a typed subscriber
+	/// Creates all subscription methods:
+	/// - `subscribe()`: Basic subscription with default config
+	/// - `subscribe_with_config()`: Subscription with custom config
+	/// - `subscribe_pattern()`: Custom pattern with default config
+	/// - `subscribe_pattern_with_config()`: Custom pattern with custom config
 	fn generate_helper_methods(&self) -> proc_macro2::TokenStream {
 		let payload_type = self.get_payload_type_token();
 
 		quote! {
-
-				/// Subscribe to this topic pattern using the provided MQTT client
-				///
-				/// # Arguments
-				/// * `client` - The MQTT client to use for subscription
-				///
-				/// # Returns
-				/// A structured subscriber that yields instances of this struct
-				///
-				/// # Example
-				/// ```rust,no_run
-				/// # use mqtt_typed_client::MqttClient;
-				/// # use mqtt_typed_client_macros::mqtt_topic_subscriber;
-				/// # #[derive(Debug)]
-				/// # #[mqtt_topic_subscriber("sensors/{sensor_id}/data")]
-				/// # struct SensorReading { sensor_id: u32, payload: String }
-				/// # async fn example(client: &MqttClient<mqtt_typed_client::BincodeSerializer>) {
-				/// let mut subscriber = SensorReading::subscribe(client).await?;
-				/// while let Some(result) = subscriber.receive().await {
-				///     match result {
-				///         Ok(reading) => println!("Sensor {}: {}", reading.sensor_id, reading.payload),
-				///         Err(e) => eprintln!("Error: {}", e),
-				///     }
-				/// }
-				/// # }
-				/// ```
-				pub async fn subscribe<F>(
-					client: &::mqtt_typed_client::MqttClient<F>,
-				) -> ::std::result::Result<
-					::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
-					::mqtt_typed_client::MqttClientError,
-				>
-				where
-					F: ::std::default::Default
-						+ ::std::clone::Clone
-						+ ::std::marker::Send
-						+ ::std::marker::Sync
-						+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
-				{
-					let subscriber = client.subscribe::<#payload_type>(Self::MQTT_PATTERN).await?;
-					Ok(::mqtt_typed_client::MqttTopicSubscriber::new(subscriber))
-				}
+			/// Subscribe to this topic pattern using default configuration
+			///
+			/// Uses the pattern defined in the macro with default QoS and no caching.
+			///
+			/// # Arguments
+			/// * `client` - The MQTT client to use for subscription
+			///
+			/// # Returns
+			/// A structured subscriber that yields instances of this struct
+			pub async fn subscribe<F>(
+				client: &::mqtt_typed_client::MqttClient<F>,
+			) -> ::std::result::Result<
+				::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
+				::mqtt_typed_client::MqttClientError,
+			>
+			where
+				F: ::std::default::Default
+					+ ::std::clone::Clone
+					+ ::std::marker::Send
+					+ ::std::marker::Sync
+					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
+			{
+				Self::subscribe_with_config(
+					client,
+					::mqtt_typed_client::SubscriptionConfig::default(),
+				).await
+			}
+			
+			/// Subscribe to this topic pattern with custom configuration
+			///
+			/// Allows specifying QoS level and caching strategy.
+			///
+			/// # Arguments
+			/// * `client` - The MQTT client to use for subscription
+			/// * `config` - Subscription configuration (QoS, caching)
+			///
+			/// # Returns
+			/// A structured subscriber that yields instances of this struct
+			pub async fn subscribe_with_config<F>(
+				client: &::mqtt_typed_client::MqttClient<F>,
+				config: ::mqtt_typed_client::SubscriptionConfig,
+			) -> ::std::result::Result<
+				::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
+				::mqtt_typed_client::MqttClientError,
+			>
+			where
+				F: ::std::default::Default
+					+ ::std::clone::Clone
+					+ ::std::marker::Send
+					+ ::std::marker::Sync
+					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
+			{
+				let subscriber = client.subscribe_with_config::<#payload_type>(
+					Self::MQTT_PATTERN,
+					config,
+				).await?;
+				Ok(::mqtt_typed_client::MqttTopicSubscriber::new(subscriber))
+			}
+			
+			/// Subscribe using a custom topic pattern with default configuration
+			///
+			/// The custom pattern must have the same parameter structure as the original
+			/// pattern (same wildcards in same positions with same names), but static
+			/// segments can be different.
+			///
+			/// # Arguments
+			/// * `client` - The MQTT client to use for subscription
+			/// * `custom_pattern` - Alternative pattern with compatible structure
+			///
+			/// # Returns
+			/// A structured subscriber that yields instances of this struct
+			pub async fn subscribe_pattern<F>(
+				client: &::mqtt_typed_client::MqttClient<F>,
+				custom_pattern: &str,
+			) -> ::std::result::Result<
+				::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
+				::mqtt_typed_client::MqttClientError,
+			>
+			where
+				F: ::std::default::Default
+					+ ::std::clone::Clone
+					+ ::std::marker::Send
+					+ ::std::marker::Sync
+					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
+			{
+				Self::subscribe_pattern_with_config(
+					client,
+					custom_pattern,
+					::mqtt_typed_client::SubscriptionConfig::default(),
+				).await
+			}
+			
+			/// Subscribe using a custom topic pattern with custom configuration
+			///
+			/// The custom pattern must have the same parameter structure as the original
+			/// pattern (same wildcards in same positions with same names), but static
+			/// segments can be different.
+			///
+			/// # Arguments
+			/// * `client` - The MQTT client to use for subscription
+			/// * `custom_pattern` - Alternative pattern with compatible structure
+			/// * `config` - Subscription configuration (QoS, caching)
+			///
+			/// # Returns
+			/// A structured subscriber that yields instances of this struct
+			pub async fn subscribe_pattern_with_config<F>(
+				client: &::mqtt_typed_client::MqttClient<F>,
+				custom_pattern: &str,
+				config: ::mqtt_typed_client::SubscriptionConfig,
+			) -> ::std::result::Result<
+				::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
+				::mqtt_typed_client::MqttClientError,
+			>
+			where
+				F: ::std::default::Default
+					+ ::std::clone::Clone
+					+ ::std::marker::Send
+					+ ::std::marker::Sync
+					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
+			{
+				// Create base pattern for validation
+				let base_pattern = ::mqtt_typed_client::TopicPatternPath::new_from_string(
+					Self::MQTT_PATTERN,
+					::mqtt_typed_client::CacheStrategy::NoCache,
+				).map_err(::mqtt_typed_client::MqttClientError::topic_pattern)?;
+				
+				// Validate and create custom pattern
+				let custom_topic_pattern = base_pattern.with_compatible_pattern(
+					custom_pattern,
+					config.cache_strategy,
+				).map_err(::mqtt_typed_client::MqttClientError::topic_pattern)?;
+				
+				// Subscribe using the validated custom pattern
+				let subscriber = client.subscribe_with_config::<#payload_type>(
+					custom_topic_pattern.mqtt_pattern().as_str(),
+					config,
+				).await?;
+				
+				Ok(::mqtt_typed_client::MqttTopicSubscriber::new(subscriber))
+			}
 		}
 	}
 
