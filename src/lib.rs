@@ -16,7 +16,7 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use mqtt_typed_client::{MqttClient, BincodeSerializer};
+//! use mqtt_typed_client::{MqttClient, MqttClientConfig, BincodeSerializer};
 //! use serde::{Deserialize, Serialize};
 //! use bincode::{Encode, Decode};
 //!
@@ -28,10 +28,18 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Create MQTT client
+//!     // Simple connection using URL
 //!     let (client, connection) = MqttClient::<BincodeSerializer>::connect(
-//!         "mqtt://broker.hivemq.com:1883"
+//!         "mqtt://broker.hivemq.com:1883?client_id=my_client"
 //!     ).await?;
+//!
+//!     // Advanced configuration
+//!     let mut config = MqttClientConfig::new("my_client", "broker.hivemq.com", 1883);
+//!     config.connection.set_keep_alive(std::time::Duration::from_secs(30));
+//!     config.connection.set_clean_session(true);
+//!     config.settings.topic_cache_size = 500;
+//!     
+//!     let (client, connection) = MqttClient::<BincodeSerializer>::connect_with_config(config).await?;
 //!
 //!     // Create a typed publisher
 //!     let publisher = client.get_publisher::<SensorData>("sensors/temperature")?;
@@ -113,8 +121,11 @@ pub mod topic;
 
 // === Core Public API ===
 // Main client types
-pub use client::{MqttClient, MqttClientConfig, MqttClientError};
+pub use client::{MqttClient, MqttClientConfig, ClientSettings, MqttClientError};
 pub use connection::MqttConnection;
+
+// Re-export rumqttc types for advanced configuration
+pub use rumqttc::MqttOptions;
 
 // Message serialization
 pub use message_serializer::{BincodeSerializer, MessageSerializer};
@@ -153,8 +164,8 @@ pub type Result<T> = std::result::Result<T, MqttClientError>;
 pub mod prelude {
 
 	pub use crate::{
-		BincodeSerializer, MqttClient, MqttClientConfig, MqttClientError,
-		MqttConnection, MessageSerializer, QoS, Result,
+		BincodeSerializer, MqttClient, MqttClientConfig, ClientSettings, MqttClientError,
+		MqttConnection, MessageSerializer, MqttOptions, QoS, Result,
 	};
 }
 

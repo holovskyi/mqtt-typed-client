@@ -22,6 +22,7 @@ struct MyData {
 pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
 
+	// Simple connection using URL
 	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
 		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async-example",
 	)

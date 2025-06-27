@@ -2,6 +2,7 @@
 
 - [ ] Protocol compression. Compositional approach - separate serialization and compression. Adaptive mechanism (based on message type and size)
 - [ ] Update topic for publication/subscription. With same wildcards and param names
+- [ ] Last will message
 - [ ] mqtt_typed_client::client::async_client::MqttClient
 impl<F> MqttClient<F>
 async fn run(mut event_loop: EventLoop, subscription_manager: SubscriptionManagerHandler<Bytes>)

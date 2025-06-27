@@ -9,7 +9,6 @@ use std::{
 };
 
 use bincode::{Decode, Encode};
-use futures::FutureExt;
 use mqtt_typed_client::prelude::*;
 use mqtt_typed_client::topic::topic_match::TopicMatch;
 use mqtt_typed_client_macros::mqtt_topic;
@@ -52,14 +51,15 @@ struct TemperatureSensor {
 }
 
 /// Device control commands
-// #[derive(Debug)]
-// #[mqtt_topic("control/{building}/devices/{device_type}/{device_id}", publisher)]
-// struct DeviceCommand {
-// 	building: String,
-// 	device_type: String, // "hvac", "lights", "security"
-// 	device_id: String,
-// 	payload: String, // JSON command
-// }
+#[allow(dead_code)]
+#[derive(Debug)]
+#[mqtt_topic("control/{building}/devices/{device_type}/{device_id}", publisher)]
+struct DeviceCommand {
+	building: String,
+	device_type: String, // "hvac", "lights", "security"
+	device_id: String,
+	payload: String, // JSON command
+}
 
 /// Device statuses (subscriber only)
 #[derive(Debug)]
@@ -84,6 +84,7 @@ struct Alert {
 /// Alert commands (for publisher)
 #[derive(Debug)]
 #[mqtt_topic("alerts/{severity}/{category}", publisher)]
+#[allow(dead_code)]
 struct AlertCommand {
 	severity: String,
 	category: String,
@@ -116,7 +117,7 @@ async fn smart_building_monitor() -> Result<()> {
 	// Spawn task for sending test data
 	let client_clone = client.clone();
 	tokio::spawn(async move {
-		simulate_building_data(client_clone).await;
+		let _ = simulate_building_data(client_clone).await;
 	});
 
 	// === Main monitoring loop ===

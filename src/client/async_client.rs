@@ -3,7 +3,7 @@ use std::time::Duration;
 use arcstr::ArcStr;
 use bytes::Bytes;
 use rumqttc::Packet::{Disconnect, Publish};
-use rumqttc::{AsyncClient, EventLoop, MqttOptions};
+use rumqttc::{AsyncClient, EventLoop};
 use rumqttc::{Event::Incoming, Event::Outgoing};
 use tokio::time;
 use tracing::{debug, error, info, warn};
@@ -39,33 +39,31 @@ where F: Default + Clone + Send + Sync + 'static
 	pub async fn connect(
 		url: &str,
 	) -> Result<(Self, MqttConnection), MqttClientError> {
-		Self::connect_with_config(url, MqttClientConfig::default()).await
+		let config = MqttClientConfig::from_url(url)?;
+		Self::connect_with_config(config).await
 	}
 
 	/// Create a new MQTT client with custom configuration
 	pub async fn connect_with_config(
-		url: &str,
 		config: MqttClientConfig,
 	) -> Result<(Self, MqttConnection), MqttClientError> {
 		let topic_path_cache_capacity = std::num::NonZeroUsize::new(
-			config.topic_cache_size,
+			config.settings.topic_cache_size,
 		)
 		.ok_or_else(|| {
 			MqttClientError::ConfigurationValue(
 				"topic_cache_size must be greater than 0".to_string(),
 			)
 		})?;
-		let mut mqttoptions = MqttOptions::parse_url(url)?;
-		mqttoptions.set_keep_alive(Duration::from_secs(10));
-		mqttoptions.set_clean_session(false);
+		// Use the provided MqttOptions directly - no more hardcoded values!
 		let (client, event_loop) =
-			AsyncClient::new(mqttoptions, config.event_loop_capacity);
+			AsyncClient::new(config.connection, config.settings.event_loop_capacity);
 
 		let (controller, handler) = SubscriptionManagerActor::spawn(
 			client.clone(),
 			topic_path_cache_capacity,
-			config.command_channel_capacity,
-			config.unsubscribe_channel_capacity,
+			config.settings.command_channel_capacity,
+			config.settings.unsubscribe_channel_capacity,
 		);
 
 		// Spawn the event loop in a separate task to handle MQTT messages
