@@ -4,10 +4,8 @@
 //! the mqtt_topic macro while maintaining structural compatibility.
 
 use mqtt_typed_client_macros::mqtt_topic;
-use mqtt_typed_client::{BincodeSerializer, MqttClient, SubscriptionConfig, CacheStrategy};
 use serde::{Deserialize, Serialize};
 use bincode::{Decode, Encode};
-use std::num::NonZeroUsize;
 
 #[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]
 struct SensorReading {
@@ -16,6 +14,7 @@ struct SensorReading {
     timestamp: u64,
 }
 
+#[allow(dead_code)]
 #[mqtt_topic("sensors/{building}/{floor}/temp/{sensor_id}")]
 #[derive(Debug)]
 struct TemperatureSensor {

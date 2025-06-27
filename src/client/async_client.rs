@@ -16,7 +16,7 @@ use crate::connection::MqttConnection;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::subscription_manager::SubscriptionConfig;
 use crate::routing::{SubscriptionManagerActor, SubscriptionManagerHandler};
-use crate::topic::{TopicPatternPath, TopicError};
+use crate::topic::{TopicError, TopicPatternPath};
 
 /// Type-safe MQTT client with automatic subscription management.
 ///
@@ -47,17 +47,18 @@ where F: Default + Clone + Send + Sync + 'static
 	pub async fn connect_with_config(
 		config: MqttClientConfig,
 	) -> Result<(Self, MqttConnection), MqttClientError> {
-		let topic_path_cache_capacity = std::num::NonZeroUsize::new(
-			config.settings.topic_cache_size,
-		)
-		.ok_or_else(|| {
-			MqttClientError::ConfigurationValue(
-				"topic_cache_size must be greater than 0".to_string(),
-			)
-		})?;
+		let topic_path_cache_capacity =
+			std::num::NonZeroUsize::new(config.settings.topic_cache_size)
+				.ok_or_else(|| {
+					MqttClientError::ConfigurationValue(
+						"topic_cache_size must be greater than 0".to_string(),
+					)
+				})?;
 		// Use the provided MqttOptions directly - no more hardcoded values!
-		let (client, event_loop) =
-			AsyncClient::new(config.connection, config.settings.event_loop_capacity);
+		let (client, event_loop) = AsyncClient::new(
+			config.connection,
+			config.settings.event_loop_capacity,
+		);
 
 		let (controller, handler) = SubscriptionManagerActor::spawn(
 			client.clone(),
@@ -179,7 +180,7 @@ where F: Default + Clone + Send + Sync + 'static
 	/// Supports MQTT wildcards: `+` (single level), `#` (multi-level).
 	pub async fn subscribe<T>(
 		&self,
-		topic: impl Into<ArcStr>,
+		topic: impl TryInto<TopicPatternPath, Error: Into<MqttClientError>>,
 	) -> Result<MqttSubscriber<T, F>, MqttClientError>
 	where
 		T: 'static + Send + Sync,
@@ -192,15 +193,17 @@ where F: Default + Clone + Send + Sync + 'static
 	/// Subscribe with custom configuration (QoS, caching strategy)
 	pub async fn subscribe_with_config<T>(
 		&self,
-		topic: impl Into<ArcStr>,
+		topic: impl TryInto<TopicPatternPath, Error: Into<MqttClientError>>,
 		config: SubscriptionConfig,
 	) -> Result<MqttSubscriber<T, F>, MqttClientError>
 	where
 		T: 'static + Send + Sync,
 		F: MessageSerializer<T>,
+		//TP: TryInto<TopicPatternPath>,
+		//TP::Error: Into<MqttClientError>
 	{
-		let topic_pattern =
-			TopicPatternPath::new_from_string(topic, config.cache_strategy)?;
+		let topic_pattern = topic.try_into().map_err(Into::into)?;
+		//TopicPatternPath::new_from_string(topic, config.cache_strategy)?;
 		let subscriber = self
 			.subscription_manager_handler
 			.subscribe(topic_pattern, config)
@@ -215,13 +218,15 @@ fn validate_mqtt_topic(topic_str: &str) -> Result<(), TopicError> {
 		return Err(crate::topic::TopicRouterError::invalid_routing_topic(
 			topic_str,
 			"Topic is empty or too long",
-		).into());
+		)
+		.into());
 	}
 	if topic_str.chars().any(|c| matches!(c, '\0' | '#' | '+')) {
 		return Err(crate::topic::TopicRouterError::invalid_routing_topic(
 			topic_str,
 			"Topic contains illegal characters ('#', '+', or null byte)",
-		).into());
+		)
+		.into());
 	}
 	Ok(())
 }

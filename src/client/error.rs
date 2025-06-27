@@ -108,3 +108,9 @@ impl From<SendError<SubscriptionId>> for MqttClientError {
 		MqttClientError::UnsubscribeFailed(sub_id)
 	}
 }
+
+impl From<std::convert::Infallible> for MqttClientError {
+    fn from(never: std::convert::Infallible) -> Self {
+        match never {}
+    }
+}

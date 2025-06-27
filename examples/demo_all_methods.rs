@@ -2,10 +2,9 @@
 //!
 //! This shows how to use all four subscription methods with the mqtt_topic macro
 
-use std::num::NonZeroUsize;
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, CacheStrategy, MqttClient, SubscriptionConfig, QoS};
+use mqtt_typed_client::{BincodeSerializer, MqttClient, SubscriptionConfig, QoS};
 use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +15,7 @@ struct SensorReading {
     timestamp: u64,
 }
 
+#[allow(dead_code)]
 #[mqtt_topic("sensors/{building}/{floor}/temp/{sensor_id}")]
 #[derive(Debug)]
 struct TemperatureSensor {
@@ -44,7 +44,7 @@ async fn demonstrate_subscription_methods() -> Result<(), Box<dyn std::error::Er
     println!("2️⃣  With config: subscribe_with_config()");
     let high_performance_config = SubscriptionConfig {
         qos: QoS::ExactlyOnce,
-        cache_strategy: CacheStrategy::Lru(NonZeroUsize::new(1000).unwrap()),
+        //TODO cache_strategy: CacheStrategy::Lru(NonZeroUsize::new(1000).unwrap()),
     };
     let _config_subscriber = TemperatureSensor::subscribe_with_config(
         &client, 
@@ -54,7 +54,7 @@ async fn demonstrate_subscription_methods() -> Result<(), Box<dyn std::error::Er
     
     // Method 3: Custom pattern with default config
     println!("3️⃣  Custom pattern: subscribe_pattern()");
-    let _pattern_subscriber = TemperatureSensor::subscribe_pattern(
+    let _pattern_subscriber = TemperatureSensor::subscribe_to_custom_topic(
         &client,
         "data/{building}/{floor}/temperature/{sensor_id}"
     ).await?;
@@ -64,9 +64,9 @@ async fn demonstrate_subscription_methods() -> Result<(), Box<dyn std::error::Er
     println!("4️⃣  Full control: subscribe_pattern_with_config()");
     let enterprise_config = SubscriptionConfig {
         qos: QoS::ExactlyOnce,
-        cache_strategy: CacheStrategy::Lru(NonZeroUsize::new(2000).unwrap()),
+        //TODO cache_strategy: CacheStrategy::Lru(NonZeroUsize::new(2000).unwrap()),
     };
-    let _full_subscriber = TemperatureSensor::subscribe_pattern_with_config(
+    let _full_subscriber = TemperatureSensor::subscribe_to_custom_topic_with_config(
         &client,
         "iot/{building}/{floor}/temp/{sensor_id}",
         enterprise_config
@@ -75,7 +75,7 @@ async fn demonstrate_subscription_methods() -> Result<(), Box<dyn std::error::Er
     
     // Method 5: This would fail - incompatible pattern
     println!("5️⃣  Testing validation (should fail):");
-    let invalid_result = TemperatureSensor::subscribe_pattern(
+    let invalid_result = TemperatureSensor::subscribe_to_custom_topic(
         &client,
         "wrong/{floor}/{building}/temp/{sensor_id}"  // Wrong parameter order
     ).await;

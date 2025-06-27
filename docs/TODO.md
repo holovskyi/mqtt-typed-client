@@ -1,7 +1,9 @@
 ## TODO
 
 - [ ] Protocol compression. Compositional approach - separate serialization and compression. Adaptive mechanism (based on message type and size)
-- [ ] Update topic for publication/subscription. With same wildcards and param names
+- [x] Update topic for subscription. With same wildcards and param names
+let mut subscriber = TemperatureSensor::subscribe_with_pattern(&client, "data/{building}/{floor}/t/{sensor_id}").await?;
+- [ ] Update topic for publisher
 - [ ] Last will message
 - [ ] mqtt_typed_client::client::async_client::MqttClient
 impl<F> MqttClient<F>

@@ -90,6 +90,12 @@ impl TopicPatternError {
 	}
 }
 
+impl From<std::convert::Infallible> for TopicPatternError {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!("Infallible can never be constructed")
+    }
+}
+
 impl TopicPatternItem {
 	/// Returns string representation of the pattern item.
 	pub fn as_str(&self) -> &str {
@@ -353,52 +359,18 @@ impl TopicPatternPath {
 		mqtt_topic
 	}
 
-	// pub fn wildcard_count(&self) -> usize {
-	// 	self.segments
-	// 		.iter()
-	// 		.filter(|s| {
-	// 			matches!(
-	// 				s,
-	// 				TopicPatternItem::Plus(_) | TopicPatternItem::Hash(_)
-	// 			)
-	// 		})
-	// 		.count()
-	// }
-
-	// pub fn named_params_positions(&self) -> HashMap<String, usize> {
-	// 	let mut named_params = HashMap::new();
-	// 	let mut wildcad_index = 0;
-	// 	for segment in &self.segments {
-	// 		match segment {
-	// 			| TopicPatternItem::Hash(opt_name)
-	// 			| TopicPatternItem::Plus(opt_name) => {
-	// 				opt_name.iter().for_each(|name| {
-	// 					named_params.insert(name.clone(), wildcad_index);
-	// 				});
-	// 				wildcad_index += 1;
-	// 			}
-	// 			| TopicPatternItem::Str(_) => {
-	// 				// Do nothing for regular string segments
-	// 			}
-	// 		}
-	// 	}
-	// 	named_params
-	// }
-
 	/// Creates a new pattern with custom template if wildcard structures match
 	/// 
 	/// Static segments can differ, but wildcards must be identical in type,
 	/// order, and names (if named).
 	pub fn with_compatible_pattern(
 		&self,
-		custom_pattern: impl Into<ArcStr>,
-		cache_strategy: CacheStrategy,
+		custom_topic: impl TryInto<TopicPatternPath, Error: Into<TopicPatternError>>,
 	) -> Result<Self, TopicPatternError> {
-		let candidate = TopicPatternPath::new_from_string(
-			custom_pattern.into(),
-			cache_strategy,
-		)?;
-		
+
+		let candidate = custom_topic
+			.try_into()
+			.map_err(Into::into)?;
 		// Validate wildcard structure compatibility
 		let self_wildcards = self.segments.iter().filter(|item| item.is_wildcard());
 		let candidate_wildcards = candidate.segments.iter().filter(|item| item.is_wildcard());
@@ -508,6 +480,31 @@ impl std::fmt::Display for TopicPatternPath {
 		write!(f, "{path}")
 	}
 }
+
+impl TryFrom<String> for TopicPatternPath {
+    type Error = TopicPatternError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new_from_string(value, CacheStrategy::NoCache)
+    }
+}
+
+impl TryFrom<&str> for TopicPatternPath {
+    type Error = TopicPatternError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new_from_string(value, CacheStrategy::NoCache)
+    }
+}
+
+impl TryFrom<ArcStr> for TopicPatternPath {
+    type Error = TopicPatternError;
+
+    fn try_from(value: ArcStr) -> Result<Self, Self::Error> {
+        Self::new_from_string(value, CacheStrategy::NoCache)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

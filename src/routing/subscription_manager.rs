@@ -39,17 +39,36 @@ pub enum CacheStrategy {
 	NoCache,
 }
 
+impl CacheStrategy {
+	/// Create a new cache strategy with the specified capacity.
+	/// Returns `NoCache` if capacity is 0,
+	/// otherwise returns `Lru` with the given capacity.
+	pub fn new(capacity: usize) -> Self {
+		if capacity == 0 {
+			Self::NoCache
+		} else {
+			Self::Lru(
+				NonZeroUsize::new(capacity).expect("Capacity must be > 0"),
+			)
+		}
+	}
+}
+
+impl Default for CacheStrategy {
+	fn default() -> Self {
+		Self::NoCache
+	}
+}
+
 #[derive(Debug)]
 pub struct SubscriptionConfig {
 	pub qos: rumqttc::QoS,
-	pub cache_strategy: CacheStrategy,
 }
 
 impl Default for SubscriptionConfig {
 	fn default() -> Self {
 		Self {
 			qos: rumqttc::QoS::AtLeastOnce,
-			cache_strategy: CacheStrategy::NoCache,
 		}
 	}
 }

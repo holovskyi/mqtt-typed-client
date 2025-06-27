@@ -19,7 +19,6 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     // ✅ Test 1: Valid compatible pattern (different static segments)
     let compatible = original.with_compatible_pattern(
         "data/{building}/{floor}/temperature/{sensor_id}",
-        CacheStrategy::NoCache
     )?;
     
     println!("✅ Compatible pattern works: {}", compatible.topic_pattern());
@@ -28,7 +27,6 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     // ✅ Test 2: Another valid pattern
     let legacy = original.with_compatible_pattern(
         "iot/{building}/{floor}/t/{sensor_id}",
-        CacheStrategy::NoCache
     )?;
     
     println!("✅ Legacy pattern works: {}", legacy.topic_pattern());
@@ -36,7 +34,6 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     // ❌ Test 3: Invalid pattern (wrong parameter order)
     let invalid_order = original.with_compatible_pattern(
         "data/{floor}/{building}/temp/{sensor_id}",
-        CacheStrategy::NoCache
     );
     
     match invalid_order {
@@ -51,7 +48,6 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     // ❌ Test 4: Invalid pattern (wrong parameter names)
     let invalid_names = original.with_compatible_pattern(
         "data/{building_id}/{floor}/temp/{sensor_id}",
-        CacheStrategy::NoCache
     );
     
     match invalid_names {
@@ -64,7 +60,6 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     // ✅ Test 5: Compatible pattern with extra static segments (should work)
     let extra_static = original.with_compatible_pattern(
         "data/{building}/{floor}/temp/celsius/{sensor_id}",
-        CacheStrategy::NoCache
     );
     
     match extra_static {
@@ -77,7 +72,6 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     // ❌ Test 6: Invalid pattern (wildcard vs static mismatch)
     let invalid_type = original.with_compatible_pattern(
         "sensors/building_a/{floor}/temp/{sensor_id}",
-        CacheStrategy::NoCache
     );
     
     match invalid_type {

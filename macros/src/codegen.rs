@@ -111,6 +111,7 @@ impl CodeGenerator {
 		let topic_pattern = &self.macro_args.pattern;
 		let topic_pattern_literal = topic_pattern.topic_pattern().to_string();
 		let mqtt_pattern_literal = topic_pattern.mqtt_pattern().to_string();
+		// TODO куда всунуть настройку кеширования для TopicPatternPath?
 		quote! {
 				/// The original topic pattern with named parameters (e.g., "sensors/{sensor_id}/data")
 				pub const TOPIC_PATTERN: &'static str = #topic_pattern_literal;
@@ -201,9 +202,9 @@ impl CodeGenerator {
 			///
 			/// # Returns
 			/// A structured subscriber that yields instances of this struct
-			pub async fn subscribe_pattern<F>(
+			pub async fn subscribe_to_custom_topic<F>(
 				client: &::mqtt_typed_client::MqttClient<F>,
-				custom_pattern: &str,
+				custom_pattern: impl TryInto<::mqtt_typed_client::TopicPatternPath, Error: Into<::mqtt_typed_client::MqttClientError>>,
 			) -> ::std::result::Result<
 				::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
 				::mqtt_typed_client::MqttClientError,
@@ -215,7 +216,7 @@ impl CodeGenerator {
 					+ ::std::marker::Sync
 					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
 			{
-				Self::subscribe_pattern_with_config(
+				Self::subscribe_to_custom_topic_with_config(
 					client,
 					custom_pattern,
 					::mqtt_typed_client::SubscriptionConfig::default(),
@@ -235,9 +236,9 @@ impl CodeGenerator {
 			///
 			/// # Returns
 			/// A structured subscriber that yields instances of this struct
-			pub async fn subscribe_pattern_with_config<F>(
+			pub async fn subscribe_to_custom_topic_with_config<F>(
 				client: &::mqtt_typed_client::MqttClient<F>,
-				custom_pattern: &str,
+				custom_pattern: impl TryInto<::mqtt_typed_client::TopicPatternPath, Error: Into<::mqtt_typed_client::MqttClientError>>,
 				config: ::mqtt_typed_client::SubscriptionConfig,
 			) -> ::std::result::Result<
 				::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
@@ -250,6 +251,10 @@ impl CodeGenerator {
 					+ ::std::marker::Sync
 					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
 			{
+				// Convert custom pattern to TopicPatternPath
+				let custom_topic_pattern = custom_pattern.try_into()
+    			    .map_err(Into::into)?;
+
 				// Create base pattern for validation
 				let base_pattern = ::mqtt_typed_client::TopicPatternPath::new_from_string(
 					Self::MQTT_PATTERN,
@@ -257,14 +262,13 @@ impl CodeGenerator {
 				).map_err(::mqtt_typed_client::MqttClientError::topic_pattern)?;
 				
 				// Validate and create custom pattern
-				let custom_topic_pattern = base_pattern.with_compatible_pattern(
-					custom_pattern,
-					config.cache_strategy,
+				let validated_topic_pattern = base_pattern.with_compatible_pattern(
+					custom_topic_pattern,
 				).map_err(::mqtt_typed_client::MqttClientError::topic_pattern)?;
 				
 				// Subscribe using the validated custom pattern
 				let subscriber = client.subscribe_with_config::<#payload_type>(
-					custom_topic_pattern.mqtt_pattern().as_str(),
+					validated_topic_pattern,
 					config,
 				).await?;
 				
