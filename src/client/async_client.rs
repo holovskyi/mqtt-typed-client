@@ -16,7 +16,7 @@ use crate::connection::MqttConnection;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::subscription_manager::SubscriptionConfig;
 use crate::routing::{SubscriptionManagerActor, SubscriptionManagerHandler};
-use crate::topic::{self, TopicPatternPath, TopicRouterError};
+use crate::topic::{TopicPatternPath, TopicError};
 
 /// Type-safe MQTT client with automatic subscription management.
 ///
@@ -162,7 +162,7 @@ where F: Default + Clone + Send + Sync + 'static
 	pub fn get_publisher<T>(
 		&self,
 		topic: impl Into<ArcStr>,
-	) -> Result<MqttPublisher<T, F>, topic::TopicRouterError>
+	) -> Result<MqttPublisher<T, F>, TopicError>
 	where
 		F: MessageSerializer<T>,
 	{
@@ -211,19 +211,19 @@ where F: Default + Clone + Send + Sync + 'static
 	}
 }
 
-fn validate_mqtt_topic(topic_str: &str) -> Result<(), TopicRouterError> {
+fn validate_mqtt_topic(topic_str: &str) -> Result<(), TopicError> {
 	//let topic_str = topic.as_ref();
 	if topic_str.is_empty() || topic_str.len() > 65535 {
-		return Err(TopicRouterError::invalid_routing_topic(
+		return Err(crate::topic::TopicRouterError::invalid_routing_topic(
 			topic_str,
 			"Topic is empty or too long",
-		));
+		).into());
 	}
 	if topic_str.chars().any(|c| matches!(c, '\0' | '#' | '+')) {
-		return Err(TopicRouterError::invalid_routing_topic(
+		return Err(crate::topic::TopicRouterError::invalid_routing_topic(
 			topic_str,
 			"Topic contains illegal characters ('#', '+', or null byte)",
-		));
+		).into());
 	}
 	Ok(())
 }

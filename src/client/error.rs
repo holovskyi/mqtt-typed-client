@@ -2,7 +2,8 @@ use rumqttc::{ClientError, OptionError};
 use tokio::sync::mpsc::error::SendError;
 
 use crate::{
-	routing::SubscriptionError, topic::{SubscriptionId, TopicRouterError}, TopicPatternError
+	routing::SubscriptionError, 
+	topic::{SubscriptionId, TopicError, TopicPatternError}
 };
 
 /// Errors that can occur in MQTT client operations
@@ -18,10 +19,8 @@ pub enum MqttClientError {
 	Serialization(String),
 	/// Subscription management errors
 	Subscription(SubscriptionError),
-	/// Invalid topic pattern errors
-	TopicPattern(TopicPatternError),
-	/// Topic routing errors
-	TopicRouting(TopicRouterError),
+	/// Topic-related errors (pattern, matching, routing)
+	Topic(TopicError),
 	/// Channel communication errors
 	UnsubscribeFailed(SubscriptionId),
 }
@@ -44,11 +43,8 @@ impl std::fmt::Display for MqttClientError {
 			| MqttClientError::Subscription(e) => {
 				write!(f, "Subscription error: {:?}", e)
 			}
-			| MqttClientError::TopicPattern(e) => {
-				write!(f, "Topic pattern error: {}", e)
-			}
-			| MqttClientError::TopicRouting(e) => {
-				write!(f, "Topic routing error: {}", e)
+			| MqttClientError::Topic(e) => {
+				write!(f, "Topic error: {}", e)
 			}
 			| MqttClientError::UnsubscribeFailed(s_id) => write!(
 				f,
@@ -87,15 +83,16 @@ impl From<SubscriptionError> for MqttClientError {
 	}
 }
 
-impl From<TopicPatternError> for MqttClientError {
-	fn from(err: TopicPatternError) -> Self {
-		MqttClientError::TopicPattern(err)
+impl From<TopicError> for MqttClientError {
+	fn from(err: TopicError) -> Self {
+		MqttClientError::Topic(err)
 	}
 }
 
-impl From<TopicRouterError> for MqttClientError {
-	fn from(err: TopicRouterError) -> Self {
-		MqttClientError::TopicRouting(err)
+// Direct conversion for convenience in code that uses TopicPatternPath::new_from_string
+impl From<TopicPatternError> for MqttClientError {
+	fn from(err: TopicPatternError) -> Self {
+		MqttClientError::Topic(TopicError::Pattern(err))
 	}
 }
 

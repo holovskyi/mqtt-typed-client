@@ -243,7 +243,7 @@ impl CodeGenerator {
 				#(#method_params,)*
 			) -> ::std::result::Result<
 				::mqtt_typed_client::MqttPublisher<#payload_type, F>,
-				::mqtt_typed_client::errors::TopicRouterError,
+				::mqtt_typed_client::TopicError,
 			>
 			where
 				F: ::mqtt_typed_client::MessageSerializer<#payload_type>,

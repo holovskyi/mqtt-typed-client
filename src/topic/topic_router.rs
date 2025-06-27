@@ -56,47 +56,6 @@ impl TopicRouterError {
 			details: details.into(),
 		}
 	}
-
-	/// Returns true if this error indicates a client-side problem
-	pub fn is_client_error(&self) -> bool {
-		match self {
-			| TopicRouterError::InvalidPattern(_) => true,
-			| TopicRouterError::MatchingFailed(_) => true,
-			| TopicRouterError::SubscriptionNotFound { .. } => true,
-			| TopicRouterError::InvalidRoutingTopic { .. } => true,
-			| TopicRouterError::InternalStateCorrupted { .. } => false,
-		}
-	}
-
-	/// Returns true if this error is recoverable through retry
-	pub fn is_retryable(&self) -> bool {
-		match self {
-			| TopicRouterError::InvalidPattern(_) => false,
-			| TopicRouterError::MatchingFailed(matcher_err) => {
-				matcher_err.is_recoverable()
-			}
-			| TopicRouterError::SubscriptionNotFound { .. } => false,
-			| TopicRouterError::InvalidRoutingTopic { .. } => false,
-			| TopicRouterError::InternalStateCorrupted { .. } => false,
-		}
-	}
-
-	/// Returns the error type for categorization
-	pub fn error_type(&self) -> &'static str {
-		match self {
-			| TopicRouterError::InvalidPattern(_) => "invalid_pattern",
-			| TopicRouterError::MatchingFailed(_) => "matching_failed",
-			| TopicRouterError::SubscriptionNotFound { .. } => {
-				"subscription_not_found"
-			}
-			| TopicRouterError::InvalidRoutingTopic { .. } => {
-				"invalid_routing_topic"
-			}
-			| TopicRouterError::InternalStateCorrupted { .. } => {
-				"internal_state_corrupted"
-			}
-		}
-	}
 }
 
 /// A subscription identifier.

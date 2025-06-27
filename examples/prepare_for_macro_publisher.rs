@@ -5,7 +5,7 @@ use mqtt_typed_client::{
 	BincodeSerializer, MessageSerializer, MqttClient, MqttClientError,
 	MqttPublisher,
 	topic::topic_match::TopicMatch,
-	errors::TopicRouterError,
+	TopicError,
 };
 use tokio::time;
 use tracing::{debug, error, info};
@@ -118,7 +118,7 @@ impl SensorReading {
 		sensor_id: u32,
 		room: &str,
 		temp: f32,
-	) -> Result<MqttPublisher<SensorData, F>, TopicRouterError>
+	) -> Result<MqttPublisher<SensorData, F>, TopicError>
 	where
 		F: MessageSerializer<SensorData>,
 	{

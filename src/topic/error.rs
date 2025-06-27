@@ -30,35 +30,6 @@ pub enum TopicError {
 	Router(#[from] TopicRouterError),
 }
 
-impl TopicError {
-	/// Returns true if this error indicates a client-side problem
-	pub fn is_client_error(&self) -> bool {
-		match self {
-			| TopicError::Pattern(_) => true,
-			| TopicError::Matcher(_) => true,
-			| TopicError::Router(router_err) => router_err.is_client_error(),
-		}
-	}
-
-	/// Returns true if this error is recoverable through retry
-	pub fn is_retryable(&self) -> bool {
-		match self {
-			| TopicError::Pattern(_) => false,
-			| TopicError::Matcher(matcher_err) => matcher_err.is_recoverable(),
-			| TopicError::Router(router_err) => router_err.is_retryable(),
-		}
-	}
-
-	/// Returns the underlying error category for logging/monitoring
-	pub fn category(&self) -> &'static str {
-		match self {
-			| TopicError::Pattern(_) => "pattern",
-			| TopicError::Matcher(_) => "matcher",
-			| TopicError::Router(_) => "router",
-		}
-	}
-}
-
 /// Convenient Result type for topic operations
 pub type TopicResult<T> = Result<T, TopicError>;
 

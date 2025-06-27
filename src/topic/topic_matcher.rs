@@ -42,24 +42,6 @@ impl TopicMatcherError {
 			details: details.into(),
 		}
 	}
-
-	/// Returns true if this error is recoverable
-	pub fn is_recoverable(&self) -> bool {
-		match self {
-			| TopicMatcherError::EmptyTopicPath => false,
-			| TopicMatcherError::InvalidSegment { .. } => true,
-			| TopicMatcherError::InvalidUtf8 { .. } => false,
-		}
-	}
-
-	/// Returns the error type for categorization
-	pub fn error_type(&self) -> &'static str {
-		match self {
-			| TopicMatcherError::EmptyTopicPath => "empty_topic_path",
-			| TopicMatcherError::InvalidSegment { .. } => "invalid_segment",
-			| TopicMatcherError::InvalidUtf8 { .. } => "invalid_utf8",
-		}
-	}
 }
 
 /// Node in the topic matching tree that represents a part of the topic path.

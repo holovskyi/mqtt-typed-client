@@ -63,20 +63,6 @@ impl TopicPatternError {
 			usage: usage.into(),
 		}
 	}
-
-	/// Returns true if this error is a validation error (client-side)
-	pub fn is_validation_error(&self) -> bool {
-		true // All pattern errors are validation errors
-	}
-
-	/// Returns the error type for categorization
-	pub fn error_type(&self) -> &'static str {
-		match self {
-			| TopicPatternError::HashPosition { .. } => "hash_position",
-			| TopicPatternError::WildcardUsage { .. } => "wildcard_usage",
-			| TopicPatternError::EmptyTopic => "empty_topic",
-		}
-	}
 }
 
 impl TopicPatternItem {
