@@ -64,6 +64,15 @@
 //! - `+` matches a single topic level (e.g., `sensors/+/temperature`)
 //! - `#` matches multiple topic levels (e.g., `sensors/#`)
 //!
+//! ### Publisher Limitations
+//!
+//! **Note**: Multi-level wildcards (`#`) can only be used for subscriptions,
+//! not for publishing. This is because publishers need to generate specific
+//! topic strings, while `#` represents a variable number of topic segments.
+//!
+//! For patterns containing `#`, use the `mqtt_topic` macro with explicit
+//! `subscriber` mode, or create separate structs for publishing and subscribing.
+//!
 //! ## Custom Serialization
 //!
 //! Implement the `MessageSerializer` trait for custom serialization:

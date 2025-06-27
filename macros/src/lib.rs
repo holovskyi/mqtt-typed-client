@@ -55,6 +55,33 @@
 //! - `+` - Anonymous single-level wildcard (not extracted)
 //! - `#` - Anonymous multi-level wildcard (not extracted, must be last)
 //! - `{param_name:#}` - Named multi-level wildcard (extracted as string)
+//!
+//! ### ⚠️ Publisher Limitations
+//!
+//! **Multi-level wildcards (`#` or `{param:#}`) are not supported for publishers**
+//! because they represent variable-length topic segments that cannot be constructed
+//! from fixed parameters.
+//!
+//! ```rust
+//! // ✅ This works for both subscriber and publisher
+//! #[mqtt_topic("sensors/{sensor_id}/data")]
+//! struct SensorData { sensor_id: u32, payload: f64 }
+//!
+//! // ✅ This works for subscriber only
+//! #[mqtt_topic("alerts/{category}/#", subscriber)]
+//! struct Alert { category: String, payload: String }
+//!
+//! // ❌ This will cause a compile error
+//! #[mqtt_topic("events/{type}/{details:#}")]
+//! struct Event { /* ... */ }
+//! 
+//! // 🔧 Solution: Use separate structs
+//! #[mqtt_topic("events/{type}/{details:#}", subscriber)]  
+//! struct EventReceived { type: String, details: String, payload: Vec<u8> }
+//!
+//! #[mqtt_topic("events/{type}", publisher)]
+//! struct EventToSend { type: String, payload: Vec<u8> }
+//! ```
 
 mod analysis;
 
@@ -359,8 +386,20 @@ fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 	if generate_publisher && topic_pattern.contains_hash() {
 		return Err(syn::Error::new_spanned(
 			&pattern,
-			"Publisher cannot be generated for patterns containing '#' or \
-			 '{param:#}' wildcards. Use subscriber-only mode.",
+			format!(
+				"Cannot generate publisher methods for patterns with '#' wildcards.\n\n\
+				 Solutions:\n\
+				   • Use subscriber-only mode: #[mqtt_topic(\"{}\", subscriber)]\n\
+				   • Create separate structs for different purposes:\n\n\
+				     #[mqtt_topic(\"{}\", subscriber)]\n\
+				     struct EventReceived {{ /* fields */ }}\n\n\
+				     #[mqtt_topic(\"events/{{category}}\", publisher)]\n\
+				     struct EventToSend {{ /* fields */ }}\n\n\
+				 Why: Publishers need concrete topic strings, but '#' represents \n\
+				 variable-length paths that cannot be determined at compile time.",
+				topic_pattern.topic_pattern(),
+				topic_pattern.topic_pattern()
+			),
 		));
 	}
 

@@ -46,7 +46,7 @@ struct SensorData {
 #[tokio::main]
 async fn main() -> Result<()> {
     // Create MQTT client
-    let client = MqttAsyncClient::<BincodeSerializer>::new(
+    let (client, connection) = MqttClient::<BincodeSerializer>::connect(
         "mqtt://broker.hivemq.com:1883"
     ).await?;
 
@@ -75,7 +75,7 @@ async fn main() -> Result<()> {
     }
 
     // Graceful shutdown
-    client.shutdown().await?;
+    connection.shutdown().await?;
     Ok(())
 }
 ```
@@ -157,7 +157,7 @@ where
 }
 
 // Use with your client
-let client = MqttAsyncClient::<JsonSerializer>::new("mqtt://broker.example.com").await?;
+let (client, connection) = MqttClient::<JsonSerializer>::connect("mqtt://broker.example.com").await?;
 ```
 
 ### MessagePack Serializer Example
@@ -217,17 +217,17 @@ let subscriber = client
 
 ```rust
 // With authentication
-let client = MqttAsyncClient::<BincodeSerializer>::new(
+let (client, connection) = MqttClient::<BincodeSerializer>::connect(
     "mqtt://username:password@broker.example.com:1883"
 ).await?;
 
 // With TLS
-let client = MqttAsyncClient::<BincodeSerializer>::new(
+let (client, connection) = MqttClient::<BincodeSerializer>::connect(
     "mqtts://broker.example.com:8883"
 ).await?;
 
 // With client ID
-let client = MqttAsyncClient::<BincodeSerializer>::new(
+let (client, connection) = MqttClient::<BincodeSerializer>::connect(
     "mqtt://broker.example.com:1883?client_id=my-unique-client"
 ).await?;
 ```
@@ -276,6 +276,70 @@ match client.subscribe::<SensorData>("invalid/pattern/+/+").await {
 - Automatic reconnection with exponential backoff
 - Configurable retry limits and timeouts
 - Graceful handling of network interruptions
+
+## Wildcard Limitations
+
+### Publisher Restrictions
+
+Multi-level wildcards (`#`) **cannot be used with publishers** because they represent 
+variable-length topic segments that cannot be constructed from fixed parameters.
+
+```rust
+// ❌ This will cause a compile error
+#[mqtt_topic("events/{category}/#")]
+struct Event { category: String, payload: String }
+
+// ✅ Solution 1: Explicit subscriber mode
+#[mqtt_topic("events/{category}/#", subscriber)]
+struct EventReceived { category: String, payload: String }
+
+// ✅ Solution 2: Separate structs for different purposes
+#[mqtt_topic("events/{category}", publisher)]
+struct EventToPublish { category: String, payload: String }
+
+#[mqtt_topic("events/{category}/#", subscriber)]  
+struct EventReceived { category: String, payload: String }
+```
+
+### Why This Limitation Exists
+
+```rust
+// How would the publisher generate a topic from this?
+#[mqtt_topic("alerts/{severity}/{details:#}")]
+//                              ^^^^^^^^^^^^
+//                              Could be: "building1/floor2"
+//                              Or:       "building1/floor2/room5/sensor3"
+//                              Or:       "any/number/of/segments"
+```
+
+Publishers need to construct **concrete topic strings**, while `#` represents 
+**variable-length paths** that cannot be determined at compile time.
+
+### Helpful Error Messages
+
+The macro provides clear guidance when you encounter this limitation:
+
+```rust
+#[mqtt_topic("alerts/{severity}/{details:#}")]
+struct Alert { severity: String, details: String, payload: String }
+```
+
+```
+error: Cannot generate publisher methods for patterns with '#' wildcards.
+
+ Solutions:
+   • Use subscriber-only mode: #[mqtt_topic("alerts/{severity}/{details:#}", subscriber)]
+   • Create separate structs for different purposes:
+
+     #[mqtt_topic("alerts/{severity}/{details:#}", subscriber)]
+     struct AlertReceived { /* fields */ }
+
+     #[mqtt_topic("alerts/{severity}", publisher)]
+     struct AlertToSend { /* fields */ }
+
+ Why: Publishers need concrete topic strings, but '#' represents 
+ variable-length paths that cannot be determined at compile time.
+```
 
 ## Examples
 
