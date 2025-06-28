@@ -60,21 +60,16 @@ impl CodeGenerator {
 			} else {
 				(quote! {}, quote! {})
 			};
-		let publisher_methods = if self.should_generate_publisher() {
-			self.generate_publisher_methods(struct_name)?
-		} else {
-			quote! {}
-		};
-		let publisher_constructor = if self.should_generate_publisher() {
-			self.generate_publisher_constructor()
-		} else {
-			quote! {}
-		};
-		let publisher_builder_impl = if self.should_generate_publisher() {
-			self.generate_publisher_builder_impl(struct_name)?
-		} else {
-			quote! {}
-		};
+		let (publisher_methods, publisher_constructor, publisher_builder_impl) =
+			if self.should_generate_publisher() {
+				let publisher_methods = self.generate_publisher_methods(struct_name)?;
+				let publisher_constructor = self.generate_publisher_constructor();
+				let publisher_builder_impl = self.generate_publisher_builder_impl(struct_name)?;
+				(publisher_methods, publisher_constructor, publisher_builder_impl)
+			} else {
+				(quote! {}, quote! {}, quote! {})
+			};
+		
 		let constants = self.generate_constants();
 		let builder_methods = Self::generate_builder_methods();
 		
