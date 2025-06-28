@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::fmt::{self, Display, Write};
 use std::slice::Iter;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -32,16 +33,16 @@ pub enum TopicPatternError {
 		"Invalid topic pattern '{pattern}': # wildcard can only be the last \
 		 segment"
 	)]
-	HashPosition { 
+	HashPosition {
 		/// The invalid pattern
-		pattern: String 
+		pattern: String,
 	},
 
 	/// Wildcard characters (+ or #) used incorrectly
 	#[error("Invalid wildcard usage: {usage}")]
-	WildcardUsage { 
+	WildcardUsage {
 		/// Description of invalid usage
-		usage: String 
+		usage: String,
 	},
 
 	/// Empty topic is not valid
@@ -50,10 +51,9 @@ pub enum TopicPatternError {
 
 	/// Topic pattern structure mismatch when trying to use compatible pattern
 	#[error(
-		"Topic pattern structure mismatch.\n\
-		 Original: '{original}'\n\
-		 Custom:   '{custom}'\n\
-		 Hint: Both patterns must have the same parameter structure (same wildcards in same positions)"
+		"Topic pattern structure mismatch.\nOriginal: '{original}'\nCustom:   \
+		 '{custom}'\nHint: Both patterns must have the same parameter \
+		 structure (same wildcards in same positions)"
 	)]
 	PatternStructureMismatch {
 		/// Original pattern from the struct
@@ -91,9 +91,37 @@ impl TopicPatternError {
 }
 
 impl From<std::convert::Infallible> for TopicPatternError {
-    fn from(_: std::convert::Infallible) -> Self {
-        unreachable!("Infallible can never be constructed")
-    }
+	fn from(_: std::convert::Infallible) -> Self {
+		unreachable!("Infallible can never be constructed")
+	}
+}
+
+/// Error types for formatting topics with parameters
+#[derive(Error, Debug)]
+pub enum TopicFormatError {
+	/// Attempted to format a topic with a hash wildcard (#) which is not allowed
+	#[error("Cannot format topic with # wildcard for publishing")]
+	HashWildcardNotSupported,
+
+	/// Parameter count mismatch when formatting a topic
+	#[error(
+		"Parameter count mismatch: expected {expected}, provided {provided}"
+	)]
+	ParameterCountMismatch {
+		/// Expected number of parameters
+		expected: usize,
+		/// Number of parameters actually provided
+		provided: usize,
+	},
+	/// Error during formatting, e.g. invalid parameter type
+	#[error("Error formatting topic: {0}")]
+	FormatError(fmt::Error),
+}
+
+impl From<fmt::Error> for TopicFormatError {
+	fn from(err: fmt::Error) -> Self {
+		TopicFormatError::FormatError(err)
+	}
 }
 
 impl TopicPatternItem {
@@ -189,7 +217,7 @@ pub struct TopicPatternPath {
 	mqtt_topic_subscription: ArcStr, // mqtt topic pattern with wildcards "sensors/+/data"
 	segments: Vec<TopicPatternItem>,
 	/// Optional LRU cache for topic match results.
-	/// 
+	///
 	/// Uses `Mutex` instead of `RefCell` for interior mutability because:
 	/// 1. This struct needs to be `Send + Sync` to work in the actor-based subscription manager
 	/// 2. Although used in single-threaded actor context, `RefCell` is not `Send`
@@ -199,19 +227,19 @@ pub struct TopicPatternPath {
 }
 
 impl Clone for TopicPatternPath {
-    fn clone(&self) -> Self {
-        Self {
-            template_pattern: self.template_pattern.clone(), 
-            mqtt_topic_subscription: self.mqtt_topic_subscription.clone(), 
-            segments: self.segments.clone(),
-            match_cache: self.match_cache.as_ref().map(|cache| {
-                let cache_guard = cache.lock().unwrap();
-                let capacity = cache_guard.cap();
-                drop(cache_guard);
-                Mutex::new(LruCache::new(capacity))
-            }),
-        }
-    }
+	fn clone(&self) -> Self {
+		Self {
+			template_pattern: self.template_pattern.clone(),
+			mqtt_topic_subscription: self.mqtt_topic_subscription.clone(),
+			segments: self.segments.clone(),
+			match_cache: self.match_cache.as_ref().map(|cache| {
+				let cache_guard = cache.lock().unwrap();
+				let capacity = cache_guard.cap();
+				drop(cache_guard);
+				Mutex::new(LruCache::new(capacity))
+			}),
+		}
+	}
 }
 
 impl TopicPatternPath {
@@ -344,6 +372,44 @@ impl TopicPatternPath {
 		&self.segments
 	}
 
+	/// Formats topic by substituting wildcards with provided parameters
+	pub fn format_topic(
+		&self,
+		params: &[&dyn Display],
+	) -> Result<String, TopicFormatError> {
+		let wildcard_count =
+			self.segments.iter().filter(|s| s.is_wildcard()).count();
+
+		if params.len() != wildcard_count {
+			return Err(TopicFormatError::ParameterCountMismatch {
+				expected: wildcard_count,
+				provided: params.len(),
+			});
+		}
+
+		let mut result = String::with_capacity(self.topic_pattern().len() + 10); //Est.
+		let mut param_index = 0;
+
+		for (i, segment) in self.segments.iter().enumerate() {
+			if i > 0 {
+				result.push('/');
+			}
+
+			match segment {
+				| TopicPatternItem::Str(s) => result.push_str(s),
+				| TopicPatternItem::Plus(_) => {
+					write!(result, "{}", params[param_index])?;
+					param_index += 1;
+				}
+				| TopicPatternItem::Hash(_) => {
+					return Err(TopicFormatError::HashWildcardNotSupported);
+				}
+			}
+		}
+
+		Ok(result)
+	}
+
 	fn to_mqtt_subscription_pattern(segments: &[TopicPatternItem]) -> String {
 		// Convert to MQTT wildcards: sensors/+/data
 		if segments.is_empty() {
@@ -376,37 +442,34 @@ impl TopicPatternPath {
 	}
 
 	/// Creates a new pattern with custom template if wildcard structures match
-	/// 
+	///
 	/// Static segments can differ, but wildcards must be identical in type,
 	/// order, and names (if named).
 	pub fn with_compatible_pattern(
 		&self,
 		custom_topic: impl TryInto<TopicPatternPath, Error: Into<TopicPatternError>>,
 	) -> Result<Self, TopicPatternError> {
-
-		let candidate = custom_topic
-			.try_into()
-			.map_err(Into::into)?;
+		let candidate = custom_topic.try_into().map_err(Into::into)?;
 		// Validate wildcard structure compatibility
-		let self_wildcards = self.segments.iter().filter(|item| item.is_wildcard());
-		let candidate_wildcards = candidate.segments.iter().filter(|item| item.is_wildcard());
-		
+		let self_wildcards =
+			self.segments.iter().filter(|item| item.is_wildcard());
+		let candidate_wildcards =
+			candidate.segments.iter().filter(|item| item.is_wildcard());
+
 		if !self_wildcards.eq(candidate_wildcards) {
 			return Err(TopicPatternError::pattern_mismatch(
 				self.template_pattern.as_str(),
 				candidate.template_pattern.as_str(),
 			));
 		}
-		
+
 		Ok(candidate)
 	}
 
 	/// Create new pattern with different cache strategy
 	pub fn with_cache_strategy(&self, new_cache: CacheStrategy) -> Self {
-		Self::new_from_string(
-			self.template_pattern.clone(),
-			new_cache,
-		).expect("Pattern already validated")
+		Self::new_from_string(self.template_pattern.clone(), new_cache)
+			.expect("Pattern already validated")
 	}
 
 	/// Matches topic path against this pattern, extracting parameters.
@@ -506,29 +569,28 @@ impl std::fmt::Display for TopicPatternPath {
 }
 
 impl TryFrom<String> for TopicPatternPath {
-    type Error = TopicPatternError;
+	type Error = TopicPatternError;
 
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        Self::new_from_string(value, CacheStrategy::NoCache)
-    }
+	fn try_from(value: String) -> Result<Self, Self::Error> {
+		Self::new_from_string(value, CacheStrategy::NoCache)
+	}
 }
 
 impl TryFrom<&str> for TopicPatternPath {
-    type Error = TopicPatternError;
+	type Error = TopicPatternError;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::new_from_string(value, CacheStrategy::NoCache)
-    }
+	fn try_from(value: &str) -> Result<Self, Self::Error> {
+		Self::new_from_string(value, CacheStrategy::NoCache)
+	}
 }
 
 impl TryFrom<ArcStr> for TopicPatternPath {
-    type Error = TopicPatternError;
+	type Error = TopicPatternError;
 
-    fn try_from(value: ArcStr) -> Result<Self, Self::Error> {
-        Self::new_from_string(value, CacheStrategy::NoCache)
-    }
+	fn try_from(value: ArcStr) -> Result<Self, Self::Error> {
+		Self::new_from_string(value, CacheStrategy::NoCache)
+	}
 }
-
 
 #[cfg(test)]
 mod tests {
