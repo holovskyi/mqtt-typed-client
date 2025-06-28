@@ -14,6 +14,16 @@ pub struct SubscriptionBuilder<MessageType> {
 	_phantom: PhantomData<MessageType>,
 }
 
+impl<MessageType> Clone for SubscriptionBuilder<MessageType> {
+    fn clone(&self) -> Self {
+        Self {
+            pattern: self.pattern.clone(),
+            config: self.config.clone(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
 impl<MessageType> SubscriptionBuilder<MessageType> {
 	/// Create new builder with default pattern
 	pub fn new(default_pattern: TopicPatternPath) -> Self {

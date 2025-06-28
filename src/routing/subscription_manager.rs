@@ -60,7 +60,7 @@ impl Default for CacheStrategy {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SubscriptionConfig {
 	pub qos: rumqttc::QoS,
 }

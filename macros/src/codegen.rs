@@ -65,12 +65,14 @@ impl CodeGenerator {
 			quote! {}
 		};
 		let constants = self.generate_constants();
+		let builder_methods = Self::generate_builder_methods();
 		let struct_name = &input_struct.ident;
 		Ok(quote! {
 			#input_struct
 			#from_mqtt_impl
 			impl #struct_name {
 				#constants
+				#builder_methods
 				#subscriber_methods
 				#publisher_methods
 			}
@@ -106,12 +108,35 @@ impl CodeGenerator {
 		})
 	}
 
+	/// Generate default pattern and subscription builder methods
+	fn generate_builder_methods() -> proc_macro2::TokenStream {
+		quote! {
+			/// Get default topic pattern for this message type
+			pub fn default_pattern() -> &'static ::mqtt_typed_client::TopicPatternPath {
+				use std::sync::OnceLock;
+				static PATTERN: OnceLock<::mqtt_typed_client::TopicPatternPath> = OnceLock::new();
+				PATTERN.get_or_init(|| {
+					::mqtt_typed_client::TopicPatternPath::new_from_string(
+						Self::TOPIC_PATTERN,
+						::mqtt_typed_client::CacheStrategy::NoCache
+					).expect("Built-in pattern must be valid")
+				})
+			}
+
+			/// Create subscription builder with default configuration
+			pub fn subscription() -> ::mqtt_typed_client::SubscriptionBuilder<Self> {
+				::mqtt_typed_client::SubscriptionBuilder::new(
+					Self::default_pattern().clone()
+				)
+			}
+		}
+	}
+
 	/// Generate topic pattern constants
 	fn generate_constants(&self) -> proc_macro2::TokenStream {
 		let topic_pattern = &self.macro_args.pattern;
 		let topic_pattern_literal = topic_pattern.topic_pattern().to_string();
 		let mqtt_pattern_literal = topic_pattern.mqtt_pattern().to_string();
-		// TODO куда всунуть настройку кеширования для TopicPatternPath?
 		quote! {
 				pub const TOPIC_PATTERN: &'static str = #topic_pattern_literal;
 				pub const MQTT_PATTERN: &'static str = #mqtt_pattern_literal;
@@ -136,90 +161,7 @@ impl CodeGenerator {
 					+ ::std::marker::Sync
 					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
 			{
-				Self::subscribe_with_config(
-					client,
-					::mqtt_typed_client::SubscriptionConfig::default(),
-				).await
-			}
-			
-			/// Subscribe with custom configuration
-			pub async fn subscribe_with_config<F>(
-				client: &::mqtt_typed_client::MqttClient<F>,
-				config: ::mqtt_typed_client::SubscriptionConfig,
-			) -> ::std::result::Result<
-				::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
-				::mqtt_typed_client::MqttClientError,
-			>
-			where
-				F: ::std::default::Default
-					+ ::std::clone::Clone
-					+ ::std::marker::Send
-					+ ::std::marker::Sync
-					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
-			{
-				let subscriber = client.subscribe_with_config::<#payload_type>(
-					Self::MQTT_PATTERN,
-					config,
-				).await?;
-				Ok(::mqtt_typed_client::MqttTopicSubscriber::new(subscriber))
-			}
-			
-			/// Subscribe using custom topic pattern
-			pub async fn subscribe_pattern<F>(
-				client: &::mqtt_typed_client::MqttClient<F>,
-				custom_pattern: impl TryInto<::mqtt_typed_client::TopicPatternPath, Error: Into<::mqtt_typed_client::MqttClientError>>,
-			) -> ::std::result::Result<
-				::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
-				::mqtt_typed_client::MqttClientError,
-			>
-			where
-				F: ::std::default::Default
-					+ ::std::clone::Clone
-					+ ::std::marker::Send
-					+ ::std::marker::Sync
-					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
-			{
-				Self::subscribe_pattern_with_config(
-					client,
-					custom_pattern,
-					::mqtt_typed_client::SubscriptionConfig::default(),
-				).await
-			}
-			
-			/// Subscribe using custom pattern with configuration
-			pub async fn subscribe_pattern_with_config<F>(
-				client: &::mqtt_typed_client::MqttClient<F>,
-				custom_pattern: impl TryInto<::mqtt_typed_client::TopicPatternPath, Error: Into<::mqtt_typed_client::MqttClientError>>,
-				config: ::mqtt_typed_client::SubscriptionConfig,
-			) -> ::std::result::Result<
-				::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
-				::mqtt_typed_client::MqttClientError,
-			>
-			where
-				F: ::std::default::Default
-					+ ::std::clone::Clone
-					+ ::std::marker::Send
-					+ ::std::marker::Sync
-					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
-			{
-				let custom_topic_pattern = custom_pattern.try_into()
-					.map_err(Into::into)?;
-
-				let base_pattern = ::mqtt_typed_client::TopicPatternPath::new_from_string(
-					Self::MQTT_PATTERN,
-					::mqtt_typed_client::CacheStrategy::NoCache,
-				).map_err(::mqtt_typed_client::MqttClientError::topic_pattern)?;
-				
-				let validated_topic_pattern = base_pattern.with_compatible_pattern(
-					custom_topic_pattern,
-				).map_err(::mqtt_typed_client::MqttClientError::topic_pattern)?;
-				
-				let subscriber = client.subscribe_with_config::<#payload_type>(
-					validated_topic_pattern,
-					config,
-				).await?;
-				
-				Ok(::mqtt_typed_client::MqttTopicSubscriber::new(subscriber))
+				Self::subscription().subscribe(client).await
 			}
 		}
 	}

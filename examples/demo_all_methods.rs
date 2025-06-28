@@ -1,115 +1,164 @@
-//! Complete test demonstrating all new subscription methods
+//! Complete test demonstrating new builder-based subscription API
 //!
-//! This shows how to use all four subscription methods with the mqtt_topic macro
-
+//! This shows how to use the new builder pattern with mqtt_topic macro
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, MqttClient, SubscriptionConfig, QoS};
+use mqtt_typed_client::{
+	BincodeSerializer, MqttClient, QoS, SubscriptionConfig,
+};
 use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]
 struct SensorReading {
-    temperature: f64,
-    humidity: f64,
-    timestamp: u64,
+	temperature: f64,
+	humidity: f64,
+	timestamp: u64,
 }
 
 #[allow(dead_code)]
 #[mqtt_topic("sensors/{building}/{floor}/temp/{sensor_id}")]
 #[derive(Debug)]
 struct TemperatureSensor {
-    building: String,
-    floor: u32,
-    sensor_id: String,
-    payload: SensorReading,
+	building: String,
+	floor: u32,
+	sensor_id: String,
+	payload: SensorReading,
 }
 
-async fn demonstrate_subscription_methods() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🧪 Demonstrating all subscription methods");
-    
-    // This would work with a real MQTT broker:
-    let (client, connection) = MqttClient::<BincodeSerializer>::connect(
-        "mqtt://broker.hivemq.com:1883?client_id=test_patterns"
-    ).await?;
-    
-    println!("📋 Available subscription methods:");
-    
-    // Method 1: Basic subscription (default config)
-    println!("1️⃣  Basic: subscribe()");
-    let _basic_subscriber = TemperatureSensor::subscribe(&client).await?;
-    println!("    ✅ Subscribed to: {}", TemperatureSensor::MQTT_PATTERN);
-    
-    // Method 2: Subscription with custom config
-    println!("2️⃣  With config: subscribe_with_config()");
-    let high_performance_config = SubscriptionConfig {
-        qos: QoS::ExactlyOnce,
-        //TODO cache_strategy: CacheStrategy::Lru(NonZeroUsize::new(1000).unwrap()),
-    };
-    let _config_subscriber = TemperatureSensor::subscribe_with_config(
-        &client, 
-        high_performance_config
-    ).await?;
-    println!("    ✅ Subscribed with QoS::ExactlyOnce and LRU cache");
-    
-    // Method 3: Custom pattern with default config
-    println!("3️⃣  Custom pattern: subscribe_pattern()");
-    let _pattern_subscriber = TemperatureSensor::subscribe_to_custom_topic(
-        &client,
-        "data/{building}/{floor}/temperature/{sensor_id}"
-    ).await?;
-    println!("    ✅ Subscribed to custom pattern: data/+/+/temperature/+");
-    
-    // Method 4: Custom pattern with custom config
-    println!("4️⃣  Full control: subscribe_pattern_with_config()");
-    let enterprise_config = SubscriptionConfig {
-        qos: QoS::ExactlyOnce,
-        //TODO cache_strategy: CacheStrategy::Lru(NonZeroUsize::new(2000).unwrap()),
-    };
-    let _full_subscriber = TemperatureSensor::subscribe_to_custom_topic_with_config(
-        &client,
-        "iot/{building}/{floor}/temp/{sensor_id}",
-        enterprise_config
-    ).await?;
-    println!("    ✅ Custom pattern + custom config: iot/+/+/temp/+");
-    
-    // Method 5: This would fail - incompatible pattern
-    println!("5️⃣  Testing validation (should fail):");
-    let invalid_result = TemperatureSensor::subscribe_to_custom_topic(
-        &client,
-        "wrong/{floor}/{building}/temp/{sensor_id}"  // Wrong parameter order
-    ).await;
-    
-    match invalid_result {
-        Err(e) => println!("    ✅ Correctly rejected invalid pattern: {}", e),
-        Ok(_) => panic!("Should have failed!"),
-    }
-    
-    connection.shutdown().await?;
-    
-    // For this test, just verify method signatures exist and are callable
-    println!("📋 Verifying method signatures:");
-    println!("✅ subscribe() - available");
-    println!("✅ subscribe_with_config() - available");  
-    println!("✅ subscribe_pattern() - available");
-    println!("✅ subscribe_pattern_with_config() - available");
-    
-    // Test constants
-    println!("📊 Pattern constants:");
-    println!("   TOPIC_PATTERN: {}", TemperatureSensor::TOPIC_PATTERN);
-    println!("   MQTT_PATTERN:  {}", TemperatureSensor::MQTT_PATTERN);
-    
-    // Test publisher methods are still available
-    println!("📤 Publisher methods:");
-    println!("✅ publish() - available");
-    println!("✅ get_publisher() - available");
-    
-    Ok(())
+async fn demonstrate_builder_api() -> Result<(), Box<dyn std::error::Error>> {
+	println!("🧪 Demonstrating new builder-based subscription API");
+
+	// This would work with a real MQTT broker:
+	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
+		"mqtt://broker.hivemq.com:1883?client_id=test_builder",
+	)
+	.await?;
+
+	println!("📋 New subscription methods:");
+
+	// Method 1: Simple subscription (unchanged for backward compatibility)
+	println!("1️⃣  Simple: TemperatureSensor::subscribe()");
+	let _simple_subscriber = TemperatureSensor::subscribe(&client).await?;
+	println!("    ✅ Subscribed to: {}", TemperatureSensor::MQTT_PATTERN);
+
+	// Method 2: Builder with cache
+	println!("2️⃣  Builder with cache: subscription().with_cache(1000)");
+	let _cached_subscriber = TemperatureSensor::subscription()
+		.with_cache(1000)
+		.subscribe(&client)
+		.await?;
+	println!("    ✅ Subscribed with LRU cache (1000 entries)");
+
+	// Method 3: Builder with QoS
+	println!("3️⃣  Builder with QoS: subscription().with_qos(ExactlyOnce)");
+	let _qos_subscriber = TemperatureSensor::subscription()
+		.with_qos(QoS::ExactlyOnce)
+		.subscribe(&client)
+		.await?;
+	println!("    ✅ Subscribed with QoS::ExactlyOnce");
+
+	// Method 4: Builder with full config
+	println!("4️⃣  Builder with config: subscription().with_config()");
+	let config = SubscriptionConfig {
+		qos: QoS::ExactlyOnce,
+	};
+	let _config_subscriber = TemperatureSensor::subscription()
+		.with_config(config)
+		.subscribe(&client)
+		.await?;
+	println!("    ✅ Subscribed with custom SubscriptionConfig");
+
+	// Method 5: Builder with custom pattern
+	println!("5️⃣  Builder with custom pattern: subscription().with_pattern()");
+	let _pattern_subscriber = TemperatureSensor::subscription()
+		.with_pattern("data/{building}/{floor}/temperature/{sensor_id}")?
+		.subscribe(&client)
+		.await?;
+	println!("    ✅ Subscribed to custom pattern: data/+/+/temperature/+");
+
+	// Method 6: Builder chain (everything together)
+	println!(
+		"6️⃣  Full builder chain: \
+		 subscription().with_cache().with_qos().with_pattern()"
+	);
+	let _full_subscriber = TemperatureSensor::subscription()
+		.with_cache(500)
+		.with_qos(QoS::ExactlyOnce)
+		.with_pattern("iot/{building}/{floor}/temp/{sensor_id}")?
+		.subscribe(&client)
+		.await?;
+	println!("    ✅ Full chain: cache + QoS + custom pattern");
+
+	// Method 7: Reusable builder template
+	println!("7️⃣  Reusable builder template");
+	let high_performance_template = TemperatureSensor::subscription()
+		.with_cache(1000)
+		.with_qos(QoS::ExactlyOnce);
+
+	let _building_a_subscriber = high_performance_template
+		.clone()
+		.with_pattern("building_a/{building}/{floor}/temp/{sensor_id}")?
+		.subscribe(&client)
+		.await?;
+
+	let _building_b_subscriber = high_performance_template
+		.clone()
+		.with_pattern("building_b/{building}/{floor}/temp/{sensor_id}")?
+		.subscribe(&client)
+		.await?;
+
+	println!("    ✅ Template reused for multiple patterns");
+
+	// Method 8: Testing validation (should fail)
+	println!("8️⃣  Testing pattern validation (should fail):");
+	let invalid_result = match TemperatureSensor::subscription()
+		.with_pattern("wrong/{floor}/{building}/temp/{sensor_id}")
+	{
+		| Ok(builder) => builder.subscribe(&client).await,
+		| Err(e) => Err(e),
+	};
+	match invalid_result {
+		| Err(e) => {
+			println!("    ✅ Correctly rejected invalid pattern: {}", e)
+		}
+		| Ok(_) => panic!("Should have failed!"),
+	}
+
+	connection.shutdown().await?;
+
+	Ok(())
+}
+
+async fn demonstrate_generated_methods()
+-> Result<(), Box<dyn std::error::Error>> {
+	println!("\n🔍 Testing generated methods:");
+
+	// Test constants (unchanged)
+	println!("📊 Pattern constants:");
+	println!("   TOPIC_PATTERN: {}", TemperatureSensor::TOPIC_PATTERN);
+	println!("   MQTT_PATTERN:  {}", TemperatureSensor::MQTT_PATTERN);
+
+	// Test new methods
+	println!("🆕 New methods:");
+	let default_pattern = TemperatureSensor::default_pattern();
+	println!("   default_pattern(): {}", default_pattern.topic_pattern());
+
+	let _builder = TemperatureSensor::subscription();
+	println!("   subscription(): builder created ✅");
+
+	// Test publisher methods (unchanged)
+	println!("📤 Publisher methods (unchanged):");
+	println!("✅ publish() - available");
+	println!("✅ get_publisher() - available");
+
+	Ok(())
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    demonstrate_subscription_methods().await?;
-    println!("🎉 All methods demonstrated successfully!");
-    Ok(())
+	demonstrate_builder_api().await?;
+	demonstrate_generated_methods().await?;
+	println!("\n🎉 New builder API demonstrated successfully!");
+	Ok(())
 }
