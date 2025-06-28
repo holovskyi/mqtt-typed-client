@@ -9,6 +9,8 @@ pub mod async_client;
 pub mod error;
 /// Typed MQTT publishers
 pub mod publisher;
+/// Publisher builder for flexible configuration
+pub mod publisher_builder;
 /// Typed MQTT subscribers
 pub mod subscriber;
 /// Subscription builder for flexible configuration
@@ -20,6 +22,7 @@ pub use async_client::MqttClient;
 pub use error::MqttClientError;
 pub use config::{MqttClientConfig, ClientSettings};
 pub use publisher::MqttPublisher;
+pub use publisher_builder::PublisherBuilder;
 pub use subscriber::MqttSubscriber;
 pub use subscription_builder::SubscriptionBuilder;
 

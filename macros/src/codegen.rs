@@ -50,32 +50,45 @@ impl CodeGenerator {
 		&self,
 		input_struct: &syn::DeriveInput,
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
+		let struct_name = &input_struct.ident;
 		let (from_mqtt_impl, subscriber_methods) =
 			if self.should_generate_subscriber() {
 				let from_mqtt_impl =
-					self.generate_from_mqtt_impl(&input_struct.ident)?;
+					self.generate_from_mqtt_impl(struct_name)?;
 				let subscriber_methods = self.generate_helper_methods();
 				(from_mqtt_impl, subscriber_methods)
 			} else {
 				(quote! {}, quote! {})
 			};
 		let publisher_methods = if self.should_generate_publisher() {
-			self.generate_publisher_methods()?
+			self.generate_publisher_methods(struct_name)?
+		} else {
+			quote! {}
+		};
+		let publisher_constructor = if self.should_generate_publisher() {
+			self.generate_publisher_constructor()
+		} else {
+			quote! {}
+		};
+		let publisher_builder_impl = if self.should_generate_publisher() {
+			self.generate_publisher_builder_impl(struct_name)?
 		} else {
 			quote! {}
 		};
 		let constants = self.generate_constants();
 		let builder_methods = Self::generate_builder_methods();
-		let struct_name = &input_struct.ident;
+		
 		Ok(quote! {
 			#input_struct
 			#from_mqtt_impl
 			impl #struct_name {
 				#constants
 				#builder_methods
+				#publisher_constructor
 				#subscriber_methods
 				#publisher_methods
 			}
+			#publisher_builder_impl
 		})
 	}
 
@@ -132,6 +145,90 @@ impl CodeGenerator {
 		}
 	}
 
+	/// Generate publisher builder constructor
+	fn generate_publisher_constructor(&self) -> proc_macro2::TokenStream {
+		quote! {
+			/// Create publisher builder with default configuration
+			pub fn publisher() -> ::mqtt_typed_client::PublisherBuilder<Self> {
+				::mqtt_typed_client::PublisherBuilder::new(
+					Self::default_pattern().clone()
+				)
+			}
+		}
+	}
+
+	/// Generate extension trait for PublisherBuilder
+	fn generate_publisher_builder_impl(
+		&self,
+		struct_name: &syn::Ident,
+	) -> Result<proc_macro2::TokenStream, syn::Error> {
+		let payload_type = self.get_payload_type_token();
+		let method_params = self.get_publisher_method_params();
+		let (format_string, format_args) = self.get_topic_format_and_args();
+		let trait_name = format_ident!("{}PublisherExt", struct_name);
+
+		Ok(quote! {
+			/// Extension trait for PublisherBuilder with type-specific methods
+			pub trait #trait_name {
+				/// Publish message using builder configuration
+				async fn publish<F>(
+					&self,
+					client: &::mqtt_typed_client::MqttClient<F>,
+					#(#method_params,)*
+					data: &#payload_type,
+				) -> ::std::result::Result<(), ::mqtt_typed_client::MqttClientError>
+				where
+					F: ::mqtt_typed_client::MessageSerializer<#payload_type>;
+
+				/// Get configured publisher
+				fn get_publisher<F>(
+					&self,
+					client: &::mqtt_typed_client::MqttClient<F>,
+					#(#method_params,)*
+				) -> ::std::result::Result<
+					::mqtt_typed_client::MqttPublisher<#payload_type, F>,
+					::mqtt_typed_client::TopicError,
+				>
+				where
+					F: ::mqtt_typed_client::MessageSerializer<#payload_type>;
+			}
+
+			impl #trait_name for ::mqtt_typed_client::PublisherBuilder<#struct_name> {
+				async fn publish<F>(
+					&self,
+					client: &::mqtt_typed_client::MqttClient<F>,
+					#(#method_params,)*
+					data: &#payload_type,
+				) -> ::std::result::Result<(), ::mqtt_typed_client::MqttClientError>
+				where
+					F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
+				{
+					let topic = format!(#format_string #(, #format_args)*);
+					let publisher = client.get_publisher::<#payload_type>(&topic)?
+						.with_qos(self.qos())
+						.with_retain(self.retain());
+					publisher.publish(data).await
+				}
+
+				fn get_publisher<F>(
+					&self,
+					client: &::mqtt_typed_client::MqttClient<F>,
+					#(#method_params,)*
+				) -> ::std::result::Result<
+					::mqtt_typed_client::MqttPublisher<#payload_type, F>,
+					::mqtt_typed_client::TopicError,
+				>
+				where
+					F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
+				{
+					let topic = format!(#format_string #(, #format_args)*);
+					client.get_publisher::<#payload_type>(&topic)
+						.map(|p| p.with_qos(self.qos()).with_retain(self.retain()))
+				}
+			}
+		})
+	}
+
 	/// Generate topic pattern constants
 	fn generate_constants(&self) -> proc_macro2::TokenStream {
 		let topic_pattern = &self.macro_args.pattern;
@@ -169,10 +266,21 @@ impl CodeGenerator {
 	/// Generate publisher methods
 	fn generate_publisher_methods(
 		&self,
+		struct_name: &syn::Ident,
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
 		let payload_type = self.get_payload_type_token();
 		let method_params = self.get_publisher_method_params();
-		let (format_string, format_args) = self.get_topic_format_and_args();
+		let param_args: Vec<_> = self
+			.context
+			.topic_params
+			.iter()
+			.map(|param| {
+				let param_name = param.get_publisher_param_name();
+				let param_ident = format_ident!("{}", param_name);
+				quote! { #param_ident }
+			})
+			.collect();
+		let trait_name = format_ident!("{}PublisherExt", struct_name);
 
 		Ok(quote! {
 			/// Publish message to this topic
@@ -184,8 +292,8 @@ impl CodeGenerator {
 			where
 				F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
 			{
-				let publisher = Self::get_publisher(client #(, #format_args)*)?;
-				publisher.publish(data).await
+				use #trait_name;
+				Self::publisher().publish(client #(, #param_args)*, data).await
 			}
 
 			/// Get publisher for this topic
@@ -199,8 +307,8 @@ impl CodeGenerator {
 			where
 				F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
 			{
-				let topic = format!(#format_string #(, #format_args)*);
-				client.get_publisher::<#payload_type>(&topic)
+				use #trait_name;
+				Self::publisher().get_publisher(client #(, #param_args)*)
 			}
 		})
 	}
@@ -343,6 +451,4 @@ impl CodeGenerator {
 			.map(|ty| quote! { #ty })
 			.unwrap_or_else(|| quote! { Vec<u8> })
 	}
-
-
 }
