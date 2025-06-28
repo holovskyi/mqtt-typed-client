@@ -385,6 +385,14 @@ impl TopicPatternPath {
 		Ok(candidate)
 	}
 
+	/// Create new pattern with different cache strategy
+	pub fn with_cache_strategy(&self, new_cache: CacheStrategy) -> Self {
+		Self::new_from_string(
+			self.template_pattern.clone(),
+			new_cache,
+		).expect("Pattern already validated")
+	}
+
 	/// Matches topic path against this pattern, extracting parameters.
 	pub fn try_match(
 		&self,

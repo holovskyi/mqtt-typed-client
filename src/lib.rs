@@ -144,7 +144,7 @@ pub use rumqttc::QoS;
 pub use routing::{CacheStrategy, SubscriptionConfig};
 
 // High-level typed publishers and subscribers
-pub use client::{MqttPublisher, MqttSubscriber};
+pub use client::{MqttPublisher, MqttSubscriber, SubscriptionBuilder};
 
 // Topic pattern types (for manual pattern handling)
 pub use topic::{TopicPatternPath, TopicPatternError, TopicError};
@@ -165,7 +165,7 @@ pub mod prelude {
 
 	pub use crate::{
 		BincodeSerializer, MqttClient, MqttClientConfig, ClientSettings, MqttClientError,
-		MqttConnection, MessageSerializer, MqttOptions, QoS, Result,
+		MqttConnection, MessageSerializer, MqttOptions, QoS, Result, SubscriptionBuilder,
 	};
 }
 
