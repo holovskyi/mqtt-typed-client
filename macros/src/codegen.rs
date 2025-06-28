@@ -113,33 +113,16 @@ impl CodeGenerator {
 		let mqtt_pattern_literal = topic_pattern.mqtt_pattern().to_string();
 		// TODO куда всунуть настройку кеширования для TopicPatternPath?
 		quote! {
-				/// The original topic pattern with named parameters (e.g., "sensors/{sensor_id}/data")
 				pub const TOPIC_PATTERN: &'static str = #topic_pattern_literal;
-
-				/// The MQTT subscription pattern with wildcards (e.g., "sensors/+/data")
 				pub const MQTT_PATTERN: &'static str = #mqtt_pattern_literal;
 		}
 	}
 	/// Generate helper methods for subscription
-	///
-	/// Creates all subscription methods:
-	/// - `subscribe()`: Basic subscription with default config
-	/// - `subscribe_with_config()`: Subscription with custom config
-	/// - `subscribe_pattern()`: Custom pattern with default config
-	/// - `subscribe_pattern_with_config()`: Custom pattern with custom config
 	fn generate_helper_methods(&self) -> proc_macro2::TokenStream {
 		let payload_type = self.get_payload_type_token();
 
 		quote! {
-			/// Subscribe to this topic pattern using default configuration
-			///
-			/// Uses the pattern defined in the macro with default QoS and no caching.
-			///
-			/// # Arguments
-			/// * `client` - The MQTT client to use for subscription
-			///
-			/// # Returns
-			/// A structured subscriber that yields instances of this struct
+			/// Subscribe with default configuration
 			pub async fn subscribe<F>(
 				client: &::mqtt_typed_client::MqttClient<F>,
 			) -> ::std::result::Result<
@@ -159,16 +142,7 @@ impl CodeGenerator {
 				).await
 			}
 			
-			/// Subscribe to this topic pattern with custom configuration
-			///
-			/// Allows specifying QoS level and caching strategy.
-			///
-			/// # Arguments
-			/// * `client` - The MQTT client to use for subscription
-			/// * `config` - Subscription configuration (QoS, caching)
-			///
-			/// # Returns
-			/// A structured subscriber that yields instances of this struct
+			/// Subscribe with custom configuration
 			pub async fn subscribe_with_config<F>(
 				client: &::mqtt_typed_client::MqttClient<F>,
 				config: ::mqtt_typed_client::SubscriptionConfig,
@@ -190,19 +164,8 @@ impl CodeGenerator {
 				Ok(::mqtt_typed_client::MqttTopicSubscriber::new(subscriber))
 			}
 			
-			/// Subscribe using a custom topic pattern with default configuration
-			///
-			/// The custom pattern must have the same parameter structure as the original
-			/// pattern (same wildcards in same positions with same names), but static
-			/// segments can be different.
-			///
-			/// # Arguments
-			/// * `client` - The MQTT client to use for subscription
-			/// * `custom_pattern` - Alternative pattern with compatible structure
-			///
-			/// # Returns
-			/// A structured subscriber that yields instances of this struct
-			pub async fn subscribe_to_custom_topic<F>(
+			/// Subscribe using custom topic pattern
+			pub async fn subscribe_pattern<F>(
 				client: &::mqtt_typed_client::MqttClient<F>,
 				custom_pattern: impl TryInto<::mqtt_typed_client::TopicPatternPath, Error: Into<::mqtt_typed_client::MqttClientError>>,
 			) -> ::std::result::Result<
@@ -216,27 +179,15 @@ impl CodeGenerator {
 					+ ::std::marker::Sync
 					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
 			{
-				Self::subscribe_to_custom_topic_with_config(
+				Self::subscribe_pattern_with_config(
 					client,
 					custom_pattern,
 					::mqtt_typed_client::SubscriptionConfig::default(),
 				).await
 			}
 			
-			/// Subscribe using a custom topic pattern with custom configuration
-			///
-			/// The custom pattern must have the same parameter structure as the original
-			/// pattern (same wildcards in same positions with same names), but static
-			/// segments can be different.
-			///
-			/// # Arguments
-			/// * `client` - The MQTT client to use for subscription
-			/// * `custom_pattern` - Alternative pattern with compatible structure
-			/// * `config` - Subscription configuration (QoS, caching)
-			///
-			/// # Returns
-			/// A structured subscriber that yields instances of this struct
-			pub async fn subscribe_to_custom_topic_with_config<F>(
+			/// Subscribe using custom pattern with configuration
+			pub async fn subscribe_pattern_with_config<F>(
 				client: &::mqtt_typed_client::MqttClient<F>,
 				custom_pattern: impl TryInto<::mqtt_typed_client::TopicPatternPath, Error: Into<::mqtt_typed_client::MqttClientError>>,
 				config: ::mqtt_typed_client::SubscriptionConfig,
@@ -251,22 +202,18 @@ impl CodeGenerator {
 					+ ::std::marker::Sync
 					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
 			{
-				// Convert custom pattern to TopicPatternPath
 				let custom_topic_pattern = custom_pattern.try_into()
-    			    .map_err(Into::into)?;
+					.map_err(Into::into)?;
 
-				// Create base pattern for validation
 				let base_pattern = ::mqtt_typed_client::TopicPatternPath::new_from_string(
 					Self::MQTT_PATTERN,
 					::mqtt_typed_client::CacheStrategy::NoCache,
 				).map_err(::mqtt_typed_client::MqttClientError::topic_pattern)?;
 				
-				// Validate and create custom pattern
 				let validated_topic_pattern = base_pattern.with_compatible_pattern(
 					custom_topic_pattern,
 				).map_err(::mqtt_typed_client::MqttClientError::topic_pattern)?;
 				
-				// Subscribe using the validated custom pattern
 				let subscriber = client.subscribe_with_config::<#payload_type>(
 					validated_topic_pattern,
 					config,
@@ -277,10 +224,7 @@ impl CodeGenerator {
 		}
 	}
 
-	/// Generate publisher methods: publish() and get_publisher()
-	///
-	/// Creates methods for publishing messages to the topic pattern with
-	/// extracted parameters as function arguments.
+	/// Generate publisher methods
 	fn generate_publisher_methods(
 		&self,
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
@@ -288,39 +232,8 @@ impl CodeGenerator {
 		let method_params = self.get_publisher_method_params();
 		let (format_string, format_args) = self.get_topic_format_and_args();
 
-		// Generate parameter documentation
-		let param_docs: Vec<proc_macro2::TokenStream> = self
-			.context
-			.topic_params
-			.iter()
-			.map(|param| {
-				let param_name = param.get_publisher_param_name();
-				let doc_text = if param.is_anonymous() {
-					format!(
-						"/// * `{}` - Value for anonymous wildcard",
-						param_name
-					)
-				} else {
-					format!(
-						"/// * `{}` - Value for the {{{}}} parameter",
-						param_name,
-						param.name.as_ref().unwrap()
-					)
-				};
-				quote! { #[doc = #doc_text] }
-			})
-			.collect();
-
 		Ok(quote! {
-			/// Publish a message to this topic pattern
-			///
-			/// # Arguments
-			/// * `client` - The MQTT client to use for publishing
-			#(#param_docs)*
-			/// * `data` - The message payload to publish
-			///
-			/// # Returns
-			/// Result indicating success or failure of the publish operation
+			/// Publish message to this topic
 			pub async fn publish<F>(
 				client: &::mqtt_typed_client::MqttClient<F>,
 				#(#method_params,)*
@@ -333,14 +246,7 @@ impl CodeGenerator {
 				publisher.publish(data).await
 			}
 
-			/// Get a publisher for this topic pattern
-			///
-			/// # Arguments
-			/// * `client` - The MQTT client to use for publishing
-			#(#param_docs)*
-			///
-			/// # Returns
-			/// A topic publisher that can be used to publish messages
+			/// Get publisher for this topic
 			pub fn get_publisher<F>(
 				client: &::mqtt_typed_client::MqttClient<F>,
 				#(#method_params,)*
