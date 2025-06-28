@@ -23,7 +23,7 @@ impl TopicParam {
 	pub fn get_publisher_param_name(&self) -> String {
 		match &self.name {
 			| Some(name) => name.clone(),
-			| None => format!("wildcard_{}", self.wildcard_index + 1),
+			| None => format!("wildcard_{}", self.wildcard_index),
 		}
 	}
 

@@ -48,6 +48,21 @@ where F: MessageSerializer<T>
 		self
 	}
 
+	/// Get the topic this publisher is configured for.
+	pub fn topic(&self) -> &ArcStr {
+		&self.topic
+	}
+
+	/// Get qos level for this publisher.
+	pub fn qos(&self) -> QoS {
+		self.qos
+	}
+
+	/// Get retain flag for this publisher.
+	pub fn retain(&self) -> bool {
+		self.retain
+	}
+
 	/// Publishes data to the configured topic.
 	pub async fn publish(&self, data: &T) -> Result<(), MqttClientError> {
 		let payload = self

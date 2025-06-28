@@ -97,7 +97,7 @@ impl From<std::convert::Infallible> for TopicPatternError {
 }
 
 /// Error types for formatting topics with parameters
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum TopicFormatError {
 	/// Attempted to format a topic with a hash wildcard (#) which is not allowed
 	#[error("Cannot format topic with # wildcard for publishing")]
@@ -114,14 +114,18 @@ pub enum TopicFormatError {
 		provided: usize,
 	},
 	/// Error during formatting, e.g. invalid parameter type
-	#[error("Error formatting topic: {0}")]
-	FormatError(fmt::Error),
+	#[error("Error formatting topic")]
+	FormatError {
+		#[source]
+		/// The underlying formatting error
+		source: fmt::Error,
+	},
 }
 
 impl From<fmt::Error> for TopicFormatError {
-	fn from(err: fmt::Error) -> Self {
-		TopicFormatError::FormatError(err)
-	}
+    fn from(source: fmt::Error) -> Self {
+        TopicFormatError::FormatError { source }
+    }
 }
 
 impl TopicPatternItem {

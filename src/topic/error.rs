@@ -7,7 +7,7 @@
 use thiserror::Error;
 
 use super::topic_matcher::TopicMatcherError;
-use super::topic_pattern_path::TopicPatternError;
+use super::topic_pattern_path::{TopicPatternError, TopicFormatError};
 use super::topic_router::TopicRouterError;
 
 /// Comprehensive error type for all topic-related operations
@@ -20,6 +20,10 @@ pub enum TopicError {
 	/// Topic pattern parsing or validation error
 	#[error("Topic pattern error: {0}")]
 	Pattern(#[from] TopicPatternError),
+
+	/// Topic formatting error when substituting parameters
+	#[error("Topic format error: {0}")]
+	Format(#[from] TopicFormatError),
 
 	/// Topic matching operation error
 	#[error("Topic matcher error: {0}")]

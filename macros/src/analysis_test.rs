@@ -133,7 +133,7 @@ fn test_topic_param_methods() {
 		wildcard_index: 2,
 		field_type: None,
 	};
-	assert_eq!(anonymous_param.get_publisher_param_name(), "wildcard_3");
+	assert_eq!(anonymous_param.get_publisher_param_name(), "wildcard_2");
 
 	// Test get_publisher_param_type
 	let typed_param = TopicParam {
@@ -655,8 +655,8 @@ fn test_publisher_param_generation() {
 		.filter(|p| p.is_anonymous())
 		.collect();
 	assert_eq!(anonymous_params.len(), 2);
-	assert_eq!(anonymous_params[0].get_publisher_param_name(), "wildcard_1"); // index 0
-	assert_eq!(anonymous_params[1].get_publisher_param_name(), "wildcard_3"); // index 2
+	assert_eq!(anonymous_params[0].get_publisher_param_name(), "wildcard_0"); // index 0
+	assert_eq!(anonymous_params[1].get_publisher_param_name(), "wildcard_2"); // index 2
 
 	// Check named parameter with field
 	let device_param = context

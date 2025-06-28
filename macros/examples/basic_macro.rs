@@ -2,13 +2,13 @@ use mqtt_typed_client_macros::mqtt_topic;
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
-#[mqtt_topic("sensors/{sensor_id}/+/+/data/{room}")]
+#[mqtt_topic("sensors/s/{sensor_id}/+/+/data/{room}")]
 struct SensorReading {
 	sensor_id: u32,
 	room: String,
 	payload: String,
 }
-
+ 
 fn main() {
 	println!("Topic pattern: {}", SensorReading::TOPIC_PATTERN);
 	println!("MQTT pattern: {}", SensorReading::MQTT_PATTERN);

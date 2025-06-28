@@ -51,28 +51,35 @@ impl CodeGenerator {
 		input_struct: &syn::DeriveInput,
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
 		let struct_name = &input_struct.ident;
-		let (from_mqtt_impl, subscriber_methods) =
-			if self.should_generate_subscriber() {
-				let from_mqtt_impl =
-					self.generate_from_mqtt_impl(struct_name)?;
-				let subscriber_methods = self.generate_helper_methods();
-				(from_mqtt_impl, subscriber_methods)
-			} else {
-				(quote! {}, quote! {})
-			};
+		let (from_mqtt_impl, subscriber_methods) = if self
+			.should_generate_subscriber()
+		{
+			let from_mqtt_impl = self.generate_from_mqtt_impl(struct_name)?;
+			let subscriber_methods = self.generate_helper_methods();
+			(from_mqtt_impl, subscriber_methods)
+		} else {
+			(quote! {}, quote! {})
+		};
 		let (publisher_methods, publisher_constructor, publisher_builder_impl) =
 			if self.should_generate_publisher() {
-				let publisher_methods = self.generate_publisher_methods(struct_name)?;
-				let publisher_constructor = self.generate_publisher_constructor();
-				let publisher_builder_impl = self.generate_publisher_builder_impl(struct_name)?;
-				(publisher_methods, publisher_constructor, publisher_builder_impl)
+				let publisher_methods =
+					self.generate_publisher_methods(struct_name)?;
+				let publisher_constructor =
+					self.generate_publisher_constructor();
+				let publisher_builder_impl =
+					self.generate_publisher_builder_impl(struct_name)?;
+				(
+					publisher_methods,
+					publisher_constructor,
+					publisher_builder_impl,
+				)
 			} else {
 				(quote! {}, quote! {}, quote! {})
 			};
-		
+
 		let constants = self.generate_constants();
 		let builder_methods = Self::generate_builder_methods();
-		
+
 		Ok(quote! {
 			#input_struct
 			#from_mqtt_impl
@@ -159,9 +166,9 @@ impl CodeGenerator {
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
 		let payload_type = self.get_payload_type_token();
 		let method_params = self.get_publisher_method_params();
-		let (format_string, format_args) = self.get_topic_format_and_args();
+		let format_args = self.get_format_topic_args();
 		let trait_name = format_ident!("{}PublisherExt", struct_name);
-		
+
 		// Suppress clippy::ptr_arg for generated methods that may take &Vec<T> or &String
 		// parameters. These warnings are not actionable in macro-generated code since
 		// the parameter types are derived from user struct fields.
@@ -186,7 +193,7 @@ impl CodeGenerator {
 					#(#method_params,)*
 				) -> ::std::result::Result<
 					::mqtt_typed_client::MqttPublisher<#payload_type, F>,
-					::mqtt_typed_client::TopicError,
+					::mqtt_typed_client::MqttClientError,
 				>
 				where
 					F: ::mqtt_typed_client::MessageSerializer<#payload_type>;
@@ -203,10 +210,7 @@ impl CodeGenerator {
 				where
 					F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
 				{
-					let topic = format!(#format_string #(, #format_args)*);
-					let publisher = client.get_publisher::<#payload_type>(&topic)?
-						.with_qos(self.qos())
-						.with_retain(self.retain());
+					let publisher = self.get_publisher(client #(, #format_args)*)?;
 					publisher.publish(data).await
 				}
 
@@ -216,14 +220,16 @@ impl CodeGenerator {
 					#(#method_params,)*
 				) -> ::std::result::Result<
 					::mqtt_typed_client::MqttPublisher<#payload_type, F>,
-					::mqtt_typed_client::TopicError,
+					::mqtt_typed_client::MqttClientError,
 				>
 				where
 					F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
 				{
-					let topic = format!(#format_string #(, #format_args)*);
-					client.get_publisher::<#payload_type>(&topic)
-						.map(|p| p.with_qos(self.qos()).with_retain(self.retain()))
+					let topic = self.pattern().format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])
+						.map_err(|e| ::mqtt_typed_client::MqttClientError::Topic(e.into()))?;
+					Ok(client.get_publisher::<#payload_type>(&topic)?
+						.with_qos(self.qos())
+						.with_retain(self.retain()))
 				}
 			}
 		})
@@ -281,7 +287,7 @@ impl CodeGenerator {
 			})
 			.collect();
 		let trait_name = format_ident!("{}PublisherExt", struct_name);
-		
+
 		// Suppress clippy::ptr_arg for generated methods that may take &Vec<T> or &String
 		// parameters. These warnings are not actionable in macro-generated code since
 		// the parameter types are derived from user struct fields.
@@ -306,7 +312,7 @@ impl CodeGenerator {
 				#(#method_params,)*
 			) -> ::std::result::Result<
 				::mqtt_typed_client::MqttPublisher<#payload_type, F>,
-				::mqtt_typed_client::TopicError,
+				::mqtt_typed_client::MqttClientError,
 			>
 			where
 				F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
@@ -417,31 +423,51 @@ impl CodeGenerator {
 			.collect()
 	}
 
-	/// Get format string and arguments for topic construction
-	fn get_topic_format_and_args(
-		&self,
-	) -> (String, Vec<proc_macro2::TokenStream>) {
-		let mut format_parts = Vec::new();
-		let mut param_args = Vec::new();
+	/// Get arguments for format_topic method
+	fn get_format_topic_args(&self) -> Vec<proc_macro2::TokenStream> {
+		let mut args = Vec::new();
 		let mut param_index = 0;
 
 		for item in self.macro_args.pattern.iter() {
 			if item.is_wildcard() {
-				format_parts.push("{}");
 				if let Some(param) = self.context.topic_params.get(param_index)
 				{
 					let param_name = param.get_publisher_param_name();
 					let param_ident = format_ident!("{}", param_name);
-					param_args.push(quote! { #param_ident });
-					param_index += 1;
+					args.push(quote! { #param_ident });
 				}
-			} else {
-				format_parts.push(item.as_str());
+				param_index += 1;
 			}
 		}
 
-		let format_string = format_parts.join("/");
-		(format_string, param_args)
+		args
+	}
+
+	/// Get format arguments for topic string construction
+	fn get_topic_format_and_args(
+			&self,
+	) -> (String, Vec<proc_macro2::TokenStream>) {
+			let mut format_parts = Vec::new();
+			let mut param_args = Vec::new();
+			let mut param_index = 0;
+
+			for item in self.macro_args.pattern.iter() {
+					if item.is_wildcard() {
+							format_parts.push("{}");
+							if let Some(param) = self.context.topic_params.get(param_index)
+							{
+									let param_name = param.get_publisher_param_name();
+									let param_ident = format_ident!("{}", param_name);
+									param_args.push(quote! { #param_ident });
+									param_index += 1;
+							}
+					} else {
+							format_parts.push(item.as_str());
+					}
+			}
+
+			let format_string = format_parts.join("/");
+			(format_string, param_args)
 	}
 
 	/// Get the payload type token, defaulting to `Vec<u8>` if no payload field
