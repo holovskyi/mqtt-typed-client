@@ -198,6 +198,22 @@ pub struct TopicPatternPath {
 	match_cache: Option<Mutex<LruCache<ArcStr, Arc<TopicMatch>>>>,
 }
 
+impl Clone for TopicPatternPath {
+    fn clone(&self) -> Self {
+        Self {
+            template_pattern: self.template_pattern.clone(), 
+            mqtt_topic_subscription: self.mqtt_topic_subscription.clone(), 
+            segments: self.segments.clone(),
+            match_cache: self.match_cache.as_ref().map(|cache| {
+                let cache_guard = cache.lock().unwrap();
+                let capacity = cache_guard.cap();
+                drop(cache_guard);
+                Mutex::new(LruCache::new(capacity))
+            }),
+        }
+    }
+}
+
 impl TopicPatternPath {
 	/// Creates a topic pattern from string with optional caching.
 	pub fn new_from_string(
