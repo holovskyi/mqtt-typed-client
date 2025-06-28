@@ -166,9 +166,13 @@ impl CodeGenerator {
 		let method_params = self.get_publisher_method_params();
 		let (format_string, format_args) = self.get_topic_format_and_args();
 		let trait_name = format_ident!("{}PublisherExt", struct_name);
-
+		
+		// Suppress clippy::ptr_arg for generated methods that may take &Vec<T> or &String
+		// parameters. These warnings are not actionable in macro-generated code since
+		// the parameter types are derived from user struct fields.
 		Ok(quote! {
 			/// Extension trait for PublisherBuilder with type-specific methods
+			#[allow(clippy::ptr_arg)]
 			pub trait #trait_name {
 				/// Publish message using builder configuration
 				async fn publish<F>(
@@ -194,6 +198,7 @@ impl CodeGenerator {
 			}
 
 			impl #trait_name for ::mqtt_typed_client::PublisherBuilder<#struct_name> {
+				#[allow(clippy::ptr_arg)]
 				async fn publish<F>(
 					&self,
 					client: &::mqtt_typed_client::MqttClient<F>,
@@ -281,9 +286,13 @@ impl CodeGenerator {
 			})
 			.collect();
 		let trait_name = format_ident!("{}PublisherExt", struct_name);
-
+		
+		// Suppress clippy::ptr_arg for generated methods that may take &Vec<T> or &String
+		// parameters. These warnings are not actionable in macro-generated code since
+		// the parameter types are derived from user struct fields.
 		Ok(quote! {
 			/// Publish message to this topic
+			#[allow(clippy::ptr_arg)]
 			pub async fn publish<F>(
 				client: &::mqtt_typed_client::MqttClient<F>,
 				#(#method_params,)*
