@@ -87,6 +87,7 @@ fn create_macro_args(pattern: &str, config: GenerationConfig) -> MacroArgs {
 		pattern: topic_pattern,
 		generate_subscriber,
 		generate_publisher,
+		generate_typed_client: true,  // Enable by default
 	}
 }
 
@@ -440,7 +441,7 @@ fn test_anonymous_wildcards_publisher() {
 			CodeCheck::Method("get_publisher"),
 			// Anonymous wildcard parameters
 			CodeCheck::PublisherParam {
-				param_name: "wildcard_1",
+				param_name: "wildcard_0",
 				param_type: "& str",
 			},
 			CodeCheck::PublisherParam {
@@ -448,7 +449,7 @@ fn test_anonymous_wildcards_publisher() {
 				param_type: "String",
 			},
 			CodeCheck::PublisherParam {
-				param_name: "wildcard_3",
+				param_name: "wildcard_2",
 				param_type: "& str",
 			},
 			CodeCheck::FormatString("devices/{}/{}/{}/status"),
@@ -568,11 +569,11 @@ fn test_empty_struct_with_anonymous_wildcards() {
 			CodeCheck::Method("subscribe"),
 			CodeCheck::Method("publish"),
 			CodeCheck::PublisherParam {
-				param_name: "wildcard_1",
+				param_name: "wildcard_0",
 				param_type: "& str",
 			},
 			CodeCheck::PublisherParam {
-				param_name: "wildcard_2",
+				param_name: "wildcard_1",
 				param_type: "& str",
 			},
 			CodeCheck::FormatString("sensors/{}/{}/data"),
@@ -870,7 +871,7 @@ fn test_edge_cases() {
 			expected_checks: vec![
 				CodeCheck::Method("publish"),
 				CodeCheck::PublisherParam {
-					param_name: "wildcard_1",
+					param_name: "wildcard_0",
 					param_type: "& str",
 				},
 				CodeCheck::FormatString("heartbeat/{}"),

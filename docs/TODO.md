@@ -8,14 +8,15 @@ let mut subscriber = TemperatureSensor::subscribe_with_pattern(&client, "data/{b
 - [ ] mqtt_typed_client::client::async_client::MqttClient
     impl<F> MqttClient<F>
     async fn run(mut event_loop: EventLoop, subscription_manager: SubscriptionManagerHandler<Bytes>)
+    При певній кількості помилок, ми виходимо з циклу. Але можливо треба зробити передачу помилки на інші рівні, спідписникам та пудлішерам?
 - [ ] А якщо в макросі генерувати ext trait для MqttClient
-Щоб працювати з конкретними типами повідомленнь замість 
-SensorMessage::publish(&client, sensor_id, &_test_data).await
+    Щоб працювати з конкретними типами повідомленнь замість 
+    SensorMessage::publish(&client, sensor_id, &_test_data).await
 
-Чи це реально? Я тут бачу виклик що може бути багато типів на кшталт SensorMessage, і чи компілятор зможе вивести і знайти необхідний trait?
+    Чи це реально? Я тут бачу виклик що може бути багато типів на кшталт SensorMessage, і чи компілятор зможе вивести і знайти необхідний trait?
 
 
-При певній кількості помилок, ми виходимо з циклу. Але можливо треба зробити передачу помилки на інші рівні, спідписникам та пудлішерам?
+
 
 ## Publish Checklist
 

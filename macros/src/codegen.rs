@@ -38,6 +38,11 @@ impl CodeGenerator {
 	pub fn should_generate_publisher(&self) -> bool {
 		self.macro_args.generate_publisher
 	}
+	
+	/// Check if typed client code should be generated
+	pub fn should_generate_typed_client(&self) -> bool {
+		self.macro_args.generate_typed_client
+	}
 	/// Generate complete implementation including original struct, traits, and helper methods
 	///
 	/// # Arguments
@@ -65,6 +70,14 @@ impl CodeGenerator {
 		} else {
 			quote! {}
 		};
+		
+		// NEW: Generate typed client extension
+		let typed_client_extension = if self.should_generate_typed_client() {
+			let generator = crate::codegen_typed_client::TypedClientGenerator::new(self, struct_name);
+			generator.generate_complete_typed_client()
+		} else {
+			quote! {}
+		};
 
 		let constants = self.generate_constants();
 		let builder_methods = Self::generate_builder_methods();
@@ -72,6 +85,7 @@ impl CodeGenerator {
 		Ok(quote! {
 			#input_struct
 			#from_mqtt_impl
+			#typed_client_extension
 			impl #struct_name {
 				#constants
 				#builder_methods
@@ -324,7 +338,7 @@ impl CodeGenerator {
 	}
 
 	/// Get parameters for publisher methods
-	fn get_publisher_method_params(&self) -> Vec<proc_macro2::TokenStream> {
+	pub fn get_publisher_method_params(&self) -> Vec<proc_macro2::TokenStream> {
 		self.context
 			.topic_params
 			.iter()
@@ -338,7 +352,7 @@ impl CodeGenerator {
 	}
 
 	/// Get format arguments for topic string construction
-	fn get_topic_format_and_args(
+	pub fn get_topic_format_and_args(
 		&self,
 	) -> (String, Vec<proc_macro2::TokenStream>) {
 		let mut format_parts = Vec::new();
@@ -368,7 +382,7 @@ impl CodeGenerator {
 	///
 	/// This handles the case where a struct doesn't have a payload field
 	/// but still needs to work with the trait system.
-	fn get_payload_type_token(&self) -> proc_macro2::TokenStream {
+	pub fn get_payload_type_token(&self) -> proc_macro2::TokenStream {
 		self.context
 			.payload_type
 			.as_ref()

@@ -63,6 +63,8 @@
 //! from fixed parameters.
 //!
 //! ```rust
+//! use mqtt_typed_client_macros::mqtt_topic;
+//! 
 //! // ✅ This works for both subscriber and publisher
 //! #[mqtt_topic("sensors/{sensor_id}/data")]
 //! struct SensorData { sensor_id: u32, payload: f64 }
@@ -72,26 +74,27 @@
 //! struct Alert { category: String, payload: String }
 //!
 //! // ❌ This will cause a compile error
-//! #[mqtt_topic("events/{type}/{details:#}")]
-//! struct Event { /* ... */ }
+//! // #[mqtt_topic("events/{event_type}/{details:#}")]
+//! // struct Event { /* ... */ }
 //! 
 //! // 🔧 Solution: Use separate structs
-//! #[mqtt_topic("events/{type}/{details:#}", subscriber)]  
-//! struct EventReceived { type: String, details: String, payload: Vec<u8> }
+//! #[mqtt_topic("events/{event_type}/{details:#}", subscriber)]  
+//! struct EventReceived { event_type: String, details: String, payload: Vec<u8> }
 //!
-//! #[mqtt_topic("events/{type}", publisher)]
-//! struct EventToSend { type: String, payload: Vec<u8> }
+//! #[mqtt_topic("events/{event_type}", publisher)]
+//! struct EventToSend { event_type: String, payload: Vec<u8> }
 //! ```
 
 mod analysis;
-
 #[cfg(test)]
 mod analysis_test;
 mod codegen;
 #[cfg(test)]
 mod codegen_test;
+mod codegen_typed_client;
 #[cfg(test)]
 mod lib_test;
+mod naming;
 
 use mqtt_typed_client::routing::subscription_manager::CacheStrategy;
 use mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath;
@@ -407,6 +410,7 @@ fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 		pattern: topic_pattern,
 		generate_subscriber,
 		generate_publisher,
+		generate_typed_client: true,  // Enable by default
 	};
 
 	Ok(macro_args)
@@ -452,6 +456,26 @@ struct MacroArgs {
 	pattern: TopicPatternPath,
 	generate_subscriber: bool,
 	generate_publisher: bool,
+	generate_typed_client: bool,
+}
+
+#[cfg(test)]
+mod test_helpers {
+	use super::*;
+	
+	pub fn create_test_macro_args() -> MacroArgs {
+		let topic_pattern = TopicPatternPath::new_from_string(
+			"sensors/{sensor_id}/temp".to_string(),
+			CacheStrategy::NoCache,
+		).unwrap();
+		
+		MacroArgs {
+			pattern: topic_pattern,
+			generate_subscriber: true,
+			generate_publisher: true,
+			generate_typed_client: true,
+		}
+	}
 }
 
 

@@ -197,6 +197,7 @@ fn test_generate_mqtt_code_integration() {
 			pattern,
 			generate_subscriber: test_case.subscriber,
 			generate_publisher: test_case.publisher,
+			generate_typed_client: true,
 		};
 
 		let result = generate_mqtt_code(macro_args, &test_struct);
@@ -274,6 +275,7 @@ fn test_complex_patterns() {
 			pattern: topic_pattern,
 			generate_subscriber: true,
 			generate_publisher: true,
+			generate_typed_client: true,
 		};
 
 		let result = generate_mqtt_code(macro_args, &test_struct);
@@ -366,6 +368,7 @@ fn test_macro_args_validation() {
 			pattern,
 			generate_subscriber: test_case.subscriber,
 			generate_publisher: test_case.publisher,
+			generate_typed_client: true,
 		};
 
 		// Test configuration validity
@@ -487,6 +490,7 @@ fn test_real_world_scenarios() {
 			pattern,
 			generate_subscriber: scenario.modes.0,
 			generate_publisher: scenario.modes.1,
+			generate_typed_client: true,
 		};
 
 		let result = generate_mqtt_code(macro_args, &test_struct);

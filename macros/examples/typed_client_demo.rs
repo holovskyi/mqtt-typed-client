@@ -1,0 +1,48 @@
+//! Example showing generated typed client API
+
+use mqtt_typed_client::{BincodeSerializer, MqttClient};
+use mqtt_typed_client_macros::mqtt_topic;
+
+#[derive(Debug)]
+#[mqtt_topic("sensors/{sensor_id}/temperature")]
+struct SensorReading {
+    sensor_id: u32,
+    payload: f64,
+}
+
+#[tokio::main]
+async fn main() {
+    println!("=== Typed Client Demo ===");
+    
+    // Show the generated constants
+    println!("Topic pattern: {}", SensorReading::TOPIC_PATTERN);
+    println!("MQTT pattern:  {}", SensorReading::MQTT_PATTERN);
+    
+    // Note: The following would work if we had a real MQTT broker:
+    
+    let (client, connection) = 
+        MqttClient::<BincodeSerializer>::connect("mqtt://broker.mqtt.cool:1883?client_id=test_client").await.unwrap();
+    
+    // // Using the extension trait method:
+    let sensor_client = client.sensor_reading();
+    
+    // // Type-safe publishing:
+    sensor_client.publish(123, &25.5).await.unwrap();
+    
+    // Get publisher for reuse:
+    let publisher = sensor_client.get_publisher(123).unwrap();
+    publisher.publish(&26.0).await.unwrap();
+    
+    // Subscribe to sensor data:
+    let mut subscriber = sensor_client.subscribe().await.unwrap();
+    while let Some(result) = subscriber.receive().await {
+        match result {
+            Ok(reading) => println!("Sensor {}: {}°C", reading.sensor_id, reading.payload),
+            Err(e) => eprintln!("Parse error: {:?}", e),
+        }
+    }
+
+    connection.shutdown().await.unwrap();
+    
+    println!("Check the macro expansion to see generated typed client code!");
+}
