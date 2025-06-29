@@ -17,7 +17,7 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     println!("Original MQTT: {}", original.mqtt_pattern());
     
     // ✅ Test 1: Valid compatible pattern (different static segments)
-    let compatible = original.with_compatible_pattern(
+    let compatible = original.check_pattern_compatibility(
         "data/{building}/{floor}/temperature/{sensor_id}",
     )?;
     
@@ -25,14 +25,14 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     assert_eq!(compatible.mqtt_pattern(), "data/+/+/temperature/+");
     
     // ✅ Test 2: Another valid pattern
-    let legacy = original.with_compatible_pattern(
+    let legacy = original.check_pattern_compatibility(
         "iot/{building}/{floor}/t/{sensor_id}",
     )?;
     
     println!("✅ Legacy pattern works: {}", legacy.topic_pattern());
     
     // ❌ Test 3: Invalid pattern (wrong parameter order)
-    let invalid_order = original.with_compatible_pattern(
+    let invalid_order = original.check_pattern_compatibility(
         "data/{floor}/{building}/temp/{sensor_id}",
     );
     
@@ -46,7 +46,7 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     }
     
     // ❌ Test 4: Invalid pattern (wrong parameter names)
-    let invalid_names = original.with_compatible_pattern(
+    let invalid_names = original.check_pattern_compatibility(
         "data/{building_id}/{floor}/temp/{sensor_id}",
     );
     
@@ -58,7 +58,7 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     }
     
     // ✅ Test 5: Compatible pattern with extra static segments (should work)
-    let extra_static = original.with_compatible_pattern(
+    let extra_static = original.check_pattern_compatibility(
         "data/{building}/{floor}/temp/celsius/{sensor_id}",
     );
     
@@ -70,7 +70,7 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     }
     
     // ❌ Test 6: Invalid pattern (wildcard vs static mismatch)
-    let invalid_type = original.with_compatible_pattern(
+    let invalid_type = original.check_pattern_compatibility(
         "sensors/building_a/{floor}/temp/{sensor_id}",
     );
     

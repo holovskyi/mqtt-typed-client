@@ -166,7 +166,7 @@ impl CodeGenerator {
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
 		let payload_type = self.get_payload_type_token();
 		let method_params = self.get_publisher_method_params();
-		let format_args = self.get_format_topic_args();
+		let (format_string, format_args) = self.get_topic_format_and_args();
 		let trait_name = format_ident!("{}PublisherExt", struct_name);
 
 		// Suppress clippy::ptr_arg for generated methods that may take &Vec<T> or &String
@@ -225,8 +225,14 @@ impl CodeGenerator {
 				where
 					F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
 				{
-					let topic = self.pattern().format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])
-						.map_err(|e| ::mqtt_typed_client::MqttClientError::Topic(e.into()))?;
+					// for default pattern, we can use format! directly for performance
+					let topic = if self.is_pattern_overridden() {
+							self.pattern()
+								.format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])
+								.map_err(|e| ::mqtt_typed_client::MqttClientError::Topic(e.into()))?
+						} else {
+							format!(#format_string #(, #format_args)*)
+						};
 					Ok(client.get_publisher::<#payload_type>(&topic)?
 						.with_qos(self.qos())
 						.with_retain(self.retain()))
@@ -423,51 +429,31 @@ impl CodeGenerator {
 			.collect()
 	}
 
-	/// Get arguments for format_topic method
-	fn get_format_topic_args(&self) -> Vec<proc_macro2::TokenStream> {
-		let mut args = Vec::new();
+	/// Get format arguments for topic string construction
+	fn get_topic_format_and_args(
+		&self,
+	) -> (String, Vec<proc_macro2::TokenStream>) {
+		let mut format_parts = Vec::new();
+		let mut param_args = Vec::new();
 		let mut param_index = 0;
 
 		for item in self.macro_args.pattern.iter() {
 			if item.is_wildcard() {
+				format_parts.push("{}");
 				if let Some(param) = self.context.topic_params.get(param_index)
 				{
 					let param_name = param.get_publisher_param_name();
 					let param_ident = format_ident!("{}", param_name);
-					args.push(quote! { #param_ident });
+					param_args.push(quote! { #param_ident });
+					param_index += 1;
 				}
-				param_index += 1;
+			} else {
+				format_parts.push(item.as_str());
 			}
 		}
 
-		args
-	}
-
-	/// Get format arguments for topic string construction
-	fn get_topic_format_and_args(
-			&self,
-	) -> (String, Vec<proc_macro2::TokenStream>) {
-			let mut format_parts = Vec::new();
-			let mut param_args = Vec::new();
-			let mut param_index = 0;
-
-			for item in self.macro_args.pattern.iter() {
-					if item.is_wildcard() {
-							format_parts.push("{}");
-							if let Some(param) = self.context.topic_params.get(param_index)
-							{
-									let param_name = param.get_publisher_param_name();
-									let param_ident = format_ident!("{}", param_name);
-									param_args.push(quote! { #param_ident });
-									param_index += 1;
-							}
-					} else {
-							format_parts.push(item.as_str());
-					}
-			}
-
-			let format_string = format_parts.join("/");
-			(format_string, param_args)
+		let format_string = format_parts.join("/");
+		(format_string, param_args)
 	}
 
 	/// Get the payload type token, defaulting to `Vec<u8>` if no payload field

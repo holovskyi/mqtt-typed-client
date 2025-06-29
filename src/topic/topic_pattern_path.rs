@@ -445,11 +445,11 @@ impl TopicPatternPath {
 		mqtt_topic
 	}
 
-	/// Creates a new pattern with custom template if wildcard structures match
+	/// Checks if the provided topic pattern is compatible with this one.
 	///
 	/// Static segments can differ, but wildcards must be identical in type,
 	/// order, and names (if named).
-	pub fn with_compatible_pattern(
+	pub fn check_pattern_compatibility(
 		&self,
 		custom_topic: impl TryInto<TopicPatternPath, Error: Into<TopicPatternError>>,
 	) -> Result<Self, TopicPatternError> {
