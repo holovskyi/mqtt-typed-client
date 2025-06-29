@@ -58,12 +58,7 @@ impl<'a> TypedClientGenerator<'a> {
         
         let publisher_methods = 
             if self.code_generator.should_generate_publisher() { 
-                let publish_method = self.generate_publish_method();
-                let get_publisher_method = self.generate_get_publisher_method();
-                quote! {
-                    #publish_method
-                    #get_publisher_method
-                }
+                self.generate_all_publisher_methods()
             } else {  
                 quote! {}
             };
@@ -117,11 +112,14 @@ impl<'a> TypedClientGenerator<'a> {
         }
     }
 
-    /// Generate publish method for typed client
-    fn generate_publish_method(&self) -> proc_macro2::TokenStream {
+    /// Generate all publisher methods for typed client
+    fn generate_all_publisher_methods(&self) -> proc_macro2::TokenStream {
         let payload_type = self.code_generator.get_payload_type_token();
         let method_params = self.code_generator.get_publisher_method_params();
-        let (format_string, format_args) = self.code_generator.get_topic_format_and_args();
+        let struct_name = &self.struct_name;
+        
+        // Reuse existing logic for parameter arguments
+        let (_, param_args) = self.code_generator.get_topic_format_and_args();
 
         quote! {
             #[allow(clippy::ptr_arg)]
@@ -130,20 +128,9 @@ impl<'a> TypedClientGenerator<'a> {
                 #(#method_params,)*
                 data: &#payload_type,
             ) -> ::std::result::Result<(), ::mqtt_typed_client::MqttClientError> {
-                let topic = format!(#format_string #(, #format_args)*);
-                let publisher = self.client.get_publisher::<#payload_type>(&topic)?;
-                publisher.publish(data).await
+                #struct_name::publish(&self.client #(, #param_args)*, data).await
             }
-        }
-    }
 
-    /// Generate get_publisher method for typed client
-    fn generate_get_publisher_method(&self) -> proc_macro2::TokenStream {
-        let payload_type = self.code_generator.get_payload_type_token();
-        let method_params = self.code_generator.get_publisher_method_params();
-        let (format_string, format_args) = self.code_generator.get_topic_format_and_args();
-
-        quote! {
             pub fn get_publisher(
                 &self,
                 #(#method_params,)*
@@ -151,8 +138,21 @@ impl<'a> TypedClientGenerator<'a> {
                 ::mqtt_typed_client::MqttPublisher<#payload_type, F>,
                 ::mqtt_typed_client::TopicError,
             > {
-                let topic = format!(#format_string #(, #format_args)*);
-                self.client.get_publisher::<#payload_type>(&topic)
+                #struct_name::get_publisher(&self.client #(, #param_args)*)
+            }
+
+            pub fn get_publisher_to(
+                &self,
+                custom_pattern: impl TryInto<
+                    ::mqtt_typed_client::TopicPatternPath,
+                    Error = ::mqtt_typed_client::TopicPatternError,
+                >,
+                #(#method_params,)*
+            ) -> ::std::result::Result<
+                ::mqtt_typed_client::MqttPublisher<#payload_type, F>,
+                ::mqtt_typed_client::TopicError,
+            > {
+                #struct_name::get_publisher_to(&self.client, custom_pattern #(, #param_args)*)
             }
         }
     }
