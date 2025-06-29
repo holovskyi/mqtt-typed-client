@@ -60,22 +60,11 @@ impl CodeGenerator {
 		} else {
 			(quote! {}, quote! {})
 		};
-		let (publisher_methods, publisher_constructor, publisher_builder_impl) =
-			if self.should_generate_publisher() {
-				let publisher_methods =
-					self.generate_publisher_methods(struct_name)?;
-				let publisher_constructor =
-					self.generate_publisher_constructor();
-				let publisher_builder_impl =
-					self.generate_publisher_builder_impl(struct_name)?;
-				(
-					publisher_methods,
-					publisher_constructor,
-					publisher_builder_impl,
-				)
-			} else {
-				(quote! {}, quote! {}, quote! {})
-			};
+		let publisher_methods = if self.should_generate_publisher() {
+			self.generate_publisher_methods()?
+		} else {
+			quote! {}
+		};
 
 		let constants = self.generate_constants();
 		let builder_methods = Self::generate_builder_methods();
@@ -86,11 +75,9 @@ impl CodeGenerator {
 			impl #struct_name {
 				#constants
 				#builder_methods
-				#publisher_constructor
 				#subscriber_methods
 				#publisher_methods
 			}
-			#publisher_builder_impl
 		})
 	}
 
@@ -147,100 +134,6 @@ impl CodeGenerator {
 		}
 	}
 
-	/// Generate publisher builder constructor
-	fn generate_publisher_constructor(&self) -> proc_macro2::TokenStream {
-		quote! {
-			/// Create publisher builder with default configuration
-			pub fn publisher() -> ::mqtt_typed_client::PublisherBuilder<Self> {
-				::mqtt_typed_client::PublisherBuilder::new(
-					Self::default_pattern().clone()
-				)
-			}
-		}
-	}
-
-	/// Generate extension trait for PublisherBuilder
-	fn generate_publisher_builder_impl(
-		&self,
-		struct_name: &syn::Ident,
-	) -> Result<proc_macro2::TokenStream, syn::Error> {
-		let payload_type = self.get_payload_type_token();
-		let method_params = self.get_publisher_method_params();
-		let (format_string, format_args) = self.get_topic_format_and_args();
-		let trait_name = format_ident!("{}PublisherExt", struct_name);
-
-		// Suppress clippy::ptr_arg for generated methods that may take &Vec<T> or &String
-		// parameters. These warnings are not actionable in macro-generated code since
-		// the parameter types are derived from user struct fields.
-		Ok(quote! {
-			/// Extension trait for PublisherBuilder with type-specific methods
-			#[allow(clippy::ptr_arg)]
-			pub trait #trait_name {
-				/// Publish message using builder configuration
-				async fn publish<F>(
-					&self,
-					client: &::mqtt_typed_client::MqttClient<F>,
-					#(#method_params,)*
-					data: &#payload_type,
-				) -> ::std::result::Result<(), ::mqtt_typed_client::MqttClientError>
-				where
-					F: ::mqtt_typed_client::MessageSerializer<#payload_type>;
-
-				/// Get configured publisher
-				fn get_publisher<F>(
-					&self,
-					client: &::mqtt_typed_client::MqttClient<F>,
-					#(#method_params,)*
-				) -> ::std::result::Result<
-					::mqtt_typed_client::MqttPublisher<#payload_type, F>,
-					::mqtt_typed_client::MqttClientError,
-				>
-				where
-					F: ::mqtt_typed_client::MessageSerializer<#payload_type>;
-			}
-
-			impl #trait_name for ::mqtt_typed_client::PublisherBuilder<#struct_name> {
-				#[allow(clippy::ptr_arg)]
-				async fn publish<F>(
-					&self,
-					client: &::mqtt_typed_client::MqttClient<F>,
-					#(#method_params,)*
-					data: &#payload_type,
-				) -> ::std::result::Result<(), ::mqtt_typed_client::MqttClientError>
-				where
-					F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
-				{
-					let publisher = self.get_publisher(client #(, #format_args)*)?;
-					publisher.publish(data).await
-				}
-
-				fn get_publisher<F>(
-					&self,
-					client: &::mqtt_typed_client::MqttClient<F>,
-					#(#method_params,)*
-				) -> ::std::result::Result<
-					::mqtt_typed_client::MqttPublisher<#payload_type, F>,
-					::mqtt_typed_client::MqttClientError,
-				>
-				where
-					F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
-				{
-					// for default pattern, we can use format! directly for performance
-					let topic = if self.is_pattern_overridden() {
-							self.pattern()
-								.format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])
-								.map_err(|e| ::mqtt_typed_client::MqttClientError::Topic(e.into()))?
-						} else {
-							format!(#format_string #(, #format_args)*)
-						};
-					Ok(client.get_publisher::<#payload_type>(&topic)?
-						.with_qos(self.qos())
-						.with_retain(self.retain()))
-				}
-			}
-		})
-	}
-
 	/// Generate topic pattern constants
 	fn generate_constants(&self) -> proc_macro2::TokenStream {
 		let topic_pattern = &self.macro_args.pattern;
@@ -278,27 +171,16 @@ impl CodeGenerator {
 	/// Generate publisher methods
 	fn generate_publisher_methods(
 		&self,
-		struct_name: &syn::Ident,
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
 		let payload_type = self.get_payload_type_token();
 		let method_params = self.get_publisher_method_params();
-		let param_args: Vec<_> = self
-			.context
-			.topic_params
-			.iter()
-			.map(|param| {
-				let param_name = param.get_publisher_param_name();
-				let param_ident = format_ident!("{}", param_name);
-				quote! { #param_ident }
-			})
-			.collect();
-		let trait_name = format_ident!("{}PublisherExt", struct_name);
+		let (format_string, format_args) = self.get_topic_format_and_args();
 
 		// Suppress clippy::ptr_arg for generated methods that may take &Vec<T> or &String
 		// parameters. These warnings are not actionable in macro-generated code since
 		// the parameter types are derived from user struct fields.
 		Ok(quote! {
-			/// Publish message to this topic
+			/// Publish message to default topic
 			#[allow(clippy::ptr_arg)]
 			pub async fn publish<F>(
 				client: &::mqtt_typed_client::MqttClient<F>,
@@ -308,24 +190,50 @@ impl CodeGenerator {
 			where
 				F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
 			{
-				use #trait_name;
-				Self::publisher().publish(client #(, #param_args)*, data).await
+				Self::get_publisher(client #(, #format_args)*)?.publish(data).await
 			}
 
-			/// Get publisher for this topic
+			/// Get publisher for default topic
 			pub fn get_publisher<F>(
 				client: &::mqtt_typed_client::MqttClient<F>,
 				#(#method_params,)*
 			) -> ::std::result::Result<
 				::mqtt_typed_client::MqttPublisher<#payload_type, F>,
-				::mqtt_typed_client::MqttClientError,
+				::mqtt_typed_client::TopicError,
 			>
 			where
 				F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
 			{
-				use #trait_name;
-				Self::publisher().get_publisher(client #(, #param_args)*)
+				let topic = format!(#format_string #(, #format_args)*);
+            	client.get_publisher::<#payload_type>(&topic)
 			}
+
+			pub fn get_publisher_to<F>(
+				client: &::mqtt_typed_client::MqttClient<F>,
+				custom_pattern: impl TryInto <
+					::mqtt_typed_client::TopicPatternPath,
+					Error = ::mqtt_typed_client::TopicPatternError,
+				>,
+				#(#method_params,)*
+			) -> ::std::result::Result<
+				::mqtt_typed_client::MqttPublisher<#payload_type, F>,
+				::mqtt_typed_client::TopicError,
+			> 
+			where
+				F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
+			{
+				let custom_pattern = custom_pattern.try_into()?;
+				let default_pattern = Self::default_pattern();
+				
+				let validated_pattern = default_pattern
+					.check_pattern_compatibility(custom_pattern)?;
+				
+				let topic = 
+					validated_pattern.format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])?;
+					
+				client.get_publisher::<#payload_type>(&topic)
+			}
+
 		})
 	}
 

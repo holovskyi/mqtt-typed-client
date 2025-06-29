@@ -3,7 +3,7 @@ use tokio::sync::mpsc::error::SendError;
 
 use crate::{
 	routing::SubscriptionError, 
-	topic::{SubscriptionId, TopicError, TopicPatternError}
+	topic::{topic_pattern_path::TopicFormatError, SubscriptionId, TopicError, TopicPatternError}
 };
 
 /// Errors that can occur in MQTT client operations
@@ -94,6 +94,12 @@ impl From<TopicError> for MqttClientError {
 	fn from(err: TopicError) -> Self {
 		MqttClientError::Topic(err)
 	}
+}
+
+impl From<TopicFormatError> for MqttClientError {
+    fn from(err: TopicFormatError) -> Self {
+        MqttClientError::Topic(TopicError::Format(err))  
+    }
 }
 
 // Direct conversion for convenience in code that uses TopicPatternPath::new_from_string

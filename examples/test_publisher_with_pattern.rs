@@ -1,7 +1,7 @@
-//! Test to verify that PublisherBuilder actually uses its pattern
+//! Test to verify that get_publisher_to() method works with custom patterns
 //!
-//! This test verifies that PublisherBuilder.with_pattern() actually affects
-//! the generated topic strings when using builder methods.
+//! This test verifies that the new simplified API correctly handles
+//! custom topic patterns and validates pattern compatibility.
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient};
@@ -24,7 +24,7 @@ struct SensorMessage {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	println!("🧪 Testing PublisherBuilder with custom patterns");
+	println!("🧪 Testing get_publisher_to() with custom patterns");
 
 	// This would work with a real MQTT broker:
 	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
@@ -40,15 +40,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Test 1: Default publisher (uses default pattern)
 	println!("\n1️⃣  Testing default publisher:");
-	let default_publisher = SensorMessage::publisher();
-	println!(
-		"   Pattern: {}",
-		default_publisher.pattern().topic_pattern()
-	);
 
 	// This should generate topic: "sensors/temp_001/data"
-	match default_publisher.get_publisher(&client, sensor_id) {
-		| Ok(_publisher) => {
+	match SensorMessage::get_publisher(&client, sensor_id) {
+		| Ok(publisher) => {
+			let topic = publisher.topic();
+			println!("   Generated topic: {}", topic);
+			assert_eq!(topic, "sensors/temp_001/data");
+			publisher.publish(&_test_data).await?;
 			println!("   ✅ Default publisher created successfully")
 		}
 		| Err(e) => println!("   ❌ Error: {}", e),
@@ -57,22 +56,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Test 2: Publisher with custom pattern
 	println!("\n2️⃣  Testing publisher with custom pattern:");
 	let custom_pattern = "devices/{sensor_id}/readings";
-	let custom_publisher = SensorMessage::publisher()
-		.with_pattern(custom_pattern)?
-		.with_qos(QoS::AtLeastOnce);
-
-	custom_publisher
-		.publish(&client, sensor_id, &TestData { value: 42 })
-		.await?;
-	println!("   Pattern: {}", custom_publisher.pattern().topic_pattern());
 
 	// This should generate topic: "devices/temp_001/readings"
-	match custom_publisher.get_publisher(&client, sensor_id) {
-		| Ok(_publisher) => {
-			let real_topic = _publisher.topic();
-			println!("   Publisher topic: {}", real_topic);
-			assert_eq!(real_topic, "devices/temp_001/readings");
-			_publisher.publish(&TestData { value: 42 }).await?;
+	match SensorMessage::get_publisher_to(&client, custom_pattern, sensor_id) {
+		| Ok(publisher) => {
+			let topic = publisher.topic();
+			println!("   Generated topic: {}", topic);
+			assert_eq!(topic, "devices/temp_001/readings");
+			
+			// Test with QoS configuration
+			let configured_publisher = publisher.with_qos(QoS::AtLeastOnce);
+			configured_publisher.publish(&_test_data).await?;
 			println!("   ✅ Custom publisher created successfully")
 		}
 		| Err(e) => println!("   ❌ Error: {}", e),
@@ -82,35 +76,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!(
 		"\n3️⃣  Testing publisher with incompatible pattern (should fail):"
 	);
-	match SensorMessage::publisher()
-		.with_pattern("wrong/pattern/without/wildcards")
+	match SensorMessage::get_publisher_to(&client, "wrong/pattern/without/wildcards", sensor_id)
 	{
 		| Ok(_) => println!("   ❌ Should have failed!"),
 		| Err(e) => println!("   ✅ Correctly rejected: {}", e),
 	}
 
-	// Test 4: Verify that patterns actually affect the generated topics
+	// Test 4: Verify that different patterns generate different topics
 	println!("\n4️⃣  Verifying topic generation:");
 
-	// We can't easily test the actual topic without mocking, but we can verify
-	// that different patterns are stored correctly
-	let pattern1 = SensorMessage::publisher().pattern().topic_pattern();
-	let pattern2 = SensorMessage::publisher()
-		.with_pattern("iot/{sensor_id}/telemetry")?
-		.pattern()
-		.topic_pattern();
+	// Test with another custom pattern
+	let iot_pattern = "iot/{sensor_id}/telemetry";
+	match SensorMessage::get_publisher_to(&client, iot_pattern, sensor_id) {
+		| Ok(publisher) => {
+			let topic = publisher.topic();
+			println!("   IoT pattern topic: {}", topic);
+			assert_eq!(topic, "iot/temp_001/telemetry");
+			println!("   ✅ Different patterns generate different topics!");
+		}
+		| Err(e) => println!("   ❌ Error: {}", e),
+	}
 
-	println!("   Default pattern: {}", pattern1);
-	println!("   Custom pattern:  {}", pattern2);
+	// Test 5: Direct publish methods (no intermediate publisher)
+	println!("\n5️⃣  Testing direct publish methods:");
 
-	if pattern1 != pattern2 {
-		println!("   ✅ Patterns are different - pattern substitution works!");
-	} else {
-		println!("   ❌ Patterns are the same - something is wrong!");
+	// Direct publish with default pattern
+	println!("   📤 Publishing directly with default pattern...");
+	match SensorMessage::publish(&client, sensor_id, &_test_data).await {
+		| Ok(()) => println!("   ✅ Direct publish with default pattern successful"),
+		| Err(e) => println!("   ❌ Error: {}", e),
+	}
+
+	// Direct publish to custom pattern (if we had such method)
+	// Note: This would require a publish_to() method similar to get_publisher_to()
+	println!("   📤 One-shot publishing to custom topic...");
+	let custom_topic = "alerts/temp_001/high_temp";
+	match client.get_publisher::<TestData>(custom_topic) {
+		| Ok(publisher) => {
+			publisher.publish(&TestData { value: 99 }).await?;
+			println!("   ✅ One-shot publish to custom topic: {}", custom_topic);
+		}
+		| Err(e) => println!("   ❌ Error: {}", e),
 	}
 
 	connection.shutdown().await?;
 
-	println!("\n🎉 PublisherBuilder pattern test completed!");
+	println!("\n🎉 get_publisher_to() pattern test completed!");
 	Ok(())
 }

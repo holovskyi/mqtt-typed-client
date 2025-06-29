@@ -3,11 +3,17 @@
 - [ ] Protocol compression. Compositional approach - separate serialization and compression. Adaptive mechanism (based on message type and size)
 - [x] Update topic for subscription. With same wildcards and param names
 let mut subscriber = TemperatureSensor::subscribe_with_pattern(&client, "data/{building}/{floor}/t/{sensor_id}").await?;
-- [ ] Update topic for publisher
+- [x] Update topic for publisher
 - [ ] Last will message
 - [ ] mqtt_typed_client::client::async_client::MqttClient
-impl<F> MqttClient<F>
-async fn run(mut event_loop: EventLoop, subscription_manager: SubscriptionManagerHandler<Bytes>)
+    impl<F> MqttClient<F>
+    async fn run(mut event_loop: EventLoop, subscription_manager: SubscriptionManagerHandler<Bytes>)
+- [ ] А якщо в макросі генерувати ext trait для MqttClient
+Щоб працювати з конкретними типами повідомленнь замість 
+SensorMessage::publish(&client, sensor_id, &_test_data).await
+
+Чи це реально? Я тут бачу виклик що може бути багато типів на кшталт SensorMessage, і чи компілятор зможе вивести і знайти необхідний trait?
+
 
 При певній кількості помилок, ми виходимо з циклу. Але можливо треба зробити передачу помилки на інші рівні, спідписникам та пудлішерам?
 
