@@ -225,16 +225,13 @@ fn test_topic_param_build() {
 
 			assert!(
 				found_param.is_some(),
-				"Test case {}: missing parameter '{}'",
-				i,
-				expected_name
+				"Test case {i}: missing parameter '{expected_name}'"
 			);
 
 			let param = found_param.unwrap();
 			assert_eq!(
 				param.wildcard_index, expected_index,
-				"Test case {}: wildcard index mismatch for '{}'",
-				i, expected_name
+				"Test case {i}: wildcard index mismatch for '{expected_name}'"
 			);
 		}
 	}
@@ -428,8 +425,7 @@ fn test_complex_wildcard_patterns() {
 		assert_eq!(
 			params.len(),
 			expected_total,
-			"Pattern '{}': wrong total wildcard count",
-			pattern_str
+			"Pattern '{pattern_str}': wrong total wildcard count"
 		);
 
 		let named_count = expected_named.len();
@@ -441,8 +437,7 @@ fn test_complex_wildcard_patterns() {
 				.unwrap();
 			assert_eq!(
 				found.wildcard_index, expected_index,
-				"Pattern '{}': wrong index for '{}'",
-				pattern_str, expected_name
+				"Pattern '{pattern_str}': wrong index for '{expected_name}'"
 			);
 		}
 
@@ -453,8 +448,7 @@ fn test_complex_wildcard_patterns() {
 		assert_eq!(
 			anonymous_count + named_count,
 			expected_total,
-			"Pattern '{}': anonymous + named != total",
-			pattern_str
+			"Pattern '{pattern_str}': anonymous + named != total"
 		);
 	}
 }
@@ -617,8 +611,7 @@ fn test_custom_field_types() {
 		let actual_type = quote::quote!(#field_type).to_string();
 		assert_eq!(
 			actual_type, expected_type,
-			"Wrong type for parameter '{}'",
-			param_name
+			"Wrong type for parameter '{param_name}'"
 		);
 	}
 

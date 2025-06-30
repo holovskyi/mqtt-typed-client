@@ -68,7 +68,7 @@ where F: MessageSerializer<T>
 		let payload = self
 			.serializer
 			.serialize(data)
-			.map_err(|e| MqttClientError::Serialization(format!("{:?}", e)))?;
+			.map_err(|e| MqttClientError::Serialization(format!("{e:?}")))?;
 		self.client
 			.publish(self.topic.as_str(), self.qos, self.retain, payload)
 			.await

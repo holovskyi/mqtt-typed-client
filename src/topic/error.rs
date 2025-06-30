@@ -101,7 +101,7 @@ pub mod validation {
 
 			if segment.contains('\0') {
 				return Err(TopicMatcherError::invalid_segment(
-					format!("null-byte-in-{}", segment),
+					format!("null-byte-in-{segment}"),
 					index,
 				));
 			}

@@ -36,27 +36,26 @@ impl std::fmt::Display for MqttClientError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			| MqttClientError::Connection(e) => {
-				write!(f, "Connection error: {}", e)
+				write!(f, "Connection error: {e}")
 			}
 			| MqttClientError::Configuration(e) => {
-				write!(f, "Configuration error: {}", e)
+				write!(f, "Configuration error: {e}")
 			}
 			| MqttClientError::ConfigurationValue(e) => {
-				write!(f, "Invalid configuration value: {}", e)
+				write!(f, "Invalid configuration value: {e}")
 			}
 			| MqttClientError::Serialization(e) => {
-				write!(f, "Serialization error: {}", e)
+				write!(f, "Serialization error: {e}")
 			}
 			| MqttClientError::Subscription(e) => {
-				write!(f, "Subscription error: {:?}", e)
+				write!(f, "Subscription error: {e:?}")
 			}
 			| MqttClientError::Topic(e) => {
-				write!(f, "Topic error: {}", e)
+				write!(f, "Topic error: {e}")
 			}
 			| MqttClientError::UnsubscribeFailed(s_id) => write!(
 				f,
-				"Failed to unsubscribe: subscription {} channel closed",
-				s_id
+				"Failed to unsubscribe: subscription {s_id} channel closed"
 			),
 		}
 	}

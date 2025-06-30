@@ -34,7 +34,7 @@ struct SensorReading {
 }
 
 fn get_server(server: &str, client_id: &str) -> String {
-	format!("{}?client_id={}&clean_session=true", server, client_id)
+	format!("{server}?client_id={client_id}&clean_session=true")
 }
 const _SERVER_COOL: &str = "mqtt://broker.mqtt.cool:1883";
 const _SERVER_MODSQITO: &str = "mqtt://test.mosquitto.org:1883";

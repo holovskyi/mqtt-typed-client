@@ -115,122 +115,102 @@ fn verify_generated_code(code: &str, checks: Vec<CodeCheck>, test_name: &str) {
 			| CodeCheck::ParamExtraction { param_name, index } => {
 				let has_extract_call = code.contains("extract_topic_parameter");
 				let has_param_name =
-					code.contains(&format!("\"{}\"", param_name));
-				let has_index = code.contains(&format!("&topic, {}, ", index))
-					|| code.contains(&format!("&topic, {}usize,", index))
-					|| code.contains(&format!("& topic , {} ,", index))
-					|| code.contains(&format!("& topic , {}usize ,", index));
+					code.contains(&format!("\"{param_name}\""));
+				let has_index = code.contains(&format!("&topic, {index}, "))
+					|| code.contains(&format!("&topic, {index}usize,"))
+					|| code.contains(&format!("& topic , {index} ,"))
+					|| code.contains(&format!("& topic , {index}usize ,"));
 
 				let found = has_extract_call && has_param_name && has_index;
 				assert!(
 					found,
-					"Test '{}': missing parameter extraction for '{}' at \
-					 index {}\nGenerated code: {}",
-					test_name, param_name, index, code
+					"Test '{test_name}': missing parameter extraction for '{param_name}' at \
+					 index {index}\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::FieldAssignment(field) => {
 				let patterns =
-					[format!("{} ,", field), format!("{},", field)];
+					[format!("{field} ,"), format!("{field},")];
 				let found =
 					patterns.iter().any(|pattern| code.contains(pattern));
 				assert!(
 					found,
-					"Test '{}': missing field assignment for '{}'\nGenerated \
-					 code: {}",
-					test_name, field, code
+					"Test '{test_name}': missing field assignment for '{field}'\nGenerated \
+					 code: {code}"
 				);
 			}
 			| CodeCheck::Constant { name, value } => {
 				let patterns = [
 					format!(
-						"pub const {} : & 'static str = \"{}\" ;",
-						name, value
+						"pub const {name} : & 'static str = \"{value}\" ;"
 					),
 					format!(
-						"pub const {}: &'static str = \"{}\";",
-						name, value
+						"pub const {name}: &'static str = \"{value}\";"
 					),
 					format!(
-						"pub const {} : &'static str = \"{}\" ;",
-						name, value
+						"pub const {name} : &'static str = \"{value}\" ;"
 					),
 				];
 				let found =
 					patterns.iter().any(|pattern| code.contains(pattern));
 				assert!(
 					found,
-					"Test '{}': missing constant '{}' with value \
-					 '{}'\nGenerated code: {}",
-					test_name, name, value, code
+					"Test '{test_name}': missing constant '{name}' with value \
+					 '{value}'\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::Method(method_name) => {
 				let patterns = [
-					format!("pub async fn {}", method_name),
-					format!("pub async fn {}(", method_name),
-					format!("pub fn {}", method_name),
-					format!("pub fn {}(", method_name),
+					format!("pub async fn {method_name}"),
+					format!("pub async fn {method_name}("),
+					format!("pub fn {method_name}"),
+					format!("pub fn {method_name}("),
 				];
 				let found =
 					patterns.iter().any(|pattern| code.contains(pattern));
 				assert!(
 					found,
-					"Test '{}': missing method '{}'\nGenerated code: {}",
-					test_name, method_name, code
+					"Test '{test_name}': missing method '{method_name}'\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::TraitImpl(trait_name) => {
 				assert!(
 					code.contains(trait_name),
-					"Test '{}': missing trait implementation for \
-					 '{}'\nGenerated code: {}",
-					test_name,
-					trait_name,
-					code
+					"Test '{test_name}': missing trait implementation for \
+					 '{trait_name}'\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::PayloadType(type_name) => {
 				assert!(
 					code.contains(type_name),
-					"Test '{}': missing payload type '{}'\nGenerated code: {}",
-					test_name,
-					type_name,
-					code
+					"Test '{test_name}': missing payload type '{type_name}'\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::PublisherParam {
 				param_name,
 				param_type,
 			} => {
-				let param_pattern = format!("{} : {}", param_name, param_type);
+				let param_pattern = format!("{param_name} : {param_type}");
 				let param_pattern_spaced =
-					format!("{}: {}", param_name, param_type);
+					format!("{param_name}: {param_type}");
 				let found = code.contains(&param_pattern)
 					|| code.contains(&param_pattern_spaced);
 				assert!(
 					found,
-					"Test '{}': missing publisher parameter '{}' with type \
-					 '{}'\nGenerated code: {}",
-					test_name, param_name, param_type, code
+					"Test '{test_name}': missing publisher parameter '{param_name}' with type \
+					 '{param_type}'\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::FormatString(format_str) => {
 				assert!(
 					code.contains(format_str),
-					"Test '{}': missing format string '{}'\nGenerated code: {}",
-					test_name,
-					format_str,
-					code
+					"Test '{test_name}': missing format string '{format_str}'\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::NotPresent(text) => {
 				assert!(
 					!code.contains(text),
-					"Test '{}': found unexpected text '{}'\nGenerated code: {}",
-					test_name,
-					text,
-					code
+					"Test '{test_name}': found unexpected text '{text}'\nGenerated code: {code}"
 				);
 			}
 		}
@@ -286,14 +266,12 @@ fn test_generator_configuration_modes() {
 		assert_eq!(
 			generator.should_generate_subscriber(),
 			expected_subscriber,
-			"Test '{}': subscriber generation mismatch",
-			name
+			"Test '{name}': subscriber generation mismatch"
 		);
 		assert_eq!(
 			generator.should_generate_publisher(),
 			expected_publisher,
-			"Test '{}': publisher generation mismatch",
-			name
+			"Test '{name}': publisher generation mismatch"
 		);
 	}
 }
@@ -643,19 +621,16 @@ fn test_generator_info_methods() {
 		assert_eq!(
 			generator.context.topic_params.len(),
 			expected_count,
-			"Test '{}': param count mismatch",
-			name
+			"Test '{name}': param count mismatch"
 		);
 		assert_eq!(
 			generator.context.payload_type.is_some(),
 			expected_payload,
-			"Test '{}': payload presence mismatch",
-			name
+			"Test '{name}': payload presence mismatch"
 		);
 		assert_eq!(
 			generator.context.has_topic_field, expected_topic,
-			"Test '{}': topic field presence mismatch",
-			name
+			"Test '{name}': topic field presence mismatch"
 		);
 
 		let actual_names: Vec<&str> = generator
@@ -668,15 +643,12 @@ fn test_generator_info_methods() {
 		assert_eq!(
 			actual_names.len(),
 			expected_names.len(),
-			"Test '{}': param names count mismatch",
-			name
+			"Test '{name}': param names count mismatch"
 		);
 		for expected_name in expected_names {
 			assert!(
 				actual_names.contains(&expected_name),
-				"Test '{}': missing parameter '{}'",
-				name,
-				expected_name
+				"Test '{name}': missing parameter '{expected_name}'"
 			);
 		}
 	}

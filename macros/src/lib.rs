@@ -446,7 +446,7 @@ fn parse_topic_pattern(
 	.map_err(|err| {
 		syn::Error::new_spanned(
 			topic_pattern_str,
-			format!("Invalid topic pattern: {}", err),
+			format!("Invalid topic pattern: {err}"),
 		)
 	})
 }

@@ -52,7 +52,7 @@ pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
 				| Err(err) => {
 					error!(message_id = i, error = %err, "Failed to publish message");
 
-					eprintln!("Failed to publish message {}: {}", i, err);
+					eprintln!("Failed to publish message {i}: {err}");
 				}
 			}
 			time::sleep(Duration::from_millis(500)).await;
@@ -80,16 +80,14 @@ pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
 				info!(topic = %topic, data = ?data, count = count, "Received message");
 
 				println!(
-					"Received from {}: {:?} (count: {})",
-					topic, data, count
+					"Received from {topic}: {data:?} (count: {count})"
 				);
 			}
 			| Err(err) => {
 				error!(topic = %topic, count = count, error = ?err, "Failed to deserialize message data");
 
 				eprintln!(
-					"Failed to deserialize message from {}: {:?}",
-					topic, err
+					"Failed to deserialize message from {topic}: {err:?}"
 				);
 			}
 		}
@@ -132,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	if let Err(ref e) = result {
 		error!(error = %e, "Example failed");
 
-		eprintln!("Example failed: {}", e);
+		eprintln!("Example failed: {e}");
 	} else {
 		info!("Example completed successfully");
 

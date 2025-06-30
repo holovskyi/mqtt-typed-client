@@ -17,7 +17,7 @@ async fn main() {
 		payload: vec![0x01, 0x02, 0x03, 0x04],
 	};
 
-	println!("Created sensor reading: {:?}", reading);
+	println!("Created sensor reading: {reading:?}");
 	println!("Sensor ID: {}", reading.sensor_id);
 	println!("Payload length: {} bytes", reading.payload.len());
 

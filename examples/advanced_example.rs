@@ -153,7 +153,7 @@ async fn smart_building_monitor() -> Result<()> {
 							).await?;
 						}
 					}
-					Err(e) => eprintln!("❌ Temperature parsing error: {}", e),
+					Err(e) => eprintln!("❌ Temperature parsing error: {e}"),
 				}
 			}
 
@@ -162,7 +162,7 @@ async fn smart_building_monitor() -> Result<()> {
 				match status_result {
 					Ok(status) => {
 						let battery_info = status.payload.battery
-							.map(|b| format!(" (🔋{}%)", b))
+							.map(|b| format!(" (🔋{b}%)"))
 							.unwrap_or_default();
 
 						println!(
@@ -180,7 +180,7 @@ async fn smart_building_monitor() -> Result<()> {
 							}
 						}
 					}
-					Err(e) => eprintln!("❌ Status parsing error: {}", e),
+					Err(e) => eprintln!("❌ Status parsing error: {e}"),
 				}
 			}
 
@@ -200,7 +200,7 @@ async fn smart_building_monitor() -> Result<()> {
 							alert.category, alert.payload, alert.details
 						);
 					}
-					Err(e) => eprintln!("❌ Alert parsing error: {}", e),
+					Err(e) => eprintln!("❌ Alert parsing error: {e}"),
 				}
 			}
 			// Graceful shutdown signals
@@ -273,7 +273,7 @@ async fn simulate_building_data(
 
 		// Publish to pattern with + wildcard
 		let topic =
-			format!("status/{}/{}/{}", building, device_type, device_id);
+			format!("status/{building}/{device_type}/{device_id}");
 		client
 			.get_publisher::<DeviceStatus>(&topic)?
 			.publish(&status)
@@ -290,8 +290,7 @@ async fn simulate_building_data(
 			severity,
 			"temperature",
 			&format!(
-				"Temperature anomaly detected by {} monitoring in TechHub",
-				severity
+				"Temperature anomaly detected by {severity} monitoring in TechHub"
 			),
 		)
 		.await

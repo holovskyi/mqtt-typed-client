@@ -49,7 +49,7 @@ async fn main() {
 			| Ok(reading) => {
 				println!("Sensor {}: {}°C", reading.sensor_id, reading.payload)
 			}
-			| Err(e) => eprintln!("Parse error: {:?}", e),
+			| Err(e) => eprintln!("Parse error: {e:?}"),
 		}
 	}
 

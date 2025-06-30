@@ -283,8 +283,7 @@ fn test_complex_patterns() {
 		let result = generate_mqtt_code(macro_args, &test_struct);
 		assert!(
 			result.is_ok(),
-			"Test '{}': complex pattern should generate successfully",
-			name
+			"Test '{name}': complex pattern should generate successfully"
 		);
 
 		let generated = result.unwrap();
@@ -293,13 +292,11 @@ fn test_complex_patterns() {
 		// Basic checks that code generation worked
 		assert!(
 			code.contains("TOPIC_PATTERN"),
-			"Test '{}': should have TOPIC_PATTERN",
-			name
+			"Test '{name}': should have TOPIC_PATTERN"
 		);
 		assert!(
 			code.contains("MQTT_PATTERN"),
-			"Test '{}': should have MQTT_PATTERN",
-			name
+			"Test '{name}': should have MQTT_PATTERN"
 		);
 	}
 }

@@ -59,8 +59,7 @@ fn test_subscriptions(
 		// Assert that actual matches equal expected matches
 		assert_eq!(
 			actual, expected,
-			"Path '{}' matched subscriptions {:?}, expected {:?}",
-			path, actual, expected
+			"Path '{path}' matched subscriptions {actual:?}, expected {expected:?}"
 		);
 	}
 }
@@ -301,8 +300,7 @@ fn test_active_subscriptions(
 	// Assert that actual active subscriptions match expected
 	assert_eq!(
 		actual_map, expected_map,
-		"Active subscriptions {:?}, expected {:?}",
-		actual_map, expected_map
+		"Active subscriptions {actual_map:?}, expected {expected_map:?}"
 	);
 }
 
@@ -383,8 +381,7 @@ fn test_multiple_subs_active_subscriptions() {
 
 	assert_eq!(
 		actual, expected,
-		"Active subscriptions {:?}, expected {:?}",
-		actual, expected
+		"Active subscriptions {actual:?}, expected {expected:?}"
 	);
 }
 
@@ -443,8 +440,7 @@ fn test_update_node(
 	// Assert that actual active subscriptions match expected
 	assert_eq!(
 		actual_map, expected_map,
-		"After update operations, active subscriptions are {:?}, expected {:?}",
-		actual_map, expected_map
+		"After update operations, active subscriptions are {actual_map:?}, expected {expected_map:?}"
 	);
 }
 
@@ -581,7 +577,6 @@ fn test_unsubscribe_all() {
 
 	assert!(
 		root.is_empty(),
-		"Root node should be empty after unsubscribing all:{:#?}",
-		root
+		"Root node should be empty after unsubscribing all:{root:#?}"
 	);
 }

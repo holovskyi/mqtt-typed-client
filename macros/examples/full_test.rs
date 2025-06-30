@@ -37,14 +37,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 					);
 				}
 				| Err(e) => {
-					println!("❌ Subscription failed: {}", e);
+					println!("❌ Subscription failed: {e}");
 				}
 			}
 		}
 		| Err(e) => {
 			println!(
-				"❌ MQTT connection failed (expected without broker): {}",
-				e
+				"❌ MQTT connection failed (expected without broker): {e}"
 			);
 			println!("✅ But macro compilation successful!");
 		}

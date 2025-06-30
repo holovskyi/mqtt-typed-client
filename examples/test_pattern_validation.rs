@@ -39,8 +39,8 @@ fn test_pattern_validation() -> Result<(), TopicPatternError> {
     match invalid_order {
         Err(TopicPatternError::PatternStructureMismatch { original: orig, custom }) => {
             println!("✅ Correctly rejected pattern with wrong parameter order:");
-            println!("   Original: {}", orig);
-            println!("   Custom:   {}", custom);
+            println!("   Original: {orig}");
+            println!("   Custom:   {custom}");
         }
         _ => panic!("Expected PatternStructureMismatch error"),
     }

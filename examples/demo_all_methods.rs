@@ -120,7 +120,7 @@ async fn demonstrate_builder_api() -> Result<(), Box<dyn std::error::Error>> {
 	};
 	match invalid_result {
 		| Err(e) => {
-			println!("    ✅ Correctly rejected invalid pattern: {}", e)
+			println!("    ✅ Correctly rejected invalid pattern: {e}")
 		}
 		| Ok(_) => panic!("Should have failed!"),
 	}

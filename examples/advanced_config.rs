@@ -144,7 +144,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     if let Err(ref e) = result {
         error!(error = %e, "Example failed");
-        eprintln!("Example failed: {}", e);
+        eprintln!("Example failed: {e}");
     } else {
         info!("Example completed successfully");
         println!("Advanced configuration example completed successfully!");

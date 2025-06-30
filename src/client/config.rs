@@ -95,7 +95,7 @@ impl<S> MqttClientConfig<S> {
     {
         let serializer = S::default();
         let payload = serializer.serialize(&last_will.payload)
-            .map_err(|e| MqttClientError::Serialization(format!("{:?}", e)))?;
+            .map_err(|e| MqttClientError::Serialization(format!("{e:?}")))?;
             
         self.connection.set_last_will(LastWill::new(
             last_will.topic,

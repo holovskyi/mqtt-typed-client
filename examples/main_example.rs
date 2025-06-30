@@ -92,7 +92,7 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 		if let Ok(data) = data {
 			if let Some(sensor_id) = topic_match.get_named_param("id") {
-				println!("Sensor ID: {}", sensor_id);
+				println!("Sensor ID: {sensor_id}");
 			}
 			info!(topic = ?topic_match, data = ?data, count = count, "Received message");
 		} else {
