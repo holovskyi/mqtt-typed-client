@@ -1,0 +1,30 @@
+# Простий приклад для початківців
+name: Simple CI
+
+# Коли запускати
+on:
+  push:
+    branches: [main]
+
+# Що робити  
+jobs:
+  test:
+    name: Test Project
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Завантажити код
+    - name: Download code
+      uses: actions/checkout@v4
+    
+    # Встановити Rust  
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    # Запустити тести
+    - name: Run tests
+      run: cargo test
+      
+    # Перевірити стиль коду
+    - name: Check code style  
+      run: cargo fmt --check

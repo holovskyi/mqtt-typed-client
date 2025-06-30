@@ -15,30 +15,23 @@ categories = ["network-programming", "asynchronous"]
 readme = "README.md"
 
 [dependencies]
-arcstr = "1.2.0"
-async-trait = "0.1.88"
-bincode = "2.0.1"
-bytes = "1.10.1"
-futures = "0.3.31"
-lru = "0.14.0"
-#proc-macro2 = "1.0.95"
-#quote = "1.0.40"
-rumqttc = { version = "0.24.0", features = ["url"] }
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
-smallvec = "1.15.1"
-#syn = "2.0.103"
-thiserror = "2.0.12"
-time = { version = "0.3.41", features = ["formatting"] }
-tokio = { version = "1.45.0", features = ["full"] }
+arcstr = "1.2"
+bincode = "2.0"
+bytes = "1.10"
+futures = "0.3"
+lru = "0.15"
+rumqttc = { version = "0.24", features = ["url"] }
+serde = { version = "1.0", features = ["derive"] }
+smallvec = "1.15"
+thiserror = "2.0"
+tokio = { version = "1.45", features = ["full"] }
 tracing = "0.1"
-tracing-appender = "0.2.3"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 
 [dev-dependencies]
-#mqtt_typed_client = { path = ".." }
-#mqtt_typed_client_macros = { path = "../macros" }
 mqtt_typed_client_macros = { path = "./macros" }
+serde_json = "1.0.140"
+# Dependencies for examples and tests
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 
 [lib]
 #proc-macro = true

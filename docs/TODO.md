@@ -1,12 +1,13 @@
 ## TODO
 
-- [ ] Last will message
+- [x] Last will message
 - [ ] Protocol compression. Compositional approach - separate serialization and compression. Adaptive mechanism (based on message type and size)
 - [ ] mqtt_typed_client::client::async_client::MqttClient
     impl<F> MqttClient<F>
     async fn run(mut event_loop: EventLoop, subscription_manager: SubscriptionManagerHandler<Bytes>)
     При певній кількості помилок, ми виходимо з циклу. Але можливо треба зробити передачу помилки на інші рівні, спідписникам та пудлішерам?
 - [ ] В опції макроса додати notypedclient та nolastwill
+- [ ] розібратися в типах лицензії
 - [x] А якщо в макросі генерувати ext trait для MqttClient
     Щоб працювати з конкретними типами повідомленнь замість 
     SensorMessage::publish(&client, sensor_id, &_test_data).await
