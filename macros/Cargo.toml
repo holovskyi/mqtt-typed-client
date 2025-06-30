@@ -1,5 +1,5 @@
 [package]
-name = "mqtt_typed_client_macros"
+name = "mqtt-typed-client-macros"
 version = "0.1.0"
 edition = "2021"
 description = "Macros for the mqtt_typed_client library"
@@ -12,12 +12,9 @@ proc-macro = true
 proc-macro2 = "1.0.95"
 quote = "1.0.40"
 syn = "2.0.103"
-mqtt_typed_client = { path = ".." }
+mqtt-typed-client-core = { path = "../core" }
 
 [dev-dependencies]
 tokio = "1.45.1"
-mqtt_typed_client = { path = ".." }
+mqtt-typed-client-core = { path = "../core" }
 
-[[example]]
-#name = "basic_macro"
-name = "full_test"

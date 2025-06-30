@@ -1,0 +1,32 @@
+[package]
+name = "mqtt-typed-client-core"
+version = "0.1.0"
+edition = "2021"
+description = "A typed MQTT client library with pattern-based routing and automatic subscription management"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/mqtt_typed_client"
+keywords = ["mqtt", "async", "typed", "client", "iot"]
+categories = ["network-programming", "asynchronous"]
+readme = "README.md"
+
+[dependencies]
+arcstr = "1.2"
+bincode = "2.0"
+bytes = "1.10"
+futures = "0.3"
+lru = "0.15"
+rumqttc = { version = "0.24", features = ["url"] }
+serde = { version = "1.0", features = ["derive"] }
+smallvec = "1.15"
+thiserror = "2.0"
+tokio = { version = "1.45", features = ["full"] }
+tracing = "0.1"
+
+[dev-dependencies]
+mqtt-typed-client-macros = { path = "../macros" }
+serde_json = "1.0.140"
+# Dependencies for examples and tests
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+
+[lib]
+#proc-macro = true

@@ -50,7 +50,10 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 
 	info!("Setting up publisher and subscriber");
 
-	let publisher = SensorReading::get_publisher(&client, "room52", 37, 36.6)?;
+	let sensor_client = client.sensor_reading();
+
+	let publisher = sensor_client.get_publisher("room52",37, 36.6)?;
+
 	for i in 0 .. 10 {
 		debug!(message_id = i, "Publishing message");
 
@@ -86,11 +89,16 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 	info!("MQTT client created successfully");
 
 	info!(mqtt = SensorReading::MQTT_PATTERN, "Setting up subscriber");
-	let mut subscriber_structured = SensorReading::subscribe(&client).await?;
+
+	let sensor_client = client.sensor_reading();
+
+	let mut subscriber = sensor_client.subscribe().await?;
+	
+	//TODO show using without macro SensorReading::subscribe(&client).await?; 
 
 	let mut count = 0;
 	info!("Starting message reception loop");
-	while let Some(sensor_result) = subscriber_structured.receive().await {
+	while let Some(sensor_result) = subscriber.receive().await {
 		if count == 10 {
 			break;
 		}

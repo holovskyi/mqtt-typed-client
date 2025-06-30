@@ -46,7 +46,7 @@ impl<'a> TypedClientGenerator<'a> {
 
         quote! {
             pub struct #client_struct<F> {
-                client: ::mqtt_typed_client::MqttClient<F>,
+                client: ::mqtt_typed_client_core::MqttClient<F>,
             }
         }
     }
@@ -71,7 +71,7 @@ impl<'a> TypedClientGenerator<'a> {
         quote! {
             impl<F> #client_struct<F>
             where 
-                F: ::mqtt_typed_client::MessageSerializer<#payload_type>
+                F: ::mqtt_typed_client_core::MessageSerializer<#payload_type>
             {
                 #publisher_methods
                 #subscribe_method
@@ -99,7 +99,7 @@ impl<'a> TypedClientGenerator<'a> {
         let method_name = format_ident!("{}", self.names.method_name);
 
         quote! {
-            impl<F> #extension_trait<F> for ::mqtt_typed_client::MqttClient<F> 
+            impl<F> #extension_trait<F> for ::mqtt_typed_client_core::MqttClient<F> 
             where 
                 F: Clone
             {
@@ -127,7 +127,7 @@ impl<'a> TypedClientGenerator<'a> {
                 &self,
                 #(#method_params,)*
                 data: &#payload_type,
-            ) -> ::std::result::Result<(), ::mqtt_typed_client::MqttClientError> {
+            ) -> ::std::result::Result<(), ::mqtt_typed_client_core::MqttClientError> {
                 #struct_name::publish(&self.client #(, #param_args)*, data).await
             }
 
@@ -135,8 +135,8 @@ impl<'a> TypedClientGenerator<'a> {
                 &self,
                 #(#method_params,)*
             ) -> ::std::result::Result<
-                ::mqtt_typed_client::MqttPublisher<#payload_type, F>,
-                ::mqtt_typed_client::TopicError,
+                ::mqtt_typed_client_core::MqttPublisher<#payload_type, F>,
+                ::mqtt_typed_client_core::TopicError,
             > {
                 #struct_name::get_publisher(&self.client #(, #param_args)*)
             }
@@ -144,13 +144,13 @@ impl<'a> TypedClientGenerator<'a> {
             pub fn get_publisher_to(
                 &self,
                 custom_pattern: impl TryInto<
-                    ::mqtt_typed_client::TopicPatternPath,
-                    Error = ::mqtt_typed_client::TopicPatternError,
+                    ::mqtt_typed_client_core::TopicPatternPath,
+                    Error = ::mqtt_typed_client_core::TopicPatternError,
                 >,
                 #(#method_params,)*
             ) -> ::std::result::Result<
-                ::mqtt_typed_client::MqttPublisher<#payload_type, F>,
-                ::mqtt_typed_client::TopicError,
+                ::mqtt_typed_client_core::MqttPublisher<#payload_type, F>,
+                ::mqtt_typed_client_core::TopicError,
             > {
                 #struct_name::get_publisher_to(&self.client, custom_pattern #(, #param_args)*)
             }
@@ -166,11 +166,11 @@ impl<'a> TypedClientGenerator<'a> {
             pub async fn subscribe(
                 &self,
             ) -> ::std::result::Result<
-                ::mqtt_typed_client::MqttTopicSubscriber<#struct_name, #payload_type, F>,
-                ::mqtt_typed_client::MqttClientError,
+                ::mqtt_typed_client_core::MqttTopicSubscriber<#struct_name, #payload_type, F>,
+                ::mqtt_typed_client_core::MqttClientError,
             >
             where
-                #struct_name: ::mqtt_typed_client::FromMqttMessage<#payload_type, F::DeserializeError>,
+                #struct_name: ::mqtt_typed_client_core::FromMqttMessage<#payload_type, F::DeserializeError>,
             {
                 #struct_name::subscribe(&self.client).await
             }
@@ -218,7 +218,7 @@ mod tests {
         let result = generator.generate_typed_client_struct();
         let expected = quote! {
             pub struct TestMessageClient<F> {
-                client: ::mqtt_typed_client::MqttClient<F>,
+                client: ::mqtt_typed_client_core::MqttClient<F>,
             }
         };
 

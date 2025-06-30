@@ -1,6 +1,6 @@
 //! Tests for code generation logic
 
-use mqtt_typed_client::routing::subscription_manager::CacheStrategy;
+use mqtt_typed_client_core::routing::subscription_manager::CacheStrategy;
 use quote::quote;
 use syn::parse_quote;
 
@@ -60,8 +60,8 @@ enum CodeCheck {
 /// Helper to create a topic pattern for testing
 fn create_topic_pattern(
 	pattern: &str,
-) -> mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath {
-	mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
+) -> mqtt_typed_client_core::topic::topic_pattern_path::TopicPatternPath {
+	mqtt_typed_client_core::topic::topic_pattern_path::TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
 		.expect("Invalid test pattern")
 }
 

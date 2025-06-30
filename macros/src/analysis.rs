@@ -4,7 +4,7 @@
 //! validating that they are compatible and extracting all necessary information
 //! for code generation.
 
-use mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath;
+use mqtt_typed_client_core::topic::topic_pattern_path::TopicPatternPath;
 use syn::{Data, DataStruct, Fields};
 
 /// Represents a topic parameter with its name and position in the wildcard sequence
@@ -242,14 +242,14 @@ impl StructAnalysisContext {
 	/// Validate that a topic field has the correct type: `Arc<TopicMatch>`
 	///
 	/// Performs syntactic analysis of the type to ensure it matches exactly
-	/// `Arc<TopicMatch>` or `std::sync::Arc<mqtt_typed_client::topic::topic_match::TopicMatch>`.
+	/// `Arc<TopicMatch>` or `std::sync::Arc<mqtt_typed_client_core::topic::topic_match::TopicMatch>`.
 	fn validate_topic_field_type(ty: &syn::Type) -> Result<(), syn::Error> {
 		if !Self::is_arc_topic_match_type(ty) {
 			return Err(syn::Error::new_spanned(
 				ty,
 				"Field 'topic' must be of type Arc<TopicMatch>. Import it as: \
 				 use std::sync::Arc; use \
-				 mqtt_typed_client::topic::topic_match::TopicMatch;",
+				 mqtt_typed_client_core::topic::topic_match::TopicMatch;",
 			));
 		}
 		Ok(())

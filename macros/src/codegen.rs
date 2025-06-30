@@ -121,11 +121,11 @@ impl CodeGenerator {
 		let payload_type = self.get_payload_type_token();
 
 		Ok(quote! {
-			impl<DE> ::mqtt_typed_client::FromMqttMessage<#payload_type, DE> for #struct_name {
+			impl<DE> ::mqtt_typed_client_core::FromMqttMessage<#payload_type, DE> for #struct_name {
 				fn from_mqtt_message(
-					topic: ::std::sync::Arc<::mqtt_typed_client::topic::topic_match::TopicMatch>,
+					topic: ::std::sync::Arc<::mqtt_typed_client_core::topic::topic_match::TopicMatch>,
 					payload: #payload_type,
-				) -> ::std::result::Result<Self, ::mqtt_typed_client::MessageConversionError<DE>> {
+				) -> ::std::result::Result<Self, ::mqtt_typed_client_core::MessageConversionError<DE>> {
 					#(#param_extractions)*
 
 					Ok(Self {
@@ -140,20 +140,20 @@ impl CodeGenerator {
 	fn generate_builder_methods() -> proc_macro2::TokenStream {
 		quote! {
 			/// Get default topic pattern for this message type
-			pub fn default_pattern() -> &'static ::mqtt_typed_client::TopicPatternPath {
+			pub fn default_pattern() -> &'static ::mqtt_typed_client_core::TopicPatternPath {
 				use std::sync::OnceLock;
-				static PATTERN: OnceLock<::mqtt_typed_client::TopicPatternPath> = OnceLock::new();
+				static PATTERN: OnceLock<::mqtt_typed_client_core::TopicPatternPath> = OnceLock::new();
 				PATTERN.get_or_init(|| {
-					::mqtt_typed_client::TopicPatternPath::new_from_string(
+					::mqtt_typed_client_core::TopicPatternPath::new_from_string(
 						Self::TOPIC_PATTERN,
-						::mqtt_typed_client::CacheStrategy::NoCache
+						::mqtt_typed_client_core::CacheStrategy::NoCache
 					).expect("Built-in pattern must be valid")
 				})
 			}
 
 			/// Create subscription builder with default configuration
-			pub fn subscription() -> ::mqtt_typed_client::SubscriptionBuilder<Self> {
-				::mqtt_typed_client::SubscriptionBuilder::new(
+			pub fn subscription() -> ::mqtt_typed_client_core::SubscriptionBuilder<Self> {
+				::mqtt_typed_client_core::SubscriptionBuilder::new(
 					Self::default_pattern().clone()
 				)
 			}
@@ -177,17 +177,17 @@ impl CodeGenerator {
 		quote! {
 			/// Subscribe with default configuration
 			pub async fn subscribe<F>(
-				client: &::mqtt_typed_client::MqttClient<F>,
+				client: &::mqtt_typed_client_core::MqttClient<F>,
 			) -> ::std::result::Result<
-				::mqtt_typed_client::MqttTopicSubscriber<Self, #payload_type, F>,
-				::mqtt_typed_client::MqttClientError,
+				::mqtt_typed_client_core::MqttTopicSubscriber<Self, #payload_type, F>,
+				::mqtt_typed_client_core::MqttClientError,
 			>
 			where
 				F: ::std::default::Default
 					+ ::std::clone::Clone
 					+ ::std::marker::Send
 					+ ::std::marker::Sync
-					+ ::mqtt_typed_client::MessageSerializer<#payload_type>,
+					+ ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
 			{
 				Self::subscription().subscribe(client).await
 			}
@@ -209,44 +209,44 @@ impl CodeGenerator {
 			/// Publish message to default topic
 			#[allow(clippy::ptr_arg)]
 			pub async fn publish<F>(
-				client: &::mqtt_typed_client::MqttClient<F>,
+				client: &::mqtt_typed_client_core::MqttClient<F>,
 				#(#method_params,)*
 				data: &#payload_type,
-			) -> ::std::result::Result<(), ::mqtt_typed_client::MqttClientError>
+			) -> ::std::result::Result<(), ::mqtt_typed_client_core::MqttClientError>
 			where
-				F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
+				F: ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
 			{
 				Self::get_publisher(client #(, #format_args)*)?.publish(data).await
 			}
 
 			/// Get publisher for default topic
 			pub fn get_publisher<F>(
-				client: &::mqtt_typed_client::MqttClient<F>,
+				client: &::mqtt_typed_client_core::MqttClient<F>,
 				#(#method_params,)*
 			) -> ::std::result::Result<
-				::mqtt_typed_client::MqttPublisher<#payload_type, F>,
-				::mqtt_typed_client::TopicError,
+				::mqtt_typed_client_core::MqttPublisher<#payload_type, F>,
+				::mqtt_typed_client_core::TopicError,
 			>
 			where
-				F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
+				F: ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
 			{
 				let topic = format!(#format_string #(, #format_args)*);
             	client.get_publisher::<#payload_type>(&topic)
 			}
 
 			pub fn get_publisher_to<F>(
-				client: &::mqtt_typed_client::MqttClient<F>,
+				client: &::mqtt_typed_client_core::MqttClient<F>,
 				custom_pattern: impl TryInto <
-					::mqtt_typed_client::TopicPatternPath,
-					Error = ::mqtt_typed_client::TopicPatternError,
+					::mqtt_typed_client_core::TopicPatternPath,
+					Error = ::mqtt_typed_client_core::TopicPatternError,
 				>,
 				#(#method_params,)*
 			) -> ::std::result::Result<
-				::mqtt_typed_client::MqttPublisher<#payload_type, F>,
-				::mqtt_typed_client::TopicError,
+				::mqtt_typed_client_core::MqttPublisher<#payload_type, F>,
+				::mqtt_typed_client_core::TopicError,
 			> 
 			where
-				F: ::mqtt_typed_client::MessageSerializer<#payload_type>,
+				F: ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
 			{
 				let custom_pattern = custom_pattern.try_into()?;
 				let default_pattern = Self::default_pattern();
@@ -274,22 +274,22 @@ impl CodeGenerator {
             pub fn last_will(
                 #(#method_params,)*
                 payload: #payload_type,
-            ) -> ::mqtt_typed_client::TypedLastWill<#payload_type> {
+            ) -> ::mqtt_typed_client_core::TypedLastWill<#payload_type> {
                 let topic = format!(#format_string #(, #format_args)*);
-                ::mqtt_typed_client::TypedLastWill::new(topic, payload)
+                ::mqtt_typed_client_core::TypedLastWill::new(topic, payload)
             }
 
             /// Create Last Will message for custom topic pattern
             pub fn last_will_to(
                 custom_pattern: impl TryInto <
-                    ::mqtt_typed_client::TopicPatternPath,
-                    Error = ::mqtt_typed_client::TopicPatternError,
+                    ::mqtt_typed_client_core::TopicPatternPath,
+                    Error = ::mqtt_typed_client_core::TopicPatternError,
                 >,
                 #(#method_params,)*
                 payload: #payload_type,
             ) -> ::std::result::Result <
-                ::mqtt_typed_client::TypedLastWill<#payload_type>,
-                ::mqtt_typed_client::TopicError,
+                ::mqtt_typed_client_core::TypedLastWill<#payload_type>,
+                ::mqtt_typed_client_core::TopicError,
             > {
                 let custom_pattern = custom_pattern.try_into()?;
                 let default_pattern = Self::default_pattern();
@@ -300,7 +300,7 @@ impl CodeGenerator {
                 let topic = validated_pattern
                     .format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])?;
                     
-                Ok(::mqtt_typed_client::TypedLastWill::new(topic, payload))
+                Ok(::mqtt_typed_client_core::TypedLastWill::new(topic, payload))
             }
         }
     }
@@ -312,12 +312,12 @@ impl CodeGenerator {
 	///
 	/// # Example output
 	/// ```rust,ignore
-	/// let sensor_id = ::mqtt_typed_client::extract_topic_parameter(
+	/// let sensor_id = ::mqtt_typed_client_core::extract_topic_parameter(
 	///     &topic,
 	///     0,
 	///     "sensor_id"
 	/// )?;
-	/// let room = ::mqtt_typed_client::extract_topic_parameter(
+	/// let room = ::mqtt_typed_client_core::extract_topic_parameter(
 	///     &topic,
 	///     1,
 	///     "room"
@@ -342,7 +342,7 @@ impl CodeGenerator {
 		let param_name = &param.name;
 
 		quote! {
-			let #param_ident = ::mqtt_typed_client::extract_topic_parameter(
+			let #param_ident = ::mqtt_typed_client_core::extract_topic_parameter(
 				&topic,
 				#param_index,
 				#param_name

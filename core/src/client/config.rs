@@ -76,7 +76,7 @@ impl<S> MqttClientConfig<S> {
     ///
     /// # Example
     /// ```rust
-    /// # use mqtt_typed_client::{MqttClientConfig, BincodeSerializer};
+    /// # use mqtt_typed_client_core::{MqttClientConfig, BincodeSerializer};
     /// # use mqtt_typed_client_macros::mqtt_topic;
     /// # #[derive(Debug)]
     /// # #[mqtt_topic("devices/{device_id}/status")]
@@ -84,7 +84,7 @@ impl<S> MqttClientConfig<S> {
     /// let mut config = MqttClientConfig::<BincodeSerializer>::new("client", "broker", 1883);
     /// let last_will = DeviceStatus::last_will(123, "offline".to_string());
     /// config.with_last_will(last_will)?;
-    /// # Ok::<(), mqtt_typed_client::MqttClientError>(())
+    /// # Ok::<(), mqtt_typed_client_core::MqttClientError>(())
     /// ```
     ///
     /// # Errors

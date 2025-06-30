@@ -1,4 +1,4 @@
-use mqtt_typed_client_macros::mqtt_topic;
+use mqtt_typed_client::mqtt_topic;
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]

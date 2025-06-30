@@ -1,6 +1,6 @@
 //! Tests for struct analysis and validation logic
 
-use mqtt_typed_client::routing::subscription_manager::CacheStrategy;
+use mqtt_typed_client_core::routing::subscription_manager::CacheStrategy;
 use quote::quote;
 use syn::parse_quote;
 
@@ -31,8 +31,8 @@ enum AnalysisResult {
 /// Helper to create a topic pattern for testing
 fn create_topic_pattern(
 	pattern: &str,
-) -> mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath {
-	mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
+) -> mqtt_typed_client_core::topic::topic_pattern_path::TopicPatternPath {
+	mqtt_typed_client_core::topic::topic_pattern_path::TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
 		.expect("Invalid test pattern")
 }
 
@@ -328,7 +328,7 @@ fn test_topic_field_validation() {
 			name: "fully_qualified_arc_topic_match",
 			type_tokens: quote!(
 				std::sync::Arc<
-					mqtt_typed_client::topic::topic_match::TopicMatch,
+					mqtt_typed_client_core::topic::topic_match::TopicMatch,
 				>
 			),
 			should_be_valid: true,

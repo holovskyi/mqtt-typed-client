@@ -23,7 +23,7 @@
 //! ```rust
 //! use mqtt_typed_client_macros::mqtt_topic;
 //! use std::sync::Arc;
-//! use mqtt_typed_client::topic::topic_match::TopicMatch;
+//! use mqtt_typed_client_core::topic::topic_match::TopicMatch;
 //!
 //! #[derive(Debug)]
 //! #[mqtt_topic("sensors/{sensor_id}/temperature/{room}")]
@@ -96,8 +96,8 @@ mod codegen_typed_client;
 mod lib_test;
 mod naming;
 
-use mqtt_typed_client::routing::subscription_manager::CacheStrategy;
-use mqtt_typed_client::topic::topic_pattern_path::TopicPatternPath;
+use mqtt_typed_client_core::routing::subscription_manager::CacheStrategy;
+use mqtt_typed_client_core::topic::topic_pattern_path::TopicPatternPath;
 use proc_macro::TokenStream;
 use syn::{LitStr, parse::Parser, parse_macro_input};
 
@@ -187,7 +187,7 @@ use syn::{LitStr, parse::Parser, parse_macro_input};
 /// ```rust
 /// # use mqtt_typed_client_macros::mqtt_topic;
 /// # use std::sync::Arc;
-/// # use mqtt_typed_client::topic::topic_match::TopicMatch;
+/// # use mqtt_typed_client_core::topic::topic_match::TopicMatch;
 /// #[derive(Debug)]
 /// #[mqtt_topic("devices/{device_id}/status/#", subscriber)]
 /// struct DeviceStatus {
