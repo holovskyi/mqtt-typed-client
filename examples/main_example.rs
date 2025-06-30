@@ -2,8 +2,7 @@ use std::time::Duration;
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
-	BincodeSerializer, CacheStrategy, MqttClient, SubscriptionConfig,
-	TopicPatternPath,
+	BincodeSerializer, CacheStrategy, MqttClient, MqttClientConfig, SubscriptionConfig, TopicPatternPath
 };
 //use mqtt_async_client::MqttAsyncClient;
 use serde::{Deserialize, Serialize};
@@ -20,21 +19,21 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client with custom configuration");
 
 	// Example 1: Simple connection
-	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
+	let (_client, _connection) = MqttClient::<BincodeSerializer>::connect(
 		"mqtt://broker.mqtt.cool:1883?client_id=rumqtt-async",
 	)
 	.await?;
 	info!("MQTT client created successfully");
 
 	// Example 2: Advanced configuration (commented out for this demo)
-	/*
+	
 	let mut config = MqttClientConfig::new("my_client", "broker.mqtt.cool", 1883);
 	config.connection.set_keep_alive(Duration::from_secs(30));
 	config.connection.set_clean_session(true);
 	config.settings.topic_cache_size = 500;
 
 	let (client, connection) = MqttClient::<BincodeSerializer>::connect_with_config(config).await?;
-	*/
+
 
 	info!("Setting up publisher and subscriber");
 	let publisher = client

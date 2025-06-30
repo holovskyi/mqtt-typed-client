@@ -411,6 +411,7 @@ fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 		generate_subscriber,
 		generate_publisher,
 		generate_typed_client: true,  // Enable by default
+		generate_last_will: generate_publisher, // Enable if publisher is requested
 	};
 
 	Ok(macro_args)
@@ -457,6 +458,7 @@ struct MacroArgs {
 	generate_subscriber: bool,
 	generate_publisher: bool,
 	generate_typed_client: bool,
+	generate_last_will: bool,
 }
 
 #[cfg(test)]
@@ -474,6 +476,7 @@ mod test_helpers {
 			generate_subscriber: true,
 			generate_publisher: true,
 			generate_typed_client: true,
+			generate_last_will: true,
 		}
 	}
 }

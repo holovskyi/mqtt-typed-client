@@ -39,13 +39,13 @@ where F: Default + Clone + Send + Sync + 'static
 	pub async fn connect(
 		url: &str,
 	) -> Result<(Self, MqttConnection), MqttClientError> {
-		let config = MqttClientConfig::from_url(url)?;
+		let config = MqttClientConfig::<F>::from_url(url)?;
 		Self::connect_with_config(config).await
 	}
 
 	/// Create a new MQTT client with custom configuration
 	pub async fn connect_with_config(
-		config: MqttClientConfig,
+		config: MqttClientConfig<F>,
 	) -> Result<(Self, MqttConnection), MqttClientError> {
 		let topic_path_cache_capacity =
 			std::num::NonZeroUsize::new(config.settings.topic_cache_size)

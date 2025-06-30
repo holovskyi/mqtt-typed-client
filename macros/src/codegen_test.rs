@@ -88,6 +88,7 @@ fn create_macro_args(pattern: &str, config: GenerationConfig) -> MacroArgs {
 		generate_subscriber,
 		generate_publisher,
 		generate_typed_client: true,  // Enable by default
+		generate_last_will: generate_publisher, 
 	}
 }
 

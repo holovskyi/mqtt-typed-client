@@ -43,6 +43,12 @@ impl CodeGenerator {
 	pub fn should_generate_typed_client(&self) -> bool {
 		self.macro_args.generate_typed_client
 	}
+
+	/// Check if last will code should be generated
+	pub fn should_generate_last_will(&self) -> bool {
+		self.macro_args.generate_last_will
+	}
+
 	/// Generate complete implementation including original struct, traits, and helper methods
 	///
 	/// # Arguments
@@ -70,8 +76,13 @@ impl CodeGenerator {
 		} else {
 			quote! {}
 		};
-		
-		// NEW: Generate typed client extension
+
+		let last_will_methods = if self.should_generate_last_will() {
+            self.generate_last_will_methods()
+        } else {
+            quote! {}
+        };
+
 		let typed_client_extension = if self.should_generate_typed_client() {
 			let generator = crate::codegen_typed_client::TypedClientGenerator::new(self, struct_name);
 			generator.generate_complete_typed_client()
@@ -91,6 +102,7 @@ impl CodeGenerator {
 				#builder_methods
 				#subscriber_methods
 				#publisher_methods
+				#last_will_methods
 			}
 		})
 	}
@@ -250,6 +262,48 @@ impl CodeGenerator {
 
 		})
 	}
+
+	/// Generate last will methods
+    pub fn generate_last_will_methods(&self) -> proc_macro2::TokenStream {
+        let payload_type = self.get_payload_type_token();
+        let method_params = self.get_publisher_method_params();
+        let (format_string, format_args) = self.get_topic_format_and_args();
+
+        quote! {
+            /// Create Last Will message for default topic pattern
+            pub fn last_will(
+                #(#method_params,)*
+                payload: #payload_type,
+            ) -> ::mqtt_typed_client::TypedLastWill<#payload_type> {
+                let topic = format!(#format_string #(, #format_args)*);
+                ::mqtt_typed_client::TypedLastWill::new(topic, payload)
+            }
+
+            /// Create Last Will message for custom topic pattern
+            pub fn last_will_to(
+                custom_pattern: impl TryInto <
+                    ::mqtt_typed_client::TopicPatternPath,
+                    Error = ::mqtt_typed_client::TopicPatternError,
+                >,
+                #(#method_params,)*
+                payload: #payload_type,
+            ) -> ::std::result::Result <
+                ::mqtt_typed_client::TypedLastWill<#payload_type>,
+                ::mqtt_typed_client::TopicError,
+            > {
+                let custom_pattern = custom_pattern.try_into()?;
+                let default_pattern = Self::default_pattern();
+                
+                let validated_pattern = default_pattern
+                    .check_pattern_compatibility(custom_pattern)?;
+                
+                let topic = validated_pattern
+                    .format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])?;
+                    
+                Ok(::mqtt_typed_client::TypedLastWill::new(topic, payload))
+            }
+        }
+    }
 
 	/// Generate code to extract topic parameters from the matched topic
 	///

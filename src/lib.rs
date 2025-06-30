@@ -121,7 +121,7 @@ pub mod topic;
 
 // === Core Public API ===
 // Main client types
-pub use client::{MqttClient, MqttClientConfig, ClientSettings, MqttClientError};
+pub use client::{MqttClient, MqttClientConfig, ClientSettings, MqttClientError, TypedLastWill};
 pub use connection::MqttConnection;
 
 // Re-export rumqttc types for advanced configuration
@@ -166,6 +166,7 @@ pub mod prelude {
 	pub use crate::{
 		BincodeSerializer, MqttClient, MqttClientConfig, ClientSettings, MqttClientError,
 		MqttConnection, MessageSerializer, MqttOptions, QoS, Result, SubscriptionBuilder,
+		TypedLastWill
 	};
 }
 

@@ -42,15 +42,15 @@ pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
     let (client, connection) = MqttClient::<BincodeSerializer>::connect_with_config(config).await?;
     
     // Example 2: Localhost development configuration
-    let _dev_config = MqttClientConfig::localhost("dev_client");
+    let _dev_config = MqttClientConfig::<BincodeSerializer>::localhost("dev_client");
     
     // Example 3: URL-based configuration with query parameters
-    let _url_config = MqttClientConfig::from_url(
+    let _url_config = MqttClientConfig::<BincodeSerializer>::from_url(
         "mqtt://broker.mqtt.cool:1883?client_id=url_client&keep_alive=60"
     )?;
     
     // Example 4: Configuration for high-throughput applications
-    let mut high_perf_config = MqttClientConfig::new("high_perf", "broker.mqtt.cool", 1883);
+    let mut high_perf_config = MqttClientConfig::<BincodeSerializer>::new("high_perf", "broker.mqtt.cool", 1883);
     high_perf_config.connection.set_inflight(100); // Increase concurrent messages
     high_perf_config.connection.set_request_channel_capacity(1000);
     high_perf_config.settings = ClientSettings {
