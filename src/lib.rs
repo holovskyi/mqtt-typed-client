@@ -62,9 +62,9 @@ pub mod info {
     
     pub fn version_string() -> String {
         if HAS_MACROS {
-            format!("{} (with macros)", VERSION)
+            format!("{VERSION} (with macros)")
         } else {
-            format!("{} (core only)", VERSION)
+            format!("{VERSION} (core only)")
         }
     }
 }
@@ -75,14 +75,12 @@ mod tests {
     
     #[test]
     fn test_version_is_valid() {
-        assert!(!VERSION.is_empty());
         assert!(VERSION.chars().next().unwrap().is_ascii_digit());
     }
     
     #[test]
     fn test_info_module() {
         assert_eq!(info::VERSION, VERSION);
-        assert!(!info::NAME.is_empty());
         assert!(!info::version_string().is_empty());
     }
     
