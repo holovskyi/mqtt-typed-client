@@ -123,9 +123,9 @@ pub enum TopicFormatError {
 }
 
 impl From<fmt::Error> for TopicFormatError {
-    fn from(source: fmt::Error) -> Self {
-        TopicFormatError::FormatError { source }
-    }
+	fn from(source: fmt::Error) -> Self {
+		TopicFormatError::FormatError { source }
+	}
 }
 
 impl TopicPatternItem {
@@ -294,6 +294,7 @@ impl TopicPatternPath {
 			}
 			| CacheStrategy::NoCache => None,
 		};
+
 		Ok(Self {
 			template_pattern: topic_pattern,
 			mqtt_topic_subscription: ArcStr::from(
@@ -302,6 +303,17 @@ impl TopicPatternPath {
 			segments,
 			match_cache,
 		})
+	}
+
+	/// Get the cache strategy of this topic pattern.
+	pub fn cache_strategy(&self) -> CacheStrategy {
+		match &self.match_cache {
+			| Some(cache_mutex) => {
+				let cache_guard = cache_mutex.lock().unwrap();
+				CacheStrategy::Lru(cache_guard.cap())
+			}
+			| None => CacheStrategy::NoCache,
+		}
 	}
 
 	#[cfg(test)]
@@ -429,7 +441,6 @@ impl TopicPatternPath {
 		mqtt_topic
 	}
 
-	#[cfg(test)]
 	fn to_template_pattern(segments: &[TopicPatternItem]) -> String {
 		// Convert to named wildcards: sensors/{sensor_id}/data
 		if segments.is_empty() {
@@ -561,6 +572,45 @@ impl TopicPatternPath {
 			return Err(TopicMatchError::UnexpectedEndOfPattern);
 		}
 		Ok(TopicMatch::from_match_result(topic, params, named_params))
+	}
+
+	/// Returns a new pattern with parameters substituted for the named wildcards.
+	pub fn with_parameters<I, K, V>(
+		&self,
+		params: I,
+	) -> Result<TopicPatternPath, TopicPatternError>
+	where
+		I: IntoIterator<Item = (K, V)>,
+		K: AsRef<str>,
+		V: AsRef<str>,
+	{
+		let mut new_segments = self.segments.clone();
+		let mut is_applied = false;
+
+		for (param_name, value) in params {
+			let param_name_str = param_name.as_ref();
+
+			if let Some(segment_pos) = new_segments.iter().position(|segment| {
+                matches!(segment, TopicPatternItem::Plus(Some(name)) if name.as_str() == param_name_str)
+            }) {
+                new_segments[segment_pos] = TopicPatternItem::Str(value.as_ref().into());
+				is_applied = true;
+            } else {
+                return Err(TopicPatternError::wildcard_usage(
+                    format!("Parameter '{param_name_str}' not found in pattern" )
+                ));
+            }
+		}
+		if !is_applied {
+			tracing::debug!(
+				pattern = %self.topic_pattern(),
+				"with_parameters() called with no applicable parameters - returning original pattern unchanged"
+			);
+			return Ok(self.clone());
+		}
+
+		let template_pattern = Self::to_template_pattern(&new_segments);
+		Self::new_from_string(template_pattern, self.cache_strategy())
 	}
 }
 
