@@ -5,7 +5,8 @@ use std::collections::{HashMap, HashSet};
 use arcstr::Substr;
 use thiserror::Error;
 
-use super::topic_pattern_path::{TopicPatternItem, TopicPatternPath};
+use super::topic_pattern_path::TopicPatternPath;
+use super::topic_pattern_item::TopicPatternItem;
 use crate::topic::topic_match::TopicPath;
 
 /// Errors that can occur during topic matching operations
@@ -107,7 +108,10 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 		self.exact_match_data.as_ref().is_none_or(T::is_empty)
 			&& self.exact_children.is_empty()
 			&& self.single_level_wildcard_node.is_none()
-			&& self.multi_level_wildcard_data.as_ref().is_none_or(T::is_empty)
+			&& self
+				.multi_level_wildcard_data
+				.as_ref()
+				.is_none_or(T::is_empty)
 	}
 	/// Finds or creates a subscription data entry matching the given topic pattern
 	pub fn subscribe_to_pattern(
@@ -125,8 +129,9 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 						.or_default()
 				}
 				| TopicPatternItem::Plus(_) => {
-					current_node =
-						current_node.single_level_wildcard_node.get_or_insert_with(
+					current_node = current_node
+						.single_level_wildcard_node
+						.get_or_insert_with(
 							|| Box::new(TopicMatcherNode::new()),
 						)
 				}
@@ -178,8 +183,10 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 				}
 			}
 			| TopicPatternItem::Plus(_) => {
-				let child_node =
-					self.single_level_wildcard_node.as_mut().ok_or_else(|| {
+				let child_node = self
+					.single_level_wildcard_node
+					.as_mut()
+					.ok_or_else(|| {
 						TopicMatcherError::invalid_segment("+".to_string(), 0)
 					})?;
 				if child_node.update_node(rest_segments, f)? {
@@ -188,8 +195,10 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 				}
 			}
 			| TopicPatternItem::Hash(_) => {
-				let hash_wildcard_data =
-					self.multi_level_wildcard_data.as_mut().ok_or_else(|| {
+				let hash_wildcard_data = self
+					.multi_level_wildcard_data
+					.as_mut()
+					.ok_or_else(|| {
 						TopicMatcherError::invalid_segment("#".to_string(), 0)
 					})?;
 				f(hash_wildcard_data);
@@ -227,12 +236,14 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 					);
 				}
 				// Check for + wildcard match (matches any single segment)
-				self.single_level_wildcard_node.iter().for_each(|plus_node| {
-					plus_node.collect_matching_subscriptions(
-						remaining_segments,
-						matching_data,
-					)
-				});
+				self.single_level_wildcard_node
+					.iter()
+					.for_each(|plus_node| {
+						plus_node.collect_matching_subscriptions(
+							remaining_segments,
+							matching_data,
+						)
+					});
 				// # wildcard matches remainder of path
 				self.multi_level_wildcard_data
 					.iter()

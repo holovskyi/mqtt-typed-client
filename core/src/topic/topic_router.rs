@@ -6,7 +6,8 @@ use std::fmt::Display;
 use thiserror::Error;
 
 use super::topic_matcher::{TopicMatcherError, TopicMatcherNode};
-use super::topic_pattern_path::{TopicPatternError, TopicPatternPath};
+use super::topic_pattern_path::TopicPatternPath;
+use super::topic_pattern_item::TopicPatternError;
 use crate::topic::topic_match::TopicPath;
 
 /// Errors that can occur during topic routing operations
@@ -81,9 +82,9 @@ pub struct TopicRouter<T> {
 }
 
 impl<T> Default for TopicRouter<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+	fn default() -> Self {
+		Self::new()
+	}
 }
 
 impl<T> TopicRouter<T> {
