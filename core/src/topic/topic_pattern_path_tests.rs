@@ -2,12 +2,43 @@
 
 use std::collections::HashMap;
 
+use arcstr::ArcStr;
+
 use super::{TopicPatternError, TopicPatternPath};
 use crate::routing::subscription_manager::CacheStrategy;
 
 fn create_pattern(pattern: &str) -> TopicPatternPath {
 	TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
 		.expect("Pattern should be valid")
+}
+
+trait TopicPatternPathTestExt {
+	fn with_parameters<I, K, V>(
+		self,
+		params: I,
+	) -> Result<Self, TopicPatternError>
+	where
+		Self: Sized,
+		I: IntoIterator<Item = (K, V)>,
+		K: Into<ArcStr>,
+		V: Into<ArcStr>;
+}
+
+impl TopicPatternPathTestExt for TopicPatternPath {
+	fn with_parameters<I, K, V>(
+		mut self,
+		params: I,
+	) -> Result<Self, TopicPatternError>
+	where
+		I: IntoIterator<Item = (K, V)>,
+		K: Into<ArcStr>,
+		V: Into<ArcStr>,
+	{
+		for (key, value) in params {
+			self = self.bind_parameter(key, value)?;
+		}
+		Ok(self)
+	}
 }
 
 /// Test with_parameters() functionality
@@ -63,7 +94,7 @@ mod with_parameters_tests {
 		params.insert("device_type", "sensor");
 		params.insert("device_id", "temp_01");
 
-		let result = pattern.with_parameters(&params).unwrap();
+		let result = pattern.with_parameters(params).unwrap();
 		assert_eq!(result.topic_pattern(), "devices/sensor/temp_01/status");
 	}
 
@@ -89,29 +120,31 @@ mod with_parameters_tests {
 	fn test_empty_parameters_returns_clone() {
 		let pattern = create_pattern("sensors/{sensor_id}/data");
 		let empty_params: Vec<(String, String)> = vec![];
-
+		let topic_pattern = pattern.topic_pattern();
+		let mqtt_pattern = pattern.mqtt_pattern();
 		let result = pattern.with_parameters(empty_params).unwrap();
-		assert_eq!(result.topic_pattern(), pattern.topic_pattern());
-		assert_eq!(result.mqtt_pattern(), pattern.mqtt_pattern());
+		assert_eq!(result.topic_pattern(), topic_pattern);
+		assert_eq!(result.mqtt_pattern(), mqtt_pattern);
 	}
 
 	#[test]
 	fn test_empty_iterator_returns_clone() {
 		let pattern = create_pattern("devices/{id}/status");
+		let topic_pattern = pattern.topic_pattern();
 		let result = pattern
 			.with_parameters(std::iter::empty::<(String, String)>())
 			.unwrap();
 
-		assert_eq!(result.topic_pattern(), pattern.topic_pattern());
+		assert_eq!(result.topic_pattern(), topic_pattern);
 	}
 
 	#[test]
 	fn test_empty_hashmap_returns_clone() {
 		let pattern = create_pattern("sensors/{sensor_id}/data");
 		let empty_map: HashMap<String, String> = HashMap::new();
-
+		let topic_pattern = pattern.topic_pattern();
 		let result = pattern.with_parameters(&empty_map).unwrap();
-		assert_eq!(result.topic_pattern(), pattern.topic_pattern());
+		assert_eq!(result.topic_pattern(), topic_pattern);
 	}
 
 	#[test]
@@ -262,7 +295,7 @@ mod with_parameters_tests {
 		let pattern = create_pattern("a/{first}/b/{second}/c");
 
 		// Test different parameter orders
-		let result1 = pattern
+		let result1 = pattern.clone()
 			.with_parameters([("first", "1"), ("second", "2")])
 			.unwrap();
 		let result2 = pattern
