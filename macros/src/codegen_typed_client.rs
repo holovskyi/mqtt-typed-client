@@ -45,6 +45,7 @@ impl<'a> TypedClientGenerator<'a> {
         let client_struct = &self.names.client_struct;
 
         quote! {
+            #[derive(Clone)]
             pub struct #client_struct<F> {
                 client: ::mqtt_typed_client_core::MqttClient<F>,
             }

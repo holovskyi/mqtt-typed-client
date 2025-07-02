@@ -62,51 +62,22 @@ impl CodeGenerator {
 		input_struct: &syn::DeriveInput,
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
 		let struct_name = &input_struct.ident;
+		let names = crate::naming::TypedClientNames::from_struct_name(struct_name);
+		let module_name = format_ident!("{}", names.method_name);
 
-		let (from_mqtt_impl, subscriber_methods, subscription_filter_extension) =
-			if self.should_generate_subscriber() {
-				let from_mqtt_impl =
-					self.generate_from_mqtt_impl(struct_name)?;
-				let subscriber_methods = self.generate_helper_methods();
-				let subscription_filter_extension =
-					self.generate_subscription_builder_extension(struct_name);
-				(
-					from_mqtt_impl,
-					subscriber_methods,
-					subscription_filter_extension,
-				)
-			} else {
-				(quote! {}, quote! {}, quote! {})
-			};
-		let publisher_methods = if self.should_generate_publisher() {
-			self.generate_publisher_methods()?
-		} else {
-			quote! {}
-		};
+		// Each function handles its own generation logic and flags
+		let from_mqtt_impl = self.generate_from_mqtt_impl(struct_name)?;
+		let subscriber_methods = self.generate_subscriber_methods();
+		let subscription_for_bind_extension = self.generate_subscription_for_bind_extension(struct_name);
 
-		let last_will_methods = if self.should_generate_last_will() {
-			self.generate_last_will_methods()
-		} else {
-			quote! {}
-		};
+		let publisher_methods = self.generate_publisher_methods()?;
+		let last_will_methods = self.generate_last_will_methods();
 
-		let typed_client_extension = if self.should_generate_typed_client() {
-			let generator =
-				crate::codegen_typed_client::TypedClientGenerator::new(
-					self,
-					struct_name,
-				);
-			generator.generate_complete_typed_client()
-		} else {
-			quote! {}
-		};
-
+		let typed_client_extension = self.generate_typed_client_extension(struct_name);
+		
 		let constants = self.generate_constants();
 		let builder_methods = Self::generate_builder_methods();
-
-		let names =
-			crate::naming::TypedClientNames::from_struct_name(struct_name);
-		let module_name = format_ident!("{}", names.method_name);
+		
 
 		Ok(quote! {
 			#input_struct
@@ -114,7 +85,7 @@ impl CodeGenerator {
                 use super::*;
 				#from_mqtt_impl
 				#typed_client_extension
-				#subscription_filter_extension
+				#subscription_for_bind_extension
 
 				impl #struct_name {
 					#constants
@@ -137,6 +108,10 @@ impl CodeGenerator {
 		&self,
 		struct_name: &syn::Ident,
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
+		if !self.should_generate_subscriber() {
+			return Ok(quote! {});
+		}
+
 		let param_extractions = self.generate_param_extractions();
 		let field_assignments = self.generate_field_assignments();
 		let payload_type = self.get_payload_type_token();
@@ -195,8 +170,11 @@ impl CodeGenerator {
 				pub const MQTT_PATTERN: &'static str = #mqtt_pattern_literal;
 		}
 	}
-	/// Generate helper methods for subscription
-	fn generate_helper_methods(&self) -> proc_macro2::TokenStream {
+	/// Generate subscriber methods
+	fn generate_subscriber_methods(&self) -> proc_macro2::TokenStream {
+		if !self.should_generate_subscriber() {
+			return quote! {};
+		}
 		let payload_type = self.get_payload_type_token();
 
 		quote! {
@@ -223,6 +201,10 @@ impl CodeGenerator {
 	fn generate_publisher_methods(
 		&self,
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
+		if !self.should_generate_publisher() {
+			return Ok(quote! {});
+		}
+
 		let payload_type = self.get_payload_type_token();
 		let method_params = self.get_publisher_method_params();
 		let (format_string, format_args) = self.get_topic_format_and_args();
@@ -290,6 +272,10 @@ impl CodeGenerator {
 
 	/// Generate last will methods
 	pub fn generate_last_will_methods(&self) -> proc_macro2::TokenStream {
+		if !self.should_generate_last_will() {
+			return quote! {};
+		}
+
 		let payload_type = self.get_payload_type_token();
 		let method_params = self.get_publisher_method_params();
 		let (format_string, format_args) = self.get_topic_format_and_args();
@@ -330,23 +316,42 @@ impl CodeGenerator {
 		}
 	}
 
-	/// Generate extension trait with default implementations
-	pub fn generate_subscription_builder_extension(
+	/// Generate typed client extension
+	pub fn generate_typed_client_extension(
 		&self,
 		struct_name: &syn::Ident,
 	) -> proc_macro2::TokenStream {
+		if !self.should_generate_typed_client() {
+			return quote! {};
+		}
+
+		let generator = crate::codegen_typed_client::TypedClientGenerator::new(
+			self,
+			struct_name,
+		);
+		generator.generate_complete_typed_client()
+	}
+
+	/// Generate subscription filter extension
+	pub fn generate_subscription_for_bind_extension(
+		&self,
+		struct_name: &syn::Ident,
+	) -> proc_macro2::TokenStream {
+		if !self.should_generate_subscriber() {
+			return quote! {};
+		}
 		let trait_name = format_ident!("{}SubscriptionBuilderExt", struct_name);
-		let (filter_defs, filter_methods): (Vec<_>, Vec<_>) =
+		let (for_defs, for_methods): (Vec<_>, Vec<_>) =
 			self.generate_for_methods().into_iter().unzip();
 
 		quote! {
-			/// Extension trait for filtering subscription builder parameters
+			/// Extension trait for binding subscription to builder parameters
 			pub trait #trait_name<F> {
-				#(#filter_defs)*
+				#(#for_defs)*
 			}
 
 			impl<F: Clone> #trait_name<F> for ::mqtt_typed_client_core::SubscriptionBuilder<#struct_name, F> {
-				#(#filter_methods)*
+				#(#for_methods)*
 			}
 		}
 	}
