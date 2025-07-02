@@ -61,7 +61,7 @@ pub struct TopicPatternPath {
 	/// 4. `Mutex` provides the same interior mutability as `RefCell` but with `Send + Sync`
 	match_cache: Option<Mutex<LruCache<ArcStr, Arc<TopicMatch>>>>,
 
-	subscription_filters: Option<SmallVec<[(ArcStr, ArcStr); 4]>>,
+	parameter_bindings: Option<SmallVec<[(ArcStr, ArcStr); 4]>>,
 }
 
 impl Clone for TopicPatternPath {
@@ -76,7 +76,7 @@ impl Clone for TopicPatternPath {
 				drop(cache_guard);
 				Mutex::new(LruCache::new(capacity))
 			}),
-			subscription_filters: self.subscription_filters.clone(),
+			parameter_bindings: self.parameter_bindings.clone(),
 		}
 	}
 }
@@ -137,7 +137,7 @@ impl TopicPatternPath {
 			),
 			segments,
 			match_cache,
-			subscription_filters: None,
+			parameter_bindings: None,
 		})
 	}
 
@@ -165,7 +165,7 @@ impl TopicPatternPath {
 			template_pattern: topic_pattern.clone(),
 			segments: segments.to_vec(),
 			match_cache: None,
-			subscription_filters: None,
+			parameter_bindings: None,
 		};
 		if let Some(hash_pos) = segments
 			.iter()
@@ -182,20 +182,20 @@ impl TopicPatternPath {
 
 	/// Returns MQTT pattern with wildcards for broker subscription.
 	pub fn mqtt_pattern(&self) -> ArcStr {
-		match &self.subscription_filters {
-			| Some(filters) => self.apply_filters_to_mqtt_pattern(filters),
+		match &self.parameter_bindings {
+			| Some(bindings) => self.generate_concrete_mqtt_pattern(bindings),
 			| None => self.mqtt_topic_subscription.clone(),
 		}
 	}
 
-	fn apply_filters_to_mqtt_pattern(
+	fn generate_concrete_mqtt_pattern(
 		&self,
-		filters: &[(ArcStr, ArcStr)],
+		bindings: &[(ArcStr, ArcStr)],
 	) -> ArcStr {
 		let mut new_segments = self.segments.clone();
 		let mut is_applied = false;
 
-		for (param_name, value) in filters {
+		for (param_name, value) in bindings {
 			if let Some(segment_pos) = new_segments.iter().position(|segment| {
                 matches!(segment, TopicPatternItem::Plus(Some(name)) if name == param_name)
             }) {
@@ -364,12 +364,12 @@ impl TopicPatternPath {
 		let mut new_pattern =
 			Self::new_from_string(self.template_pattern.clone(), new_cache)
 				.expect("Pattern already validated");
-		new_pattern.subscription_filters = self.subscription_filters.clone();
+		new_pattern.parameter_bindings = self.parameter_bindings.clone();
 		new_pattern
 	}
 
 	/// Add value for topic wildcard parameter
-	pub fn add_parameter_filter(
+	pub fn bind_parameter(
 		mut self,
 		param_name: impl Into<ArcStr>,
 		value: impl Into<ArcStr>,
@@ -387,15 +387,15 @@ impl TopicPatternPath {
 		
 		let value_arc = value.into();
 
-		let filters =
-			self.subscription_filters.get_or_insert_with(SmallVec::new);
+		let bindings =
+			self.parameter_bindings.get_or_insert_with(SmallVec::new);
 
 		if let Some(pos) =
-			filters.iter().position(|(k, _)| k == &param_name_arc)
+			bindings.iter().position(|(k, _)| k == &param_name_arc)
 		{
-			filters[pos].1 = value_arc;
+			bindings[pos].1 = value_arc;
 		} else {
-			filters.push((param_name_arc, value_arc));
+			bindings.push((param_name_arc, value_arc));
 		}
 
 		Ok(self)

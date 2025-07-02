@@ -62,13 +62,14 @@ impl CodeGenerator {
 		input_struct: &syn::DeriveInput,
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
 		let struct_name = &input_struct.ident;
+
 		let (from_mqtt_impl, subscriber_methods, subscription_filter_extension) =
 			if self.should_generate_subscriber() {
 				let from_mqtt_impl =
 					self.generate_from_mqtt_impl(struct_name)?;
 				let subscriber_methods = self.generate_helper_methods();
 				let subscription_filter_extension =
-					self.generate_subscription_filter_extension(struct_name);
+					self.generate_subscription_builder_extension(struct_name);
 				(
 					from_mqtt_impl,
 					subscriber_methods,
@@ -321,63 +322,57 @@ impl CodeGenerator {
 	}
 
 	/// Generate extension trait with default implementations
-	pub fn generate_subscription_filter_extension(
+	pub fn generate_subscription_builder_extension(
 		&self,
 		struct_name: &syn::Ident,
 	) -> proc_macro2::TokenStream {
 		let trait_name = format_ident!("{}SubscriptionBuilderExt", struct_name);
-		let filter_methods = self.generate_filter_methods_with_bodies();
+		let (filter_defs, filter_methods): (Vec<_>, Vec<_>) =
+			self.generate_for_methods().into_iter().unzip();
 
 		quote! {
 			/// Extension trait for filtering subscription builder parameters
 			pub trait #trait_name<F> {
-				/// Abstract method to be implemented by SubscriptionBuilder
-				#[doc(hidden)]
-				fn add_parameter(self, param: &str, value: String) 
-					-> ::std::result::Result<Self, ::mqtt_typed_client_core::TopicPatternError>
-				where Self: std::marker::Sized;
-
-				/// Default implementations for typed filtering
-				#(#filter_methods)*
+				#(#filter_defs)*
 			}
 
 			impl<F: Clone> #trait_name<F> for ::mqtt_typed_client_core::SubscriptionBuilder<#struct_name, F> {
-				fn add_parameter(self, param: &str, value: String) 
-					-> ::std::result::Result<Self, ::mqtt_typed_client_core::TopicPatternError> {
-					self.add_parameter_filter(param, value)
-				}
+				#(#filter_methods)*
 			}
 		}
 	}
 
 	/// Generate filter methods with full implementations
-	fn generate_filter_methods_with_bodies(
+	fn generate_for_methods(
 		&self,
-	) -> Vec<proc_macro2::TokenStream> {
+	) -> Vec<(proc_macro2::TokenStream, proc_macro2::TokenStream)> {
 		self.context
 			.topic_params
 			.iter()
-			.map(|param| self.generate_single_filter_method_with_body(param))
+			.map(|param| self.generate_single_for_method(param))
 			.collect()
 	}
 
 	/// Generate complete filter method with body
-	fn generate_single_filter_method_with_body(
+	fn generate_single_for_method(
 		&self,
 		param: &TopicParam,
-	) -> proc_macro2::TokenStream {
+	) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
 		let method_name =
-			format_ident!("filter_{}", param.get_publisher_param_name());
+			format_ident!("for_{}", param.get_publisher_param_name());
 		let param_type = param.get_publisher_param_type();
 		let param_key = param.get_publisher_param_name();
 
-		quote! {
+		let declaration = quote! {
+			fn #method_name(self, value: #param_type) -> Self;
+		};
+		let body = quote! {
 			fn #method_name(self, value: #param_type) -> Self
-			where Self: std::marker::Sized
 			{
-				self.add_parameter(#param_key, value.to_string()).unwrap()
+				self.bind_parameter(#param_key, value.to_string()).unwrap()
 			}
-		}
+		};
+		(declaration, body)
 	}
 
 	/// Generate code to extract topic parameters from the matched topic

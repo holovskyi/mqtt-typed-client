@@ -97,8 +97,9 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 	// // Демонстрація фільтрованої підписки
 	let mut subscriber = sensor_client
 		.subscription()
-		.filter_room("room52")  // Фільтр для конкретної кімнати
-		//.filter_sensor_id(37)   // Фільтр для конкретного сенсора  
+		.for_room("room52")  // Фільтр для конкретної кімнати
+		
+		//.for_sensor_id(37)   // Фільтр для конкретного сенсора  
 		.with_qos(rumqttc::QoS::AtLeastOnce)
 		.subscribe()
 		.await?;

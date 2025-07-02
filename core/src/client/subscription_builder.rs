@@ -44,12 +44,13 @@ where F:Clone {
 	}
 
 	/// Add value for topic wildcard parameter
-	pub fn add_parameter_filter(
+	#[doc(hidden)]
+	pub fn bind_parameter(
 		mut self,
 		param_name: impl Into<ArcStr>,
 		value: impl Into<ArcStr>,
 	) -> Result<Self, TopicPatternError> {
-		self.pattern = self.pattern.add_parameter_filter(param_name, value)?;
+		self.pattern = self.pattern.bind_parameter(param_name, value)?;
 		Ok(self)
 	}
 
