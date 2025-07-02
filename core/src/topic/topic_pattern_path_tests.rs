@@ -53,7 +53,9 @@ mod with_parameters_tests {
 		let pattern = create_pattern("sensors/{sensor_id}/data");
 		let result = pattern.with_parameters([("sensor_id", "123")]).unwrap();
 
-		assert_eq!(result.topic_pattern(), "sensors/123/data");
+		// topic_pattern() preserves original template
+		assert_eq!(result.topic_pattern(), "sensors/{sensor_id}/data");
+		// mqtt_pattern() shows substituted result
 		assert_eq!(result.mqtt_pattern(), "sensors/123/data");
 	}
 
@@ -64,10 +66,7 @@ mod with_parameters_tests {
 		let params = [("building", "A"), ("floor", "2"), ("room", "kitchen")];
 		let result = pattern.with_parameters(params).unwrap();
 
-		assert_eq!(
-			result.topic_pattern(),
-			"buildings/A/floors/2/rooms/kitchen"
-		);
+		// All parameters substituted in mqtt_pattern
 		assert_eq!(result.mqtt_pattern(), "buildings/A/floors/2/rooms/kitchen");
 	}
 
@@ -79,10 +78,12 @@ mod with_parameters_tests {
 			.with_parameters([("sensor_id", "floor_sensor")])
 			.unwrap();
 
+		// topic_pattern() preserves original template
 		assert_eq!(
 			result.topic_pattern(),
-			"sensors/floor_sensor/data/{measurement_type}"
+			"sensors/{sensor_id}/data/{measurement_type}"
 		);
+		// mqtt_pattern() shows partial substitution (unbound params become +)
 		assert_eq!(result.mqtt_pattern(), "sensors/floor_sensor/data/+");
 	}
 
@@ -95,7 +96,7 @@ mod with_parameters_tests {
 		params.insert("device_id", "temp_01");
 
 		let result = pattern.with_parameters(params).unwrap();
-		assert_eq!(result.topic_pattern(), "devices/sensor/temp_01/status");
+		assert_eq!(result.mqtt_pattern(), "devices/sensor/temp_01/status");
 	}
 
 	#[test]
@@ -104,7 +105,7 @@ mod with_parameters_tests {
 		let params = vec![("room", "kitchen"), ("device", "thermometer")];
 
 		let result = pattern.with_parameters(params).unwrap();
-		assert_eq!(result.topic_pattern(), "home/kitchen/device/thermometer");
+		assert_eq!(result.mqtt_pattern(), "home/kitchen/device/thermometer");
 	}
 
 	#[test]
@@ -113,7 +114,7 @@ mod with_parameters_tests {
 		let params = [("topic", "sensors"), ("subtopic", "temperature")];
 
 		let result = pattern.with_parameters(params).unwrap();
-		assert_eq!(result.topic_pattern(), "mqtt/sensors/temperature");
+		assert_eq!(result.mqtt_pattern(), "mqtt/sensors/temperature");
 	}
 
 	#[test]
@@ -189,7 +190,9 @@ mod with_parameters_tests {
 			.with_parameters([("measurement", "temperature")])
 			.unwrap();
 
-		assert_eq!(result.topic_pattern(), "sensors/+/data/temperature");
+		// topic_pattern() preserves original template including anonymous wildcards
+		assert_eq!(result.topic_pattern(), "sensors/+/data/{measurement}");
+		// mqtt_pattern() substitutes named params, leaves anonymous wildcards
 		assert_eq!(result.mqtt_pattern(), "sensors/+/data/temperature");
 	}
 
@@ -200,7 +203,9 @@ mod with_parameters_tests {
 		let params = [("device_type", "sensor"), ("status_type", "online")];
 		let result = pattern.with_parameters(params).unwrap();
 
-		assert_eq!(result.topic_pattern(), "devices/sensor/+/status/online");
+		// topic_pattern() preserves original template
+		assert_eq!(result.topic_pattern(), "devices/{device_type}/+/status/{status_type}");
+		// mqtt_pattern() substitutes named params, preserves anonymous wildcards
 		assert_eq!(result.mqtt_pattern(), "devices/sensor/+/status/online");
 	}
 
@@ -209,7 +214,9 @@ mod with_parameters_tests {
 		let pattern = create_pattern("logs/{service}/#");
 		let result = pattern.with_parameters([("service", "auth")]).unwrap();
 
-		assert_eq!(result.topic_pattern(), "logs/auth/#");
+		// topic_pattern() preserves original template
+		assert_eq!(result.topic_pattern(), "logs/{service}/#");
+		// mqtt_pattern() substitutes named params, preserves # wildcard
 		assert_eq!(result.mqtt_pattern(), "logs/auth/#");
 	}
 
@@ -218,7 +225,9 @@ mod with_parameters_tests {
 		let pattern = create_pattern("events/{category}/{details:#}");
 		let result = pattern.with_parameters([("category", "alerts")]).unwrap();
 
-		assert_eq!(result.topic_pattern(), "events/alerts/{details:#}");
+		// topic_pattern() preserves original template including named hash wildcard
+		assert_eq!(result.topic_pattern(), "events/{category}/{details:#}");
+		// mqtt_pattern() substitutes named params, converts named hash to #
 		assert_eq!(result.mqtt_pattern(), "events/alerts/#");
 	}
 
@@ -244,7 +253,7 @@ mod with_parameters_tests {
 		let pattern = create_pattern("пристрої/{тип}/статус");
 		let result = pattern.with_parameters([("тип", "сенсор")]).unwrap();
 
-		assert_eq!(result.topic_pattern(), "пристрої/сенсор/статус");
+		assert_eq!(result.mqtt_pattern(), "пристрої/сенсор/статус");
 	}
 
 	#[test]
@@ -255,7 +264,7 @@ mod with_parameters_tests {
 			.unwrap();
 
 		assert_eq!(
-			result.topic_pattern(),
+			result.mqtt_pattern(),
 			"devices/temp-sensor@home.local/data"
 		);
 	}
@@ -265,7 +274,7 @@ mod with_parameters_tests {
 		let pattern = create_pattern("prefix/{param}/suffix");
 		let result = pattern.with_parameters([("param", "")]).unwrap();
 
-		assert_eq!(result.topic_pattern(), "prefix//suffix");
+		assert_eq!(result.mqtt_pattern(), "prefix//suffix");
 	}
 
 	#[test]
@@ -286,7 +295,9 @@ mod with_parameters_tests {
 		let pattern = create_pattern("{param}");
 		let result = pattern.with_parameters([("param", "value")]).unwrap();
 
-		assert_eq!(result.topic_pattern(), "value");
+		// topic_pattern() preserves original template
+		assert_eq!(result.topic_pattern(), "{param}");
+		// mqtt_pattern() shows substituted result
 		assert_eq!(result.mqtt_pattern(), "value");
 	}
 
@@ -302,9 +313,10 @@ mod with_parameters_tests {
 			.with_parameters([("second", "2"), ("first", "1")])
 			.unwrap();
 
-		assert_eq!(result1.topic_pattern(), "a/1/b/2/c");
-		assert_eq!(result2.topic_pattern(), "a/1/b/2/c");
-		assert_eq!(result1.topic_pattern(), result2.topic_pattern());
+		// Both should produce the same MQTT pattern regardless of parameter order
+		assert_eq!(result1.mqtt_pattern(), "a/1/b/2/c");
+		assert_eq!(result2.mqtt_pattern(), "a/1/b/2/c");
+		assert_eq!(result1.mqtt_pattern(), result2.mqtt_pattern());
 	}
 
 	fn str_to_topic_pattern_path(
@@ -550,7 +562,7 @@ mod integration_tests {
 
 		let result = pattern.with_parameters(params).unwrap();
 		assert_eq!(
-			result.topic_pattern(),
+			result.mqtt_pattern(),
 			"typed/kitchen/pl/floor_sensor/some/23.5"
 		);
 	}
@@ -572,7 +584,7 @@ mod integration_tests {
 		let result = pattern.with_parameters(params).unwrap();
 		let expected =
 			"iot/office-a/3/devices/temperature/temp-001/telemetry/celsius";
-		assert_eq!(result.topic_pattern(), expected);
+		assert_eq!(result.mqtt_pattern(), expected);
 	}
 
 	#[test]
@@ -586,10 +598,12 @@ mod integration_tests {
 			.with_parameters([("sensor_type", "temperature")])
 			.unwrap();
 
+		// topic_pattern() preserves original template
 		assert_eq!(
 			result.topic_pattern(),
-			"sensors/{location}/temperature/{sensor_id}/data"
+			"sensors/{location}/{sensor_type}/{sensor_id}/data"
 		);
+		// mqtt_pattern() shows partial substitution with + for unbound params
 		assert_eq!(result.mqtt_pattern(), "sensors/+/temperature/+/data");
 	}
 
@@ -602,10 +616,12 @@ mod integration_tests {
 			.with_parameters([("service", "auth-service"), ("level", "error")])
 			.unwrap();
 
+		// topic_pattern() preserves original template
 		assert_eq!(
 			result.topic_pattern(),
-			"logs/auth-service/error/{details:#}"
+			"logs/{service}/{level}/{details:#}"
 		);
+		// mqtt_pattern() substitutes bound params, converts named hash to #
 		assert_eq!(result.mqtt_pattern(), "logs/auth-service/error/#");
 	}
 }
