@@ -119,6 +119,10 @@ impl TopicMatch {
 
 		//self.named_params.get(name).map(|range| self.get_param_range(range))
 	}
+
+	pub fn topic_path(&self) -> ArcStr {
+		self.topic.path.clone()
+	}
 }
 
 //Implement Debug for TopicMatch, using get_param and get_named_param

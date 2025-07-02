@@ -4,7 +4,7 @@
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
-	BincodeSerializer, MqttClient, QoS, SubscriptionConfig,
+	BincodeSerializer, MqttClient, QoS,
 };
 use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
