@@ -60,6 +60,8 @@ pub struct TopicPatternPath {
 	/// 3. No contention occurs since access is serialized within the actor's event loop
 	/// 4. `Mutex` provides the same interior mutability as `RefCell` but with `Send + Sync`
 	match_cache: Option<Mutex<LruCache<ArcStr, Arc<TopicMatch>>>>,
+
+	subscription_filters: Option<SmallVec<[(ArcStr, ArcStr); 4]>>,
 }
 
 impl Clone for TopicPatternPath {
@@ -74,6 +76,7 @@ impl Clone for TopicPatternPath {
 				drop(cache_guard);
 				Mutex::new(LruCache::new(capacity))
 			}),
+			subscription_filters: self.subscription_filters.clone(),
 		}
 	}
 }
@@ -134,6 +137,7 @@ impl TopicPatternPath {
 			),
 			segments,
 			match_cache,
+			subscription_filters: None,
 		})
 	}
 
@@ -161,6 +165,7 @@ impl TopicPatternPath {
 			template_pattern: topic_pattern.clone(),
 			segments: segments.to_vec(),
 			match_cache: None,
+			subscription_filters: None,
 		};
 		if let Some(hash_pos) = segments
 			.iter()
@@ -177,7 +182,41 @@ impl TopicPatternPath {
 
 	/// Returns MQTT pattern with wildcards for broker subscription.
 	pub fn mqtt_pattern(&self) -> ArcStr {
-		self.mqtt_topic_subscription.clone()
+		match &self.subscription_filters {
+			| Some(filters) => self.apply_filters_to_mqtt_pattern(filters),
+			| None => self.mqtt_topic_subscription.clone(),
+		}
+	}
+
+	fn apply_filters_to_mqtt_pattern(
+		&self,
+		filters: &[(ArcStr, ArcStr)],
+	) -> ArcStr {
+		let mut new_segments = self.segments.clone();
+		let mut is_applied = false;
+
+		for (param_name, value) in filters {
+			if let Some(segment_pos) = new_segments.iter().position(|segment| {
+                matches!(segment, TopicPatternItem::Plus(Some(name)) if name == param_name)
+            }) {
+                new_segments[segment_pos] = TopicPatternItem::Str(value.into());
+				is_applied = true;
+            } else {
+				tracing::debug!(
+				pattern = %self.topic_pattern(),
+				"Parameter '{param_name}' not found in pattern"
+				);
+               panic!("Parameter '{param_name}' not found in pattern" );
+            }
+		}
+		if !is_applied {
+			tracing::debug!(
+				pattern = %self.topic_pattern(),
+				"with_parameters() called with no applicable parameters - returning original pattern unchanged"
+			);
+			return self.mqtt_topic_subscription.clone();
+		}
+		ArcStr::from(Self::to_mqtt_subscription_pattern(&new_segments))
 	}
 
 	/// Returns original pattern with named parameters.
@@ -279,6 +318,7 @@ impl TopicPatternPath {
 		mqtt_topic
 	}
 
+	#[cfg(test)]
 	fn to_template_pattern(segments: &[TopicPatternItem]) -> String {
 		// Convert to named wildcards: sensors/{sensor_id}/data
 		if segments.is_empty() {
@@ -321,8 +361,44 @@ impl TopicPatternPath {
 
 	/// Create new pattern with different cache strategy
 	pub fn with_cache_strategy(&self, new_cache: CacheStrategy) -> Self {
-		Self::new_from_string(self.template_pattern.clone(), new_cache)
-			.expect("Pattern already validated")
+		let mut new_pattern =
+			Self::new_from_string(self.template_pattern.clone(), new_cache)
+				.expect("Pattern already validated");
+		new_pattern.subscription_filters = self.subscription_filters.clone();
+		new_pattern
+	}
+
+	/// Add value for topic wildcard parameter
+	pub fn add_parameter_filter(
+		mut self,
+		param_name: impl Into<ArcStr>,
+		value: impl Into<ArcStr>,
+	) -> Result<Self, TopicPatternError> {
+		let param_name_arc = param_name.into();
+
+		let param_exists = self.segments.iter().any(|segment| {
+			matches!(segment, TopicPatternItem::Plus(Some(name)) if name.as_str() == param_name_arc.as_str())
+		});
+		if !param_exists {
+			return Err(TopicPatternError::wildcard_usage(
+				format!("Parameter '{param_name_arc}' not found in pattern '{}'", self.topic_pattern())
+			));
+		}
+		
+		let value_arc = value.into();
+
+		let filters =
+			self.subscription_filters.get_or_insert_with(SmallVec::new);
+
+		if let Some(pos) =
+			filters.iter().position(|(k, _)| k == &param_name_arc)
+		{
+			filters[pos].1 = value_arc;
+		} else {
+			filters.push((param_name_arc, value_arc));
+		}
+
+		Ok(self)
 	}
 
 	/// Matches topic path against this pattern, extracting parameters.
@@ -412,44 +488,6 @@ impl TopicPatternPath {
 		Ok(TopicMatch::from_match_result(topic, params, named_params))
 	}
 
-	/// Returns a new pattern with parameters substituted for the named wildcards.
-	pub fn with_parameters<I, K, V>(
-		&self,
-		params: I,
-	) -> Result<TopicPatternPath, TopicPatternError>
-	where
-		I: IntoIterator<Item = (K, V)>,
-		K: AsRef<str>,
-		V: AsRef<str>,
-	{
-		let mut new_segments = self.segments.clone();
-		let mut is_applied = false;
-
-		for (param_name, value) in params {
-			let param_name_str = param_name.as_ref();
-
-			if let Some(segment_pos) = new_segments.iter().position(|segment| {
-                matches!(segment, TopicPatternItem::Plus(Some(name)) if name.as_str() == param_name_str)
-            }) {
-                new_segments[segment_pos] = TopicPatternItem::Str(value.as_ref().into());
-				is_applied = true;
-            } else {
-                return Err(TopicPatternError::wildcard_usage(
-                    format!("Parameter '{param_name_str}' not found in pattern" )
-                ));
-            }
-		}
-		if !is_applied {
-			tracing::debug!(
-				pattern = %self.topic_pattern(),
-				"with_parameters() called with no applicable parameters - returning original pattern unchanged"
-			);
-			return Ok(self.clone());
-		}
-
-		let template_pattern = Self::to_template_pattern(&new_segments);
-		Self::new_from_string(template_pattern, self.cache_strategy())
-	}
 }
 
 impl std::fmt::Display for TopicPatternPath {

@@ -1,11 +1,9 @@
 use std::marker::PhantomData;
 
 use arcstr::ArcStr;
-use smallvec::SmallVec;
 
 use crate::{
-	MessageSerializer, MqttClient, MqttClientError, MqttTopicSubscriber,
-	SubscriptionConfig, TopicPatternPath, structured::FromMqttMessage,
+	structured::FromMqttMessage, MessageSerializer, MqttClient, MqttClientError, MqttTopicSubscriber, SubscriptionConfig, TopicPatternError, TopicPatternPath
 };
 
 /// Immutable builder for configuring MQTT subscriptions
@@ -14,7 +12,6 @@ pub struct SubscriptionBuilder<MessageType, F:Clone> {
 	client: MqttClient<F>,
 	pattern: TopicPatternPath,
 	config: SubscriptionConfig,
-	parameters: Option<SmallVec<[(ArcStr, ArcStr); 4]>>,
 	_phantom: PhantomData<MessageType>,
 }
 
@@ -26,7 +23,6 @@ where F: Clone
 			pattern: self.pattern.clone(),
 			config: self.config.clone(),
 			client: self.client.clone(),
-			parameters: self.parameters.clone(),
 			_phantom: PhantomData,
 		}
 	}
@@ -41,7 +37,6 @@ where F:Clone {
 	) -> Self {
 		Self {
 			client,
-			parameters: None,
 			pattern: default_pattern,
 			config: SubscriptionConfig::default(),
 			_phantom: PhantomData,
@@ -53,20 +48,9 @@ where F:Clone {
 		mut self,
 		param_name: impl Into<ArcStr>,
 		value: impl Into<ArcStr>,
-	) -> Self {
-		let param_name_arc = param_name.into();
-		let value_arc = value.into();
-
-		let filters = self.parameters.get_or_insert_with(SmallVec::new);
-
-		if let Some(pos) =
-			filters.iter().position(|(k, _)| k == &param_name_arc)
-		{
-			filters[pos].1 = value_arc;
-		} else {
-			filters.push((param_name_arc, value_arc));
-		}
-		self
+	) -> Result<Self, TopicPatternError> {
+		self.pattern = self.pattern.add_parameter_filter(param_name, value)?;
+		Ok(self)
 	}
 
 	/// Set cache capacity
@@ -111,14 +95,9 @@ where F:Clone {
 		PayloadType: Send + Sync + 'static,
 		F: Default + Clone + Send + Sync + MessageSerializer<PayloadType>,
 	{
-		let final_pattern = match self.parameters {
-			| Some(filters) => self.pattern.with_parameters(filters)?,
-			| None => self.pattern,
-		};
-
 		let subscriber = self
 			.client
-			.subscribe_with_config(final_pattern, self.config)
+			.subscribe_with_config(self.pattern, self.config)
 			.await?;
 		Ok(MqttTopicSubscriber::new(subscriber))
 	}

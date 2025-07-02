@@ -332,14 +332,18 @@ impl CodeGenerator {
 			/// Extension trait for filtering subscription builder parameters
 			pub trait #trait_name<F> {
 				/// Abstract method to be implemented by SubscriptionBuilder
-				fn add_parameter(self, param: &str, value: String) -> Self;
+				#[doc(hidden)]
+				fn add_parameter(self, param: &str, value: String) 
+					-> ::std::result::Result<Self, ::mqtt_typed_client_core::TopicPatternError>
+				where Self: std::marker::Sized;
 
 				/// Default implementations for typed filtering
 				#(#filter_methods)*
 			}
 
 			impl<F: Clone> #trait_name<F> for ::mqtt_typed_client_core::SubscriptionBuilder<#struct_name, F> {
-				fn add_parameter(self, param: &str, value: String) -> Self {
+				fn add_parameter(self, param: &str, value: String) 
+					-> ::std::result::Result<Self, ::mqtt_typed_client_core::TopicPatternError> {
 					self.add_parameter_filter(param, value)
 				}
 			}
@@ -371,7 +375,7 @@ impl CodeGenerator {
 			fn #method_name(self, value: #param_type) -> Self
 			where Self: std::marker::Sized
 			{
-				self.add_parameter(#param_key, value.to_string())
+				self.add_parameter(#param_key, value.to_string()).unwrap()
 			}
 		}
 	}
