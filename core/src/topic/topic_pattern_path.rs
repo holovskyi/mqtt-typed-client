@@ -152,6 +152,23 @@ impl TopicPatternPath {
 		}
 	}
 
+	/// Returns the current parameter bindings, if any.
+	pub fn parameter_bindings(
+		&self,
+	) -> Option<&SmallVec<[(ArcStr, ArcStr); 4]>> {
+		self.parameter_bindings.as_ref()
+	}
+
+	/// Returns the bound value for a named parameter, if it exists.
+	pub fn get_bound_value(&self, param_name: Option<&str>) -> Option<&ArcStr> {
+        let name = param_name?; // Якщо None - одразу повертаємо None
+        self.parameter_bindings
+            .as_ref()?
+            .iter()
+            .find(|(binding_name, _)| binding_name == name)
+            .map(|(_, value)| value)
+    }
+
 	#[cfg(test)]
 	/// Creates a topic pattern from segments directly, useful for testing.
 	pub fn new_from_segments(

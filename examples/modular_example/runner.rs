@@ -1,4 +1,5 @@
 use mqtt_typed_client::prelude::*;
+use tokio::select;
 
 
 // Variant A
@@ -40,27 +41,42 @@ pub async fn run_example() -> Result<()> {
 		publisher.publish(&temp).await.unwrap();
 	});
 
-	let mut subscriber = temp_client
+    
+    let mut subscriber_all = temp_client.subscribe().await?;
+    
+	let mut subscriber370 = temp_client
 		.subscription()
-		.for_device_id(37)
+		.for_device_id(370)
 		.with_cache(100)
 		.subscribe()
 		.await?;
 
-	if let Some(Ok(temp_msg)) = subscriber.receive().await {
-        println!("Received temperature message from topic: {}", temp_msg.topic.topic_path());
-        println!("Location: {}", temp_msg.location);
-        println!("Sensor Type: {}", temp_msg.sensor_type);
-        println!("Device ID: {}", temp_msg.device_id);
-		println!("Temperature: {}", temp_msg.payload.temperature);
-        println!("Humidity: {:?}", temp_msg.payload.humidity);
-        println!("Battery Level: {:?}", temp_msg.payload.battery_level);
-		println!("Received temperature message: {temp_msg:?}");
-	} else {
-		println!("No temperature message received");
-	}
 
-	connection.shutdown().await?;
-    println!("✅ Connection closed gracefully");
+
+    loop {
+        select! {
+            Some(Ok(temp_msg)) = subscriber_all.receive() => {
+                println!("Received a message from the all-sensors topic {:?}", temp_msg.topic );
+            },
+            Some(Ok(temp_msg)) = subscriber370.receive() => {
+                println!("Received a message from the specific device topic {:?}", temp_msg.topic);
+            }
+        }
+    }
+	// if let Some(Ok(temp_msg)) = subscriber37.receive().await {
+    //     println!("Received temperature message from topic: {}", temp_msg.topic.topic_path());
+    //     println!("Location: {}", temp_msg.location);
+    //     println!("Sensor Type: {}", temp_msg.sensor_type);
+    //     println!("Device ID: {}", temp_msg.device_id);
+	// 	println!("Temperature: {}", temp_msg.payload.temperature);
+    //     println!("Humidity: {:?}", temp_msg.payload.humidity);
+    //     println!("Battery Level: {:?}", temp_msg.payload.battery_level);
+	// 	println!("Received temperature message: {temp_msg:?}");
+	// } else {
+	// 	println!("No temperature message received");
+	// }
+
+	// connection.shutdown().await?;
+    // println!("✅ Connection closed gracefully");
 	Ok(())
 }

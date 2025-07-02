@@ -128,12 +128,20 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 						.entry(s.clone())
 						.or_default()
 				}
-				| TopicPatternItem::Plus(_) => {
-					current_node = current_node
-						.single_level_wildcard_node
-						.get_or_insert_with(
-							|| Box::new(TopicMatcherNode::new()),
-						)
+				| TopicPatternItem::Plus(param_name) => {
+					match topic_path.get_bound_value(param_name.as_deref()) {
+						Some(bound_value) => {
+							current_node = current_node
+								.exact_children
+								.entry(bound_value.clone().into())
+								.or_default()
+						}
+						None => {
+							current_node = current_node
+								.single_level_wildcard_node
+								.get_or_insert_with(|| Box::new(TopicMatcherNode::new()))
+						}
+					}
 				}
 				| TopicPatternItem::Hash(_) => {
 					// Hash wildcard must be the last segment, so we can return immediately
