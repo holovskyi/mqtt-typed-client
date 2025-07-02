@@ -22,7 +22,7 @@ use crate::topic::{TopicError, TopicPatternPath};
 ///
 /// Provides typed publishers and subscribers with automatic serialization.
 /// Connection lifecycle is managed separately via `MqttConnection`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MqttClient<F> {
 	client: AsyncClient,
 	subscription_manager_handler: SubscriptionManagerHandler<Bytes>,

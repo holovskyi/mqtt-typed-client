@@ -38,7 +38,7 @@ impl CodeGenerator {
 	pub fn should_generate_publisher(&self) -> bool {
 		self.macro_args.generate_publisher
 	}
-	
+
 	/// Check if typed client code should be generated
 	pub fn should_generate_typed_client(&self) -> bool {
 		self.macro_args.generate_typed_client
@@ -62,15 +62,21 @@ impl CodeGenerator {
 		input_struct: &syn::DeriveInput,
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
 		let struct_name = &input_struct.ident;
-		let (from_mqtt_impl, subscriber_methods) = if self
-			.should_generate_subscriber()
-		{
-			let from_mqtt_impl = self.generate_from_mqtt_impl(struct_name)?;
-			let subscriber_methods = self.generate_helper_methods();
-			(from_mqtt_impl, subscriber_methods)
-		} else {
-			(quote! {}, quote! {})
-		};
+		let (from_mqtt_impl, subscriber_methods, subscription_filter_extension) =
+			if self.should_generate_subscriber() {
+				let from_mqtt_impl =
+					self.generate_from_mqtt_impl(struct_name)?;
+				let subscriber_methods = self.generate_helper_methods();
+				let subscription_filter_extension =
+					self.generate_subscription_filter_extension(struct_name);
+				(
+					from_mqtt_impl,
+					subscriber_methods,
+					subscription_filter_extension,
+				)
+			} else {
+				(quote! {}, quote! {}, quote! {})
+			};
 		let publisher_methods = if self.should_generate_publisher() {
 			self.generate_publisher_methods()?
 		} else {
@@ -78,13 +84,17 @@ impl CodeGenerator {
 		};
 
 		let last_will_methods = if self.should_generate_last_will() {
-            self.generate_last_will_methods()
-        } else {
-            quote! {}
-        };
+			self.generate_last_will_methods()
+		} else {
+			quote! {}
+		};
 
 		let typed_client_extension = if self.should_generate_typed_client() {
-			let generator = crate::codegen_typed_client::TypedClientGenerator::new(self, struct_name);
+			let generator =
+				crate::codegen_typed_client::TypedClientGenerator::new(
+					self,
+					struct_name,
+				);
 			generator.generate_complete_typed_client()
 		} else {
 			quote! {}
@@ -97,6 +107,7 @@ impl CodeGenerator {
 			#input_struct
 			#from_mqtt_impl
 			#typed_client_extension
+			#subscription_filter_extension
 			impl #struct_name {
 				#constants
 				#builder_methods
@@ -152,8 +163,12 @@ impl CodeGenerator {
 			}
 
 			/// Create subscription builder with default configuration
-			pub fn subscription() -> ::mqtt_typed_client_core::SubscriptionBuilder<Self> {
-				::mqtt_typed_client_core::SubscriptionBuilder::new(
+			pub fn subscription<F>(client: &::mqtt_typed_client_core::MqttClient<F>,
+			) -> ::mqtt_typed_client_core::SubscriptionBuilder<Self,F>
+			where
+				F: Clone
+			{
+				::mqtt_typed_client_core::SubscriptionBuilder::new(client.clone(),
 					Self::default_pattern().clone()
 				)
 			}
@@ -189,7 +204,7 @@ impl CodeGenerator {
 					+ ::std::marker::Sync
 					+ ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
 			{
-				Self::subscription().subscribe(client).await
+				Self::subscription(client).subscribe().await
 			}
 		}
 	}
@@ -231,7 +246,7 @@ impl CodeGenerator {
 				F: ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
 			{
 				let topic = format!(#format_string #(, #format_args)*);
-            	client.get_publisher::<#payload_type>(&topic)
+				client.get_publisher::<#payload_type>(&topic)
 			}
 
 			pub fn get_publisher_to<F>(
@@ -244,19 +259,19 @@ impl CodeGenerator {
 			) -> ::std::result::Result<
 				::mqtt_typed_client_core::MqttPublisher<#payload_type, F>,
 				::mqtt_typed_client_core::TopicError,
-			> 
+			>
 			where
 				F: ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
 			{
 				let custom_pattern = custom_pattern.try_into()?;
 				let default_pattern = Self::default_pattern();
-				
+
 				let validated_pattern = default_pattern
 					.check_pattern_compatibility(custom_pattern)?;
-				
-				let topic = 
+
+				let topic =
 					validated_pattern.format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])?;
-					
+
 				client.get_publisher::<#payload_type>(&topic)
 			}
 
@@ -264,46 +279,102 @@ impl CodeGenerator {
 	}
 
 	/// Generate last will methods
-    pub fn generate_last_will_methods(&self) -> proc_macro2::TokenStream {
-        let payload_type = self.get_payload_type_token();
-        let method_params = self.get_publisher_method_params();
-        let (format_string, format_args) = self.get_topic_format_and_args();
+	pub fn generate_last_will_methods(&self) -> proc_macro2::TokenStream {
+		let payload_type = self.get_payload_type_token();
+		let method_params = self.get_publisher_method_params();
+		let (format_string, format_args) = self.get_topic_format_and_args();
 
-        quote! {
-            /// Create Last Will message for default topic pattern
-            pub fn last_will(
-                #(#method_params,)*
-                payload: #payload_type,
-            ) -> ::mqtt_typed_client_core::TypedLastWill<#payload_type> {
-                let topic = format!(#format_string #(, #format_args)*);
-                ::mqtt_typed_client_core::TypedLastWill::new(topic, payload)
-            }
+		quote! {
+			/// Create Last Will message for default topic pattern
+			pub fn last_will(
+				#(#method_params,)*
+				payload: #payload_type,
+			) -> ::mqtt_typed_client_core::TypedLastWill<#payload_type> {
+				let topic = format!(#format_string #(, #format_args)*);
+				::mqtt_typed_client_core::TypedLastWill::new(topic, payload)
+			}
 
-            /// Create Last Will message for custom topic pattern
-            pub fn last_will_to(
-                custom_pattern: impl TryInto <
-                    ::mqtt_typed_client_core::TopicPatternPath,
-                    Error = ::mqtt_typed_client_core::TopicPatternError,
-                >,
-                #(#method_params,)*
-                payload: #payload_type,
-            ) -> ::std::result::Result <
-                ::mqtt_typed_client_core::TypedLastWill<#payload_type>,
-                ::mqtt_typed_client_core::TopicError,
-            > {
-                let custom_pattern = custom_pattern.try_into()?;
-                let default_pattern = Self::default_pattern();
-                
-                let validated_pattern = default_pattern
-                    .check_pattern_compatibility(custom_pattern)?;
-                
-                let topic = validated_pattern
-                    .format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])?;
-                    
-                Ok(::mqtt_typed_client_core::TypedLastWill::new(topic, payload))
-            }
-        }
-    }
+			/// Create Last Will message for custom topic pattern
+			pub fn last_will_to(
+				custom_pattern: impl TryInto <
+					::mqtt_typed_client_core::TopicPatternPath,
+					Error = ::mqtt_typed_client_core::TopicPatternError,
+				>,
+				#(#method_params,)*
+				payload: #payload_type,
+			) -> ::std::result::Result <
+				::mqtt_typed_client_core::TypedLastWill<#payload_type>,
+				::mqtt_typed_client_core::TopicError,
+			> {
+				let custom_pattern = custom_pattern.try_into()?;
+				let default_pattern = Self::default_pattern();
+
+				let validated_pattern = default_pattern
+					.check_pattern_compatibility(custom_pattern)?;
+
+				let topic = validated_pattern
+					.format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])?;
+
+				Ok(::mqtt_typed_client_core::TypedLastWill::new(topic, payload))
+			}
+		}
+	}
+
+	/// Generate extension trait with default implementations
+	pub fn generate_subscription_filter_extension(
+		&self,
+		struct_name: &syn::Ident,
+	) -> proc_macro2::TokenStream {
+		let trait_name = format_ident!("{}SubscriptionBuilderExt", struct_name);
+		let filter_methods = self.generate_filter_methods_with_bodies();
+
+		quote! {
+			/// Extension trait for filtering subscription builder parameters
+			pub trait #trait_name<F> {
+				/// Abstract method to be implemented by SubscriptionBuilder
+				fn add_parameter(self, param: &str, value: String) -> Self;
+
+				/// Default implementations for typed filtering
+				#(#filter_methods)*
+			}
+
+			impl<F: Clone> #trait_name<F> for ::mqtt_typed_client_core::SubscriptionBuilder<#struct_name, F> {
+				fn add_parameter(self, param: &str, value: String) -> Self {
+					self.add_parameter_filter(param, value)
+				}
+			}
+		}
+	}
+
+	/// Generate filter methods with full implementations
+	fn generate_filter_methods_with_bodies(
+		&self,
+	) -> Vec<proc_macro2::TokenStream> {
+		self.context
+			.topic_params
+			.iter()
+			.map(|param| self.generate_single_filter_method_with_body(param))
+			.collect()
+	}
+
+	/// Generate complete filter method with body
+	fn generate_single_filter_method_with_body(
+		&self,
+		param: &TopicParam,
+	) -> proc_macro2::TokenStream {
+		let method_name =
+			format_ident!("filter_{}", param.get_publisher_param_name());
+		let param_type = param.get_publisher_param_type();
+		let param_key = param.get_publisher_param_name();
+
+		quote! {
+			fn #method_name(self, value: #param_type) -> Self
+			where Self: std::marker::Sized
+			{
+				self.add_parameter(#param_key, value.to_string())
+			}
+		}
+	}
 
 	/// Generate code to extract topic parameters from the matched topic
 	///

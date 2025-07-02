@@ -6,6 +6,7 @@ use mqtt_typed_client::{
 };
 //extern crate mqtt_typed_client_macros;
 use mqtt_typed_client_macros::mqtt_topic;
+// Extension trait буде згенерований макросом
 //use mqtt_async_client::MqttAsyncClient;
 use serde::{Deserialize, Serialize};
 use tokio::time;
@@ -52,7 +53,7 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 
 	let sensor_client = client.sensor_reading();
 
-	let publisher = sensor_client.get_publisher("room52",37, 36.6)?;
+	let publisher = sensor_client.get_publisher("room52", 37, 36.6)?;
 
 	for i in 0 .. 10 {
 		debug!(message_id = i, "Publishing message");
@@ -92,22 +93,35 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 
 	let sensor_client = client.sensor_reading();
 
-	let mut subscriber = sensor_client.subscribe().await?;
 	
-	//TODO show using without macro SensorReading::subscribe(&client).await?; 
+	// // Демонстрація фільтрованої підписки
+	let mut subscriber = sensor_client
+		.subscription()
+		.filter_room("room52")  // Фільтр для конкретної кімнати
+		//.filter_sensor_id(37)   // Фільтр для конкретного сенсора  
+		.with_qos(rumqttc::QoS::AtLeastOnce)
+		.subscribe()
+		.await?;
+
+	// info!("Створено фільтровану підписку на room52/sensor37");
+
+	// Основна підписка (на всі повідомлення)
+	//let mut subscriber = sensor_client.subscribe().await?;
+
+	//TODO show using without macro SensorReading::subscribe(&client).await?;
 
 	let mut count = 0;
-	info!("Starting message reception loop");
-	while let Some(sensor_result) = subscriber.receive().await {
+	info!("Starting message reception loop with filtered subscriber");
+	while let Some(sensor_result) = 	subscriber.receive().await {
 		if count == 10 {
 			break;
 		}
 		match sensor_result {
 			| Ok(sensor_reading) => {
-				info!(?sensor_reading, "Sensor result received");
+				info!(?sensor_reading, "Filtered sensor result received (room52/sensor37)");
 			}
 			| Err(err) => {
-				error!(error = %err, "Failed to receive data");
+				error!(error = %err, "Failed to receive filtered data");
 			}
 		}
 		count += 1;

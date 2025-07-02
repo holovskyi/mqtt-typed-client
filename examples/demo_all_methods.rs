@@ -44,36 +44,36 @@ async fn demonstrate_builder_api() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Method 2: Builder with cache
 	println!("2️⃣  Builder with cache: subscription().with_cache(1000)");
-	let _cached_subscriber = TemperatureSensor::subscription()
+	let _cached_subscriber = TemperatureSensor::subscription(&client)
 		.with_cache(1000)
-		.subscribe(&client)
+		.subscribe()
 		.await?;
 	println!("    ✅ Subscribed with LRU cache (1000 entries)");
 
 	// Method 3: Builder with QoS
 	println!("3️⃣  Builder with QoS: subscription().with_qos(ExactlyOnce)");
-	let _qos_subscriber = TemperatureSensor::subscription()
+	let _qos_subscriber = TemperatureSensor::subscription(&client)
 		.with_qos(QoS::ExactlyOnce)
-		.subscribe(&client)
+		.subscribe()
 		.await?;
 	println!("    ✅ Subscribed with QoS::ExactlyOnce");
 
 	// Method 4: Builder with full config
-	println!("4️⃣  Builder with config: subscription().with_config()");
-	let config = SubscriptionConfig {
-		qos: QoS::ExactlyOnce,
-	};
-	let _config_subscriber = TemperatureSensor::subscription()
-		.with_config(config)
-		.subscribe(&client)
-		.await?;
-	println!("    ✅ Subscribed with custom SubscriptionConfig");
+	// println!("4️⃣  Builder with config: subscription().with_config()");
+	// let config = SubscriptionConfig {
+	// 	qos: QoS::ExactlyOnce,
+	// };
+	// let _config_subscriber = TemperatureSensor::subscription(&client)
+	// 	//.with_config(config)
+	// 	.subscribe()
+	// 	.await?;
+	// println!("    ✅ Subscribed with custom SubscriptionConfig");
 
 	// Method 5: Builder with custom pattern
 	println!("5️⃣  Builder with custom pattern: subscription().with_pattern()");
-	let _pattern_subscriber = TemperatureSensor::subscription()
+	let _pattern_subscriber = TemperatureSensor::subscription(&client)
 		.with_pattern("data/{building}/{floor}/temperature/{sensor_id}")?
-		.subscribe(&client)
+		.subscribe()
 		.await?;
 	println!("    ✅ Subscribed to custom pattern: data/+/+/temperature/+");
 
@@ -82,40 +82,40 @@ async fn demonstrate_builder_api() -> Result<(), Box<dyn std::error::Error>> {
 		"6️⃣  Full builder chain: \
 		 subscription().with_cache().with_qos().with_pattern()"
 	);
-	let _full_subscriber = TemperatureSensor::subscription()
+	let _full_subscriber = TemperatureSensor::subscription(&client)
 		.with_cache(500)
 		.with_qos(QoS::ExactlyOnce)
 		.with_pattern("iot/{building}/{floor}/temp/{sensor_id}")?
-		.subscribe(&client)
+		.subscribe()
 		.await?;
 	println!("    ✅ Full chain: cache + QoS + custom pattern");
 
 	// Method 7: Reusable builder template
 	println!("7️⃣  Reusable builder template");
-	let high_performance_template = TemperatureSensor::subscription()
+	let high_performance_template = TemperatureSensor::subscription(&client)
 		.with_cache(1000)
 		.with_qos(QoS::ExactlyOnce);
 
 	let _building_a_subscriber = high_performance_template
 		.clone()
 		.with_pattern("building_a/{building}/{floor}/temp/{sensor_id}")?
-		.subscribe(&client)
+		.subscribe()
 		.await?;
 
 	let _building_b_subscriber = high_performance_template
 		.clone()
 		.with_pattern("building_b/{building}/{floor}/temp/{sensor_id}")?
-		.subscribe(&client)
+		.subscribe()
 		.await?;
 
 	println!("    ✅ Template reused for multiple patterns");
 
 	// Method 8: Testing validation (should fail)
 	println!("8️⃣  Testing pattern validation (should fail):");
-	let invalid_result = match TemperatureSensor::subscription()
+	let invalid_result = match TemperatureSensor::subscription(&client)
 		.with_pattern("wrong/{floor}/{building}/temp/{sensor_id}")
 	{
-		| Ok(builder) => builder.subscribe(&client).await,
+		| Ok(builder) => builder.subscribe().await,
 		| Err(e) => Err(e),
 	};
 	match invalid_result {
@@ -143,9 +143,6 @@ async fn demonstrate_generated_methods()
 	println!("🆕 New methods:");
 	let default_pattern = TemperatureSensor::default_pattern();
 	println!("   default_pattern(): {}", default_pattern.topic_pattern());
-
-	let _builder = TemperatureSensor::subscription();
-	println!("   subscription(): builder created ✅");
 
 	// Test publisher methods (unchanged)
 	println!("📤 Publisher methods (unchanged):");

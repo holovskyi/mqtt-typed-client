@@ -174,6 +174,11 @@ impl<'a> TypedClientGenerator<'a> {
             {
                 #struct_name::subscribe(&self.client).await
             }
+
+            pub fn subscription(&self) -> ::mqtt_typed_client_core::SubscriptionBuilder<#struct_name, F> 
+            {
+                #struct_name::subscription(&self.client)
+            }
         }
     }
 }

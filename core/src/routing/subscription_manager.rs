@@ -408,7 +408,7 @@ impl SubscriptionManagerController {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SubscriptionManagerHandler<T> {
 	command_tx: Sender<Command<T>>,
 }
