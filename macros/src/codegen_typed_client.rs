@@ -84,10 +84,20 @@ impl<'a> TypedClientGenerator<'a> {
         let extension_trait = &self.names.extension_trait;
         let client_struct = &self.names.client_struct;
         let method_name = format_ident!("{}", self.names.method_name);
+        let payload_type = self.code_generator.get_payload_type_token();
 
         quote! {
-            pub trait #extension_trait<F> {
-                fn #method_name(&self) -> #client_struct<F>;
+            // pub trait #extension_trait<F> 
+            // where 
+            //     F: ::mqtt_typed_client_core::MessageSerializer<#payload_type> 
+            // {
+            //     fn #method_name(&self) -> #client_struct<F>;
+            // }
+
+            pub trait #extension_trait 
+            {
+                type Serializer: ::mqtt_typed_client_core::MessageSerializer<#payload_type>;
+                fn #method_name(&self) -> #client_struct<Self::Serializer>;
             }
         }
     }
@@ -97,12 +107,14 @@ impl<'a> TypedClientGenerator<'a> {
         let extension_trait = &self.names.extension_trait;
         let client_struct = &self.names.client_struct;
         let method_name = format_ident!("{}", self.names.method_name);
+        let payload_type = self.code_generator.get_payload_type_token();
 
         quote! {
-            impl<F> #extension_trait<F> for ::mqtt_typed_client_core::MqttClient<F> 
+            impl<F> #extension_trait for ::mqtt_typed_client_core::MqttClient<F> 
             where 
-                F: Clone
+                F: ::mqtt_typed_client_core::MessageSerializer<#payload_type>
             {
+                type Serializer = F;
                 fn #method_name(&self) -> #client_struct<F> {
                     #client_struct {
                         client: self.clone(),

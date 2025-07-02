@@ -49,6 +49,11 @@ impl CodeGenerator {
 		self.macro_args.generate_last_will
 	}
 
+	/// Check if prelude code should be generated
+	pub fn should_generate_prelude(&self) -> bool {
+		self.macro_args.generate_prelude
+	}
+
 	/// Generate complete implementation including original struct, traits, and helper methods
 	///
 	/// # Arguments
@@ -101,6 +106,8 @@ impl CodeGenerator {
 			quote! {}
 		};
 
+		let prelude_module = self.generate_prelude_module(struct_name);
+
 		let constants = self.generate_constants();
 		let builder_methods = Self::generate_builder_methods();
 
@@ -109,6 +116,8 @@ impl CodeGenerator {
 			#from_mqtt_impl
 			#typed_client_extension
 			#subscription_filter_extension
+			#prelude_module
+
 			impl #struct_name {
 				#constants
 				#builder_methods
@@ -373,6 +382,64 @@ impl CodeGenerator {
 			}
 		};
 		(declaration, body)
+	}
+
+	/// Generate prelude module with all generated types
+	pub fn generate_prelude_module(
+		&self,
+		struct_name: &syn::Ident,
+	) -> proc_macro2::TokenStream {
+		if !self.should_generate_prelude() {
+			return quote! {};
+		}
+		let names =
+			crate::naming::TypedClientNames::from_struct_name(struct_name);
+
+		let mut exports = Vec::new();
+
+		// Export main struct (with allow unused)
+		exports.push(quote! {
+			#[allow(unused_imports)]
+			pub use super::#struct_name;
+		});
+
+		// Export payload type if it exists
+		if let Some(payload_type) = &self.context.payload_type {
+			exports.push(quote! {
+				pub use super::#payload_type;
+			});
+		}
+
+		// Export subscriber types if generated
+		if self.should_generate_subscriber() {
+			let subscription_builder_trait =
+				format_ident!("{}SubscriptionBuilderExt", struct_name);
+			exports.push(quote! {
+				pub use super::#subscription_builder_trait;
+			});
+		}
+
+		// Export typed client types if generated
+		if self.should_generate_typed_client() {
+			let client_struct = &names.client_struct;
+			let extension_trait = &names.extension_trait;
+			exports.push(quote! {
+				#[allow(unused_imports)]
+				pub use super::#client_struct;
+			});
+			exports.push(quote! {
+				pub use super::#extension_trait;
+			});
+		}
+
+		let prelude_module = 
+			format_ident!("{}", names.method_name);
+
+		quote! {
+			pub mod #prelude_module {
+				#(#exports)*
+			}
+		}
 	}
 
 	/// Generate code to extract topic parameters from the matched topic

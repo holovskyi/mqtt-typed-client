@@ -412,6 +412,7 @@ fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 		generate_publisher,
 		generate_typed_client: true,  // Enable by default
 		generate_last_will: generate_publisher, // Enable if publisher is requested
+		generate_prelude: true
 	};
 
 	Ok(macro_args)
@@ -459,6 +460,7 @@ struct MacroArgs {
 	generate_publisher: bool,
 	generate_typed_client: bool,
 	generate_last_will: bool,
+	generate_prelude: bool
 }
 
 #[cfg(test)]
@@ -477,6 +479,7 @@ mod test_helpers {
 			generate_publisher: true,
 			generate_typed_client: true,
 			generate_last_will: true,
+			generate_prelude: true,
 		}
 	}
 }

@@ -3,7 +3,7 @@ use mqtt_typed_client::mqtt_topic;
 #[allow(dead_code)]
 #[derive(Debug, Default)]
 #[mqtt_topic("sensors/s/{sensor_id}/+/+/data/{room}")]
-struct SensorReading {
+pub struct SensorReading {
 	sensor_id: u32,
 	room: String,
 	payload: String,
