@@ -17,6 +17,8 @@ pub struct ClientSettings {
     pub command_channel_capacity: usize,
     /// Capacity of the unsubscribe channel
     pub unsubscribe_channel_capacity: usize,
+    /// Timeout for establishing connection in milliseconds
+    pub connection_timeout_millis: u64,
 }
 
 impl Default for ClientSettings {
@@ -26,6 +28,7 @@ impl Default for ClientSettings {
             event_loop_capacity: 10,
             command_channel_capacity: 100,
             unsubscribe_channel_capacity: 10,
+            connection_timeout_millis: 5000, 
         }
     }
 }
@@ -76,13 +79,18 @@ impl<S> MqttClientConfig<S> {
     ///
     /// # Example
     /// ```rust
-    /// # use mqtt_typed_client_core::{MqttClientConfig, BincodeSerializer};
-    /// # use mqtt_typed_client_macros::mqtt_topic;
-    /// # #[derive(Debug)]
-    /// # #[mqtt_topic("devices/{device_id}/status")]
-    /// # struct DeviceStatus { device_id: u32, payload: String }
+    /// # use mqtt_typed_client_core::{MqttClientConfig, BincodeSerializer, TypedLastWill};
+    /// # use rumqttc::QoS;
     /// let mut config = MqttClientConfig::<BincodeSerializer>::new("client", "broker", 1883);
-    /// let last_will = DeviceStatus::last_will(123, "offline".to_string());
+    /// 
+    /// // Create last will manually (in real code, use generated methods from #[mqtt_topic])
+    /// let last_will = TypedLastWill {
+    ///     topic: "devices/123/status".to_string(),
+    ///     payload: "offline".to_string(),
+    ///     qos: QoS::AtLeastOnce,
+    ///     retain: true,
+    /// };
+    /// 
     /// config.with_last_will(last_will)?;
     /// # Ok::<(), mqtt_typed_client_core::MqttClientError>(())
     /// ```

@@ -2,8 +2,10 @@ use std::time::Duration;
 
 use arcstr::ArcStr;
 use bytes::Bytes;
-use rumqttc::Packet::{Disconnect, Publish};
-use rumqttc::{AsyncClient, EventLoop};
+use rumqttc::Packet::{self, Disconnect, Publish};
+use rumqttc::{
+	AsyncClient, ClientError, ConnAck, ConnectReturnCode, EventLoop,
+};
 use rumqttc::{Event::Incoming, Event::Outgoing};
 use tokio::time;
 use tracing::{debug, error, info, warn};
@@ -12,6 +14,7 @@ use super::config::MqttClientConfig;
 use super::error::MqttClientError;
 use super::publisher::MqttPublisher;
 use super::subscriber::MqttSubscriber;
+use crate::client::error::ConnectionEstablishmentError;
 use crate::connection::MqttConnection;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::subscription_manager::SubscriptionConfig;
@@ -55,10 +58,20 @@ where F: Default + Clone + Send + Sync + 'static
 					)
 				})?;
 		// Use the provided MqttOptions directly - no more hardcoded values!
-		let (client, event_loop) = AsyncClient::new(
+		let (client, new_event_loop) = AsyncClient::new(
 			config.connection,
 			config.settings.event_loop_capacity,
 		);
+
+		let timeout_millis = config.settings.connection_timeout_millis;
+		let connection_timeout = Duration::from_millis(timeout_millis);
+		let connected_event_loop = tokio::time::timeout(
+			connection_timeout,
+			Self::establish_connection(new_event_loop),
+		)
+		.await
+		.map_err(|_| ConnectionEstablishmentError::Timeout { timeout_millis })?
+		.map_err(MqttClientError::ConnectionEstablishment)?;
 
 		let (controller, handler) = SubscriptionManagerActor::spawn(
 			client.clone(),
@@ -71,7 +84,7 @@ where F: Default + Clone + Send + Sync + 'static
 		// The event loop will terminate when it receives a Disconnect packet
 		let handler_clone = handler.clone();
 		let event_loop_handle = tokio::spawn(async move {
-			Self::run(event_loop, handler_clone).await;
+			Self::run(connected_event_loop, handler_clone).await;
 		});
 		let fresh_client = Self {
 			client: client.clone(),
@@ -81,6 +94,37 @@ where F: Default + Clone + Send + Sync + 'static
 		let connection =
 			MqttConnection::new(client, controller, event_loop_handle);
 		Ok((fresh_client, connection))
+	}
+
+	async fn establish_connection(
+		mut event_loop: EventLoop,
+	) -> Result<EventLoop, ConnectionEstablishmentError> {
+		loop {
+			match event_loop.poll().await {
+				| Ok(Incoming(Packet::ConnAck(ConnAck { code, .. }))) => {
+					if code == ConnectReturnCode::Success {
+						debug!("MQTT connection established successfully");
+						return Ok(event_loop);
+					} else {
+						debug!(code = ?code, "MQTT connection rejected by broker");
+						return Err(
+							ConnectionEstablishmentError::BrokerRejected {
+								code,
+							},
+						);
+					}
+				}
+				| Ok(notification) => {
+					debug!(notification = ?notification, "Bootstrap phase notification");
+				}
+				| Err(connection_err) => {
+					debug!(error = %connection_err, "MQTT connection error during bootstrap phase");
+					return Err(ConnectionEstablishmentError::Network(
+						connection_err,
+					));
+				}
+			}
+		}
 	}
 
 	/// Main event loop that processes MQTT messages and handles graceful shutdown
@@ -98,6 +142,13 @@ where F: Default + Clone + Send + Sync + 'static
 		// No explicit shutdown signal needed - MQTT protocol handles graceful termination
 		loop {
 			match event_loop.poll().await {
+				//TODO: what happend after reconnect?
+				// | Ok(Incoming(Packet::ConnAck(ConnAck {
+				// 	session_present,
+				// 	code: ConnectReturnCode::Success,
+				// }))) => {
+				// 	// Connection confirmed!
+				// }
 				| Ok(Incoming(Publish(p))) => {
 					// Reset error count on successful message
 					error_count = 0;
@@ -105,8 +156,9 @@ where F: Default + Clone + Send + Sync + 'static
 					debug!(topic = %p.topic, payload_size = p.payload.len(), "Received MQTT message");
 
 					//let topic = Topic::from(p.topic);
-					if let Err(err) =
-						subscription_manager.send_data(p.topic, p.payload).await
+					if let Err(err) = subscription_manager
+						.dispatch_incoming_message(p.topic, p.payload)
+						.await
 					{
 						error!(error = ?err, "Failed to send data to subscription manager");
 					}
@@ -124,7 +176,7 @@ where F: Default + Clone + Send + Sync + 'static
 				| Ok(notification) => {
 					// Reset error count on successful notification
 					error_count = 0;
-					debug!(notification = ?notification, "Received MQTT notification");
+					debug!(notification = ?notification, "Received OTHER MQTT notification");
 				}
 				| Err(err) => {
 					error_count += 1;
@@ -206,7 +258,7 @@ where F: Default + Clone + Send + Sync + 'static
 		//TopicPatternPath::new_from_string(topic, config.cache_strategy)?;
 		let subscriber = self
 			.subscription_manager_handler
-			.subscribe(topic_pattern, config)
+			.create_subscription(topic_pattern, config)
 			.await?;
 		Ok(MqttSubscriber::new(subscriber, self.serializer.clone()))
 	}

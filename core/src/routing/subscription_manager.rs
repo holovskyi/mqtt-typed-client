@@ -416,7 +416,7 @@ pub struct SubscriptionManagerHandler<T> {
 impl<T> SubscriptionManagerHandler<T>
 where T: Send + Sync + 'static
 {
-	pub async fn subscribe(
+	pub(crate) async fn create_subscription(
 		&self,
 		topic: TopicPatternPath,
 		config: SubscriptionConfig,
@@ -429,7 +429,7 @@ where T: Send + Sync + 'static
 		rx.await.map_err(|_| SubscriptionError::ResponseLost)?
 	}
 
-	pub async fn send_data(
+	pub(crate) async fn dispatch_incoming_message(
 		&self,
 		topic: String,
 		data: T,
