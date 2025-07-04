@@ -211,7 +211,7 @@ where T: Send + Sync + 'static
 		// This prevents new messages from being received
 		let active_subscriptions = self.topic_router.get_active_subscriptions();
 
-		for topic in active_subscriptions {
+		for (topic, _qos) in active_subscriptions {
 			if let Err(err) =
 				self.client.unsubscribe(topic.mqtt_pattern().as_str()).await
 			{
@@ -256,7 +256,8 @@ where T: Send + Sync + 'static
 	) {
 		let (channel_tx, channel_rx) = tokio_mpsc::channel(500);
 		let topic_patern_str = topic.mqtt_pattern();
-		let (fresh_topic, id) = self.topic_router.subscribe(topic, channel_tx);
+		let (fresh_topic, id) =
+			self.topic_router.subscribe(topic, config.qos, channel_tx);
 		if fresh_topic {
 			let res = self
 				.client
@@ -339,7 +340,7 @@ where T: Send + Sync + 'static
 		let subscribers = self.topic_router.get_subscribers(&topic_path);
 		let mut closed_subscribers = Vec::new();
 		let data = Arc::new(data);
-		for (id, topic_patern, sender) in subscribers {
+		for (id, (topic_patern, _qos), sender) in subscribers {
 			let topic_match =
 				match topic_patern.try_match(Arc::clone(&topic_path)) {
 					| Ok(match_result) => match_result,

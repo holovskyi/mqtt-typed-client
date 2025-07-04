@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use rumqttc::QoS;
 use thiserror::Error;
 
 use super::topic_matcher::{TopicMatcherError, TopicMatcherNode};
@@ -77,7 +78,7 @@ type SubscriptionTable<T> = HashMap<SubscriptionId, T>;
 
 pub struct TopicRouter<T> {
 	topic_matcher: TopicMatcherNode<SubscriptionTable<T>>,
-	subscriptions: SubscriptionTable<TopicPatternPath>,
+	subscriptions: SubscriptionTable<(TopicPatternPath, QoS)>,
 	next_id: usize,
 }
 
@@ -99,6 +100,7 @@ impl<T> TopicRouter<T> {
 	pub fn subscribe(
 		&mut self,
 		topic: TopicPatternPath,
+		qos: QoS,
 		subscription: T,
 	) -> (bool, SubscriptionId) {
 		let id = SubscriptionId(self.next_id);
@@ -108,7 +110,7 @@ impl<T> TopicRouter<T> {
 			self.topic_matcher.subscribe_to_pattern(&topic);
 		let is_empty = subscription_table.is_empty();
 		subscription_table.insert(id, subscription);
-		self.subscriptions.insert(id, topic);
+		self.subscriptions.insert(id, (topic,qos));
 		(is_empty, id)
 	}
 
@@ -118,7 +120,7 @@ impl<T> TopicRouter<T> {
 	) -> Result<(bool, TopicPatternPath), TopicRouterError> {
 		let topic = self.subscriptions.remove(id);
 		match topic {
-			| Some(topic) => {
+			| Some((topic,_qos)) => {
 				let topic_now_empty =
 					self.topic_matcher.update_node(topic.slice(), |table| {
 						table.remove(id);
@@ -132,7 +134,7 @@ impl<T> TopicRouter<T> {
 	pub fn get_subscribers<'a>(
 		&'a self,
 		topic: &TopicPath,
-	) -> Vec<(&'a SubscriptionId, &'a TopicPatternPath, &'a T)> {
+	) -> Vec<(&'a SubscriptionId, &'a (TopicPatternPath, QoS), &'a T)> {
 		let subscribers = self.topic_matcher.find_by_path(topic);
 		subscribers
 			.into_iter()
@@ -149,7 +151,7 @@ impl<T> TopicRouter<T> {
 
 	pub fn get_active_subscriptions(
 		&self,
-	) -> impl Iterator<Item = &TopicPatternPath> {
+	) -> impl Iterator<Item = &(TopicPatternPath,QoS)> {
 		self.subscriptions.values()
 	}
 
@@ -166,7 +168,7 @@ impl<T> TopicRouter<T> {
 	pub fn get_topic_by_id(
 		&self,
 		id: &SubscriptionId,
-	) -> Result<&TopicPatternPath, TopicRouterError> {
+	) -> Result<&(TopicPatternPath, QoS), TopicRouterError> {
 		self.subscriptions
 			.get(id)
 			.ok_or(TopicRouterError::subscription_not_found(*id))
