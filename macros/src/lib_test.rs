@@ -398,12 +398,12 @@ fn test_struct_analysis_context_utility() {
 		TopicParam {
 			name: Some("sensor_id".to_string()),
 			wildcard_index: 0,
-			field_type: Some(parse_quote!(u32)),
+			struct_field_type: Some(parse_quote!(u32)),
 		},
 		TopicParam {
 			name: Some("room".to_string()),
 			wildcard_index: 1,
-			field_type: Some(parse_quote!(String)),
+			struct_field_type: Some(parse_quote!(String)),
 		},
 	];
 

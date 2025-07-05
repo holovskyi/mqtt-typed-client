@@ -124,14 +124,14 @@ fn test_topic_param_methods() {
 	let named_param = TopicParam {
 		name: Some("sensor_id".to_string()),
 		wildcard_index: 0,
-		field_type: None,
+		struct_field_type: None,
 	};
 	assert_eq!(named_param.get_publisher_param_name(), "sensor_id");
 
 	let anonymous_param = TopicParam {
 		name: None,
 		wildcard_index: 2,
-		field_type: None,
+		struct_field_type: None,
 	};
 	assert_eq!(anonymous_param.get_publisher_param_name(), "wildcard_2");
 
@@ -139,7 +139,7 @@ fn test_topic_param_methods() {
 	let typed_param = TopicParam {
 		name: Some("count".to_string()),
 		wildcard_index: 0,
-		field_type: Some(syn::parse_quote!(u32)),
+		struct_field_type: Some(syn::parse_quote!(u32)),
 	};
 	let param_type = typed_param.get_publisher_param_type();
 	assert_eq!(quote::quote!(#param_type).to_string(), "u32");
@@ -147,7 +147,7 @@ fn test_topic_param_methods() {
 	let untyped_param = TopicParam {
 		name: Some("room".to_string()),
 		wildcard_index: 1,
-		field_type: None,
+		struct_field_type: None,
 	};
 	let default_type = untyped_param.get_publisher_param_type();
 	assert_eq!(quote::quote!(#default_type).to_string(), "& str");
@@ -157,8 +157,8 @@ fn test_topic_param_methods() {
 	assert!(anonymous_param.is_anonymous());
 
 	// Test has_struct_field (field_type.is_some())
-	assert!(named_param.field_type.is_none());
-	assert!(typed_param.field_type.is_some());
+	assert!(named_param.struct_field_type.is_none());
+	assert!(typed_param.struct_field_type.is_some());
 }
 
 #[test]
@@ -258,8 +258,8 @@ fn test_field_type_mapping() {
 		.iter()
 		.find(|p| p.name.as_deref() == Some("sensor_id"))
 		.unwrap();
-	assert!(sensor_param.field_type.is_some());
-	let sensor_type = sensor_param.field_type.as_ref().unwrap();
+	assert!(sensor_param.struct_field_type.is_some());
+	let sensor_type = sensor_param.struct_field_type.as_ref().unwrap();
 	assert_eq!(quote::quote!(#sensor_type).to_string(), "u32");
 
 	let room_param = context
@@ -267,8 +267,8 @@ fn test_field_type_mapping() {
 		.iter()
 		.find(|p| p.name.as_deref() == Some("room"))
 		.unwrap();
-	assert!(room_param.field_type.is_some());
-	let room_type = room_param.field_type.as_ref().unwrap();
+	assert!(room_param.struct_field_type.is_some());
+	let room_type = room_param.struct_field_type.as_ref().unwrap();
 	assert_eq!(quote::quote!(#room_type).to_string(), "String");
 }
 
@@ -294,7 +294,7 @@ fn test_named_param_without_struct_field() {
 		.iter()
 		.find(|p| p.name.as_deref() == Some("sensor_id"))
 		.unwrap();
-	assert!(sensor_param.field_type.is_some());
+	assert!(sensor_param.struct_field_type.is_some());
 
 	// missing_field should not have field type
 	let missing_param = context
@@ -302,7 +302,7 @@ fn test_named_param_without_struct_field() {
 		.iter()
 		.find(|p| p.name.as_deref() == Some("missing_field"))
 		.unwrap();
-	assert!(missing_param.field_type.is_none());
+	assert!(missing_param.struct_field_type.is_none());
 	assert_eq!(
 		missing_param.get_publisher_param_type(),
 		syn::parse_quote!(&str)
@@ -606,8 +606,8 @@ fn test_custom_field_types() {
 			.iter()
 			.find(|p| p.name.as_deref() == Some(param_name))
 			.unwrap();
-		assert!(param.field_type.is_some());
-		let field_type = param.field_type.as_ref().unwrap();
+		assert!(param.struct_field_type.is_some());
+		let field_type = param.struct_field_type.as_ref().unwrap();
 		let actual_type = quote::quote!(#field_type).to_string();
 		assert_eq!(
 			actual_type, expected_type,

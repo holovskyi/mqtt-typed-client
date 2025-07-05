@@ -112,8 +112,8 @@ impl CodeGenerator {
 			return Ok(quote! {});
 		}
 
-		let param_extractions = self.generate_param_extractions();
-		let field_assignments = self.generate_field_assignments();
+		let param_extractions = self.generate_subscriber_param_extractions();
+		let field_assignments = self.generate_subscriber_field_assignments();
 		let payload_type = self.get_payload_type_token();
 
 		Ok(quote! {
@@ -407,11 +407,11 @@ impl CodeGenerator {
 	///     "room"
 	/// )?;
 	/// ```
-	fn generate_param_extractions(&self) -> Vec<proc_macro2::TokenStream> {
+	fn generate_subscriber_param_extractions(&self) -> Vec<proc_macro2::TokenStream> {
 		self.context
 			.topic_params
 			.iter()
-			.filter(|param| !param.is_anonymous())
+			.filter(|param| param.is_struct_field())
 			.map(|param| self.generate_single_param_extraction(param))
 			.collect()
 	}
@@ -448,14 +448,14 @@ impl CodeGenerator {
 	///     topic,
 	/// })
 	/// ```
-	fn generate_field_assignments(&self) -> Vec<proc_macro2::TokenStream> {
+	fn generate_subscriber_field_assignments(&self) -> Vec<proc_macro2::TokenStream> {
 		let mut assignments = Vec::new();
 
 		// Add topic parameter fields
 		self.context
 			.topic_params
 			.iter()
-			.filter(|param| !param.is_anonymous())
+			.filter(|param| param.is_struct_field())
 			.for_each(|param| {
 				let param_ident =
 					format_ident!("{}", param.name.as_ref().unwrap());

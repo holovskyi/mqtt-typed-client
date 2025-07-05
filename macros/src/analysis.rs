@@ -14,8 +14,8 @@ pub struct TopicParam {
 	pub name: Option<String>,
 	/// Index among ALL wildcards in the pattern
 	pub wildcard_index: usize,
-	/// Type from struct field, None means use &str
-	pub field_type: Option<syn::Type>,
+	/// Type from struct field
+	pub struct_field_type: Option<syn::Type>,
 }
 
 impl TopicParam {
@@ -29,7 +29,7 @@ impl TopicParam {
 
 	/// Get the parameter type for publisher methods  
 	pub fn get_publisher_param_type(&self) -> syn::Type {
-		match &self.field_type {
+		match &self.struct_field_type {
 			| Some(field_type) => {
 				if Self::is_string_type(field_type) {
 					syn::parse_quote! { &str }
@@ -41,11 +41,16 @@ impl TopicParam {
 		}
 	}
 
+	pub fn is_struct_field(&self) -> bool {
+		self.struct_field_type.is_some()
+	}
+
 	fn is_string_type(ty: &syn::Type) -> bool {
 		matches!(ty, syn::Type::Path(path)
 		  if path.path.segments.last().map(|s| s.ident == "String").unwrap_or(false))
 	}
 
+	#[cfg(test)]
 	/// Is this an anonymous wildcard?
 	pub fn is_anonymous(&self) -> bool {
 		self.name.is_none()
@@ -73,7 +78,7 @@ impl TopicParam {
 				TopicParam {
 					name,
 					wildcard_index,
-					field_type,
+					struct_field_type: field_type,
 				}
 			})
 			.collect()
