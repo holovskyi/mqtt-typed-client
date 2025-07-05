@@ -1,5 +1,4 @@
 mod modular_example;
-use tracing::{debug, error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 

@@ -118,7 +118,7 @@ where F: Default + Clone + Send + Sync + 'static
 				| Err(connection_err) => {
 					debug!(error = %connection_err, "MQTT connection error during bootstrap phase");
 					return Err(ConnectionEstablishmentError::Network(
-						connection_err,
+						Box::new(connection_err),
 					));
 				}
 			}

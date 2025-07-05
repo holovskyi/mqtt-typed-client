@@ -78,5 +78,5 @@ pub async fn run_example() -> Result<()> {
 
 	// connection.shutdown().await?;
     // println!("✅ Connection closed gracefully");
-	Ok(())
+	//Ok(())
 }

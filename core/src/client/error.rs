@@ -6,16 +6,48 @@ use crate::{
 	topic::{topic_pattern_path::TopicFormatError, SubscriptionId, TopicError, TopicPatternError}
 };
 
+/// Errors that can occur during MQTT connection establishment phase.
+///
+/// These errors represent different failure modes when attempting to establish
+/// an initial connection to the MQTT broker. They are distinguished from runtime
+/// connection errors that occur after a successful initial connection.
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectionEstablishmentError {
+    /// Network-level connection failure (DNS, TCP, TLS, etc.)
+    ///
+    /// This variant wraps underlying network errors from rumqttc, such as:
+    /// - DNS resolution failures
+    /// - TCP connection timeouts
+    /// - TLS handshake failures
+    /// - Invalid URLs or connection parameters
     #[error("Network connection failed: {0}")]
-    Network(#[from] rumqttc::ConnectionError),
+    Network(Box<rumqttc::ConnectionError>),
     
+    /// MQTT broker rejected the connection attempt
+    ///
+    /// The network connection was successful, but the MQTT broker refused
+    /// the connection for protocol-level reasons (authentication, protocol version, etc.)
     #[error("Broker rejected connection: {code:?}")]
-    BrokerRejected { code: rumqttc::ConnectReturnCode },
+    BrokerRejected { 
+        /// The specific rejection reason code from the broker
+        code: rumqttc::ConnectReturnCode 
+    },
     
+    /// Connection establishment exceeded the configured timeout
+    ///
+    /// The connection attempt took longer than the specified timeout period.
+    /// This can happen due to network latency, broker overload, or network instability.
     #[error("Connection establishment timed out after {timeout_millis}ms")]
-    Timeout { timeout_millis : u64 },
+    Timeout { 
+        /// The timeout duration that was exceeded, in milliseconds
+        timeout_millis: u64 
+    },
+}
+
+impl From<rumqttc::ConnectionError> for ConnectionEstablishmentError {
+    fn from(err: rumqttc::ConnectionError) -> Self {
+        Self::Network(Box::new(err))
+    }
 }
 
 /// Errors that can occur in MQTT client operations

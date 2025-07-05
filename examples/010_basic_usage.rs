@@ -13,12 +13,10 @@
 //! cargo run --example 010_basic_usage
 //! ```
 
-use std::time::Duration;
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient};
 use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
-use tokio::time;
 use tracing::{info, error};
 
 // === Define your data types ===
