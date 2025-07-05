@@ -114,7 +114,7 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 				.is_none_or(T::is_empty)
 	}
 	/// Finds or creates a subscription data entry matching the given topic pattern
-	pub fn subscribe_to_pattern(
+	pub fn get_or_create_subscription_table(
 		&mut self,
 		topic_path: &TopicPatternPath,
 	) -> &mut T {
@@ -275,7 +275,7 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 	// NOTE: These methods are only available in test builds and are used for
 	// testing the tree traversal logic. In production, use TopicRouter::get_active_subscriptions()
 	// which is more efficient.
-	fn collect_active_subscriptions<'a>(
+	fn collect_active_subscriptions_internal<'a>(
 		&'a self,
 		current_path: &mut Vec<TopicPatternItem>,
 		result: &mut Vec<(TopicPatternPath, &'a T)>,
@@ -298,20 +298,20 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 		};
 		if let Some(plus_node) = &self.single_level_wildcard_node {
 			current_path.push(TopicPatternItem::Plus(None));
-			plus_node.collect_active_subscriptions(current_path, result);
+			plus_node.collect_active_subscriptions_internal(current_path, result);
 			current_path.pop();
 		};
 		for (exact_segment, child) in &self.exact_children {
 			current_path.push(TopicPatternItem::Str(exact_segment.clone()));
-			child.collect_active_subscriptions(current_path, result);
+			child.collect_active_subscriptions_internal(current_path, result);
 			current_path.pop();
 		}
 	}
 
 	#[cfg(test)]
-	pub fn active_subscriptions(&self) -> Vec<(TopicPatternPath, &T)> {
+	pub fn collect_active_subscriptions(&self) -> Vec<(TopicPatternPath, &T)> {
 		let mut result = Vec::new();
-		self.collect_active_subscriptions(&mut Vec::new(), &mut result);
+		self.collect_active_subscriptions_internal(&mut Vec::new(), &mut result);
 		result
 	}
 }

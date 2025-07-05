@@ -81,6 +81,7 @@ pub enum Command<T> {
 		oneshot::Sender<Result<Subscriber<T>, SubscriptionError>>,
 	),
 	Send(RawMessageType<T>),
+	ResubscribeAll(oneshot::Sender<Result<(), SubscriptionError>>),
 }
 
 type SlowSendResult<T> = (
@@ -152,6 +153,9 @@ where T: Send + Sync + 'static
 						Command::Send(message) => self.handle_send(message).await,
 						Command::Subscribe(topic, config, response_tx) => {
 							self.handle_subscribe(topic, config, response_tx).await
+						},
+						Command::ResubscribeAll(response_tx) => {
+							self.handle_resubscribe_all(response_tx).await;
 						}
 					}
 					} else {
@@ -209,14 +213,15 @@ where T: Send + Sync + 'static
 	async fn cleanup_active_subscriptions(&mut self) {
 		// Step 1: Send unsubscribe commands to MQTT broker for all active topics
 		// This prevents new messages from being received
-		let active_subscriptions = self.topic_router.get_active_subscriptions();
+		let active_subscriptions =
+			self.topic_router.get_topics_for_unsubscribe();
 
-		for (topic, _qos) in active_subscriptions {
+		for mqtt_topic in active_subscriptions {
 			if let Err(err) =
-				self.client.unsubscribe(topic.mqtt_pattern().as_str()).await
+				self.client.unsubscribe(mqtt_topic.as_str()).await
 			{
 				error!(
-					topic_pattern = %topic,
+					topic_pattern = %mqtt_topic,
 					error = ?err,
 					"Failed to unsubscribe from topic pattern"
 				);
@@ -256,9 +261,10 @@ where T: Send + Sync + 'static
 	) {
 		let (channel_tx, channel_rx) = tokio_mpsc::channel(500);
 		let topic_patern_str = topic.mqtt_pattern();
-		let (fresh_topic, id) =
-			self.topic_router.subscribe(topic, config.qos, channel_tx);
-		if fresh_topic {
+		let (needs_subscribe, id) = self
+			.topic_router
+			.add_subscription(topic, config.qos, channel_tx);
+		if needs_subscribe {
 			let res = self
 				.client
 				.subscribe(topic_patern_str.as_str(), config.qos)
@@ -297,6 +303,40 @@ where T: Send + Sync + 'static
 			);
 			self.handle_unsubscribe(&id).await;
 		}
+	}
+
+	async fn handle_resubscribe_all(
+		&mut self,
+		response_tx: oneshot::Sender<Result<(), SubscriptionError>>,
+	) {
+		let subscriptions = self.topic_router.get_topics_for_resubscribe();
+		let mut failed_topics = Vec::new();
+
+		for (mqtt_topic, qos) in subscriptions {
+			match self
+				.client
+				.subscribe(mqtt_topic.as_str(), qos)
+				.await
+			{
+				| Ok(_) => {
+					debug!(topic = %mqtt_topic, qos = ?qos, "Successfully resubscribed");
+				}
+				| Err(err) => {
+					error!(topic = %mqtt_topic, qos = ?qos, error = ?err, "Failed to resubscribe");
+					failed_topics.push(mqtt_topic);
+				}
+			}
+		}
+
+		let result = if failed_topics.is_empty() {
+			Ok(())
+		} else {
+			Err(SubscriptionError::ResubscribeFailed)
+		};
+
+		let _ = response_tx.send(result).inspect_err(|_| {
+			warn!("Could not send resubscribe response (channel full/closed)");
+		});
 	}
 
 	async fn handle_unsubscribe(&mut self, id: &SubscriptionId) {
@@ -425,6 +465,17 @@ where T: Send + Sync + 'static
 		let (tx, rx) = oneshot::channel();
 		self.command_tx
 			.send(Command::Subscribe(topic, config, tx))
+			.await
+			.map_err(|_| SubscriptionError::ChannelClosed)?;
+		rx.await.map_err(|_| SubscriptionError::ResponseLost)?
+	}
+
+	pub(crate) async fn resubscribe_all(
+		&self,
+	) -> Result<(), SubscriptionError> {
+		let (tx, rx) = oneshot::channel();
+		self.command_tx
+			.send(Command::ResubscribeAll(tx))
 			.await
 			.map_err(|_| SubscriptionError::ChannelClosed)?;
 		rx.await.map_err(|_| SubscriptionError::ResponseLost)?

@@ -171,7 +171,7 @@ impl TopicPatternPath {
 
 	#[cfg(test)]
 	/// Creates a topic pattern from segments directly, useful for testing.
-	pub fn new_from_segments(
+	pub(crate) fn new_from_segments(
 		segments: &[TopicPatternItem],
 	) -> Result<Self, TopicPatternError> {
 		let topic_pattern = ArcStr::from(Self::to_template_pattern(segments));

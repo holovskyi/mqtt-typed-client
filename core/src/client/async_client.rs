@@ -3,9 +3,7 @@ use std::time::Duration;
 use arcstr::ArcStr;
 use bytes::Bytes;
 use rumqttc::Packet::{self, Disconnect, Publish};
-use rumqttc::{
-	AsyncClient, ClientError, ConnAck, ConnectReturnCode, EventLoop,
-};
+use rumqttc::{AsyncClient, ConnAck, ConnectReturnCode, EventLoop};
 use rumqttc::{Event::Incoming, Event::Outgoing};
 use tokio::time;
 use tracing::{debug, error, info, warn};
@@ -142,13 +140,30 @@ where F: Default + Clone + Send + Sync + 'static
 		// No explicit shutdown signal needed - MQTT protocol handles graceful termination
 		loop {
 			match event_loop.poll().await {
-				//TODO: what happend after reconnect?
-				// | Ok(Incoming(Packet::ConnAck(ConnAck {
-				// 	session_present,
-				// 	code: ConnectReturnCode::Success,
-				// }))) => {
-				// 	// Connection confirmed!
-				// }
+				| Ok(Incoming(Packet::ConnAck(ConnAck {
+					session_present: false,
+					code: ConnectReturnCode::Success,
+				}))) => {
+					info!(
+						"MQTT reconnected without session, resubscribing to \
+						 all topics"
+					);
+					let _ = subscription_manager
+						.resubscribe_all()
+						.await
+						.inspect_err(|err| {
+							error!(error = ?err, "Failed to resubscribe to topics");
+						});
+				}
+				| Ok(Incoming(Packet::ConnAck(ConnAck {
+					session_present: true,
+					code: ConnectReturnCode::Success,
+				}))) => {
+					info!(
+						"MQTT reconnected with session preserved, \
+						 subscriptions maintained by broker"
+					);
+				}
 				| Ok(Incoming(Publish(p))) => {
 					// Reset error count on successful message
 					error_count = 0;

@@ -37,7 +37,7 @@ fn test_subscriptions(
 	for (pattern_str, sub_id) in subscriptions {
 		let pattern = new_from_string(pattern_str).unwrap();
 		let sub_id = make_subscription_id(*sub_id);
-		root.subscribe_to_pattern(&pattern).insert(sub_id);
+		root.get_or_create_subscription_table(&pattern).insert(sub_id);
 	}
 
 	// Test all expected matches
@@ -189,7 +189,7 @@ fn test_multiple_subscribers_to_same_pattern() {
 	let sub_id2 = make_subscription_id(2);
 
 	// Add multiple subscription IDs to the same pattern
-	let subscribers = root.subscribe_to_pattern(&pattern);
+	let subscribers = root.get_or_create_subscription_table(&pattern);
 	subscribers.insert(sub_id1.clone());
 	subscribers.insert(sub_id2.clone());
 
@@ -216,15 +216,15 @@ fn test_same_subscriber_multiple_patterns() {
 
 	// Subscribe to pattern 1: Exact match
 	let pattern1 = new_from_string("devices/living-room/temperature").unwrap();
-	root.subscribe_to_pattern(&pattern1).insert(sub_id.clone());
+	root.get_or_create_subscription_table(&pattern1).insert(sub_id.clone());
 
 	// Subscribe to pattern 2: Wildcard match
 	let pattern2 = new_from_string("devices/+/humidity").unwrap();
-	root.subscribe_to_pattern(&pattern2).insert(sub_id.clone());
+	root.get_or_create_subscription_table(&pattern2).insert(sub_id.clone());
 
 	// Subscribe to pattern 3: Hash wildcard
 	let pattern3 = new_from_string("sensors/#").unwrap();
-	root.subscribe_to_pattern(&pattern3).insert(sub_id.clone());
+	root.get_or_create_subscription_table(&pattern3).insert(sub_id.clone());
 
 	// Test each path individually
 	{
@@ -279,12 +279,12 @@ fn test_active_subscriptions(
 	for (pattern_str, sub_id) in subscriptions {
 		let pattern = new_from_string(pattern_str).unwrap();
 		let sub_id = make_subscription_id(*sub_id);
-		root.subscribe_to_pattern(&pattern).insert(sub_id);
+		root.get_or_create_subscription_table(&pattern).insert(sub_id);
 	}
 
 	// Get actual active subscriptions
 	let active = root
-		.active_subscriptions()
+		.collect_active_subscriptions()
 		.into_iter()
 		.map(|(path, d)| (path.to_string(), d.len()));
 
@@ -354,13 +354,13 @@ fn test_multiple_subs_active_subscriptions() {
 	let pattern2 = new_from_string("home/#").unwrap();
 
 	// Add multiple subscription IDs to the first pattern
-	let subscribers1 = root.subscribe_to_pattern(&pattern1);
+	let subscribers1 = root.get_or_create_subscription_table(&pattern1);
 	subscribers1.insert(make_subscription_id(1));
 	subscribers1.insert(make_subscription_id(2));
 	subscribers1.insert(make_subscription_id(3));
 
 	// Add multiple subscription IDs to the second pattern
-	let subscribers2 = root.subscribe_to_pattern(&pattern2);
+	let subscribers2 = root.get_or_create_subscription_table(&pattern2);
 	subscribers2.insert(make_subscription_id(4));
 	subscribers2.insert(make_subscription_id(5));
 
@@ -373,7 +373,7 @@ fn test_multiple_subs_active_subscriptions() {
 	.collect();
 
 	// Get actual active subscriptions
-	let active = root.active_subscriptions();
+	let active = root.collect_active_subscriptions();
 	let actual: HashMap<String, usize> = active
 		.into_iter()
 		.map(|(s, d)| (s.to_string(), d.len()))
@@ -401,7 +401,7 @@ fn test_update_node(
 	for (pattern_str, sub_id) in initial_subs {
 		let pattern = new_from_string(pattern_str).unwrap();
 		let sub_id = make_subscription_id(*sub_id);
-		root.subscribe_to_pattern(&pattern).insert(sub_id);
+		root.get_or_create_subscription_table(&pattern).insert(sub_id);
 	}
 
 	// Perform operations (subscribe or unsubscribe)
@@ -417,13 +417,13 @@ fn test_update_node(
 			})
 			.unwrap();
 		} else {
-			let subscriptions = root.subscribe_to_pattern(&pattern);
+			let subscriptions = root.get_or_create_subscription_table(&pattern);
 			subscriptions.insert(sub_id);
 		}
 	}
 
 	// Check the resulting active subscriptions
-	let active = root.active_subscriptions();
+	let active = root.collect_active_subscriptions();
 
 	// Convert expected to a HashMap for easier comparison
 	let mut expected_map: HashMap<String, usize> = HashMap::new();
@@ -563,7 +563,7 @@ fn test_unsubscribe_all() {
 	for (pattern_str, sub_id) in initial_subs {
 		let pattern = new_from_string(pattern_str).unwrap();
 		let sub_id = make_subscription_id(sub_id);
-		root.subscribe_to_pattern(&pattern).insert(sub_id);
+		root.get_or_create_subscription_table(&pattern).insert(sub_id);
 	}
 
 	for (pattern_str, sub_id, _) in operations {

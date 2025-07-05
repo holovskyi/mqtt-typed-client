@@ -20,4 +20,7 @@ pub enum SubscriptionError {
 	/// Failed to subscribe to MQTT broker
 	#[error("Failed to subscribe to MQTT broker")]
 	SubscribeFailed,
+	/// Failed to resubscribe to topics after reconnect
+	#[error("Failed to resubscribe after reconnect")]
+	ResubscribeFailed,
 }
