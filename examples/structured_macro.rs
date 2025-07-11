@@ -2,7 +2,8 @@ use std::{sync::Arc, time::Duration};
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
-	BincodeSerializer, MqttClient, topic::topic_match::TopicMatch,
+	BincodeSerializer, MqttClient, MqttClientConfig,
+	topic::topic_match::TopicMatch,
 };
 //extern crate mqtt_typed_client_macros;
 use mqtt_typed_client_macros::mqtt_topic;
@@ -43,10 +44,14 @@ const SERVER: &str = _SERVER_COOL;
 
 async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
-	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
-		&get_server(SERVER, "rust-publisher"),
-	)
-	.await?;
+	let mut config =
+		MqttClientConfig::from_url(&get_server(SERVER, "rust-pub-sub"))?;
+	config.connection.set_clean_session(false);
+	config.connection.set_keep_alive(Duration::from_secs(10));
+
+	info!("Creating MQTT client");
+	let (client, connection) =
+		MqttClient::<BincodeSerializer>::connect_with_config(config).await?;
 	info!("MQTT client created successfully");
 
 	info!("Setting up publisher and subscriber");
@@ -82,24 +87,27 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
+	let mut config =
+		MqttClientConfig::from_url(&get_server(SERVER, "rust-sub"))?;
+	config.connection.set_clean_session(false);
+	config.connection.set_keep_alive(Duration::from_secs(10));
+
 	info!("Creating MQTT client");
-	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
-		&get_server(SERVER, "rust-subscriber"),
-	)
-	.await?;
+	let (client, connection) =
+		MqttClient::<BincodeSerializer>::connect_with_config(config).await?;
+
+
 	info!("MQTT client created successfully");
 
 	info!(mqtt = SensorReading::MQTT_PATTERN, "Setting up subscriber");
 
 	let sensor_client = client.sensor_reading();
 
-	
 	// // Демонстрація фільтрованої підписки
 	let mut subscriber = sensor_client
 		.subscription()
-		.for_room("room52")  // Фільтр для конкретної кімнати
-		
-		//.for_sensor_id(37)   // Фільтр для конкретного сенсора  
+		.for_room("room52") // Фільтр для конкретної кімнати
+		//.for_sensor_id(37)   // Фільтр для конкретного сенсора
 		.with_qos(rumqttc::QoS::AtLeastOnce)
 		.subscribe()
 		.await?;
@@ -113,13 +121,16 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut count = 0;
 	info!("Starting message reception loop with filtered subscriber");
-	while let Some(sensor_result) = 	subscriber.receive().await {
+	while let Some(sensor_result) = subscriber.receive().await {
 		if count == 10 {
 			break;
 		}
 		match sensor_result {
 			| Ok(sensor_reading) => {
-				info!(?sensor_reading, "Filtered sensor result received (room52/sensor37)");
+				info!(
+					?sensor_reading,
+					"Filtered sensor result received (room52/sensor37)"
+				);
 			}
 			| Err(err) => {
 				error!(error = %err, "Failed to receive filtered data");
@@ -135,11 +146,13 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
+	let mut config =
+		MqttClientConfig::from_url(&get_server(SERVER, "rust-pub-sub"))?;
+	config.connection.set_clean_session(false);
+
 	info!("Creating MQTT client");
-	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
-		&get_server(SERVER, "rust-pub-sub"),
-	)
-	.await?;
+	let (client, connection) =
+		MqttClient::<BincodeSerializer>::connect_with_config(config).await?;
 	info!("MQTT client created successfully");
 
 	info!("Setting up publisher and subscriber");

@@ -58,6 +58,7 @@ pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
         event_loop_capacity: 100,
         command_channel_capacity: 500,
         unsubscribe_channel_capacity: 50,
+        connection_timeout_millis: 5000, // 5 seconds
     };
     
     info!("Setting up publisher and subscriber");
@@ -122,22 +123,36 @@ pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "mqtt_typed_client=debug,rumqttc=info".into()),
-        )
-        .with(
-            tracing_subscriber::fmt::layer()
-                .with_target(true)
-                .with_thread_ids(false)
-                .with_thread_names(false)
-                .with_file(false)
-                .with_line_number(false)
-                .compact(),
-        )
-        .init();
-
+    // tracing_subscriber::registry()
+    //     .with(
+    //         tracing_subscriber::EnvFilter::try_from_default_env()
+    //             .unwrap_or_else(|_| "debug".into()),
+    //     )
+    //     .with(
+    //         tracing_subscriber::fmt::layer()
+    //             .with_target(true)
+    //             .with_thread_ids(false)
+    //             .with_thread_names(false)
+    //             .with_file(false)
+    //             .with_line_number(false)
+    //             .compact(),
+    //     )
+    //     .init();
+	tracing_subscriber::registry()
+		.with(
+			tracing_subscriber::EnvFilter::try_from_default_env()
+				.unwrap_or_else(|_| "debug".into()),
+		)
+		.with(
+			tracing_subscriber::fmt::layer()
+				.with_target(true) // Hide module target for cleaner output
+				.with_thread_ids(false) // Hide thread IDs
+				.with_thread_names(false) // Hide thread names
+				.with_file(false) // Hide file info
+				.with_line_number(false) // Hide line numbers
+				.compact(), // More compact output
+		)
+		.init();
     info!("Starting advanced MQTT configuration example");
     
     let result = run_example().await;
