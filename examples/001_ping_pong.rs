@@ -26,7 +26,6 @@ use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientError};
 use mqtt_typed_client_macros::mqtt_topic;
 use rand::Rng;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Message types for the ping pong game
 ///
@@ -66,18 +65,18 @@ pub struct PingPongTopic {
 	payload: PingPongMessage,
 }
 
-/// Get MQTT broker URL from environment or use default public broker
+/// Get MQTT broker URL from environment or use default test broker
 fn broker_url() -> String {
 	std::env::var("MQTT_BROKER").unwrap_or_else(|_| {
 		//"mqtt://broker.hivemq.com:1883?client_id=test_client_example".to_string()
-		//You can try other free mqtt broker
+		// You can try other free MQTT brokers
 		"mqtt://broker.mqtt.cool:1883?client_id=test_client_example".to_string()
 	})
 }
 
 type MySerializer = BincodeSerializer;
 
-/// Run a single player's game session
+/// Handle player's game session
 async fn run_player(
 	client: MqttClient<MySerializer>,
 	player: &str,
@@ -88,8 +87,8 @@ async fn run_player(
 	let topic_client = client.ping_pong_topic();
 
 	// Subscribe to this player's topic: "game/{player}"
-	// .for_player() filters subscription to specific player ("game/alice")
-	// Without .for_player() it would subscribe to "game/+" (all players)
+	// .for_player("alice") subscribes to "game/alice" only
+	// Without .for_player() subscribes to "game/+" (all players)
 	let mut subscriber = topic_client
 		.subscription()
 		.for_player(player)
@@ -136,24 +135,10 @@ async fn run_player(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	tracing_subscriber::registry()
-		.with(
-			tracing_subscriber::EnvFilter::try_from_default_env()
-				.unwrap_or_else(|_| "debug".into()),
-		)
-		.with(
-			tracing_subscriber::fmt::layer()
-				.with_target(true) // Hide module target for cleaner output
-				.with_thread_ids(false) // Hide thread IDs
-				.with_thread_names(false) // Hide thread names
-				.with_file(false) // Hide file info
-				.with_line_number(false) // Hide line numbers
-				.compact(), // More compact output
-		)
-		.init();
 	println!("Starting MQTT Ping Pong example...\n");
 
 	// Connect to MQTT broker using BincodeSerializer for efficient binary serialization
+	// BincodeSerializer provides compact, fast serialization for structured data
 	let (client, connection) =
 		MqttClient::<BincodeSerializer>::connect(&broker_url())
 			.await
@@ -174,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		// (e.g., discovery topic, heartbeat pattern, or message acknowledgment).
 		// See advanced examples for robust synchronization techniques.
 
-		// Give Alice time to subscribe
+		// Give Alice time to subscribe first
 		tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await; 
 		run_player(client, "bob", "alice", true).await
 	};
