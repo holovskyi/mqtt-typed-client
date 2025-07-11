@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use tokio::sync::mpsc::error::SendError;
+use tracing::{debug, warn};
 
 use crate::message_serializer::MessageSerializer;
 use crate::routing::Subscriber;
@@ -44,6 +45,20 @@ where
 	pub async fn receive(&mut self) -> Option<IncomingMessage<T, F>> {
 		if let Some((topic, bytes)) = self.subscriber.recv().await {
 			let message = self.serializer.deserialize(&bytes);
+			
+			// Log deserialization attempts and failures
+			match &message {
+				Ok(_) => (),
+				Err(err) => {
+					warn!(
+						topic = %topic.topic_path(),
+						payload_size = bytes.len(),
+						error = ?err,
+						"Failed to deserialize MQTT message payload"
+					);
+				}
+			}
+			
 			Some((topic, message))
 		} else {
 			None

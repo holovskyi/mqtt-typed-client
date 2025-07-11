@@ -74,4 +74,15 @@ where F: MessageSerializer<T>
 			.await
 			.map_err(MqttClientError::from)
 	}
+
+	/// Clear retained message for this topic
+	///
+	/// Sends an empty payload with retain=true to remove any retained message.
+	/// Uses the same QoS level as configured for this publisher.
+	pub async fn clear_retained(&self) -> Result<(), MqttClientError> {
+		self.client
+			.publish(self.topic.as_str(), self.qos, true, Vec::new())
+			.await
+			.map_err(MqttClientError::from)
+	}
 }
