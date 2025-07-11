@@ -16,6 +16,7 @@
 - [ ] Додати підтвердженну підписку. Зараз subscribe не аналізує результату підписки. Треба додати в event_loop механізм який по Outgoing(Subscribe(1)) отримує id пакета для підписки. А поттім чекає Incoming(SubAck(SubAck { pkid: 1, return_codes: [Success(AtLeastOnce)] })), з результатом підписки, та надає цей результат користувачу. Але тут є проблеа того що зараз Outgoing(Subscribe()), має тількі pkid, без конкретних фільтрів, тож нам треба форкнути rumqttc та у src/lib.rs змінити Outgoing::Subscribe(u16) => outgoing::Subscribe(Subscribe). 
 - [ ] Додати флаги retain, qos, dup в метадата вхідного повідомлення. У async_client.rs/Ok(Incoming(Publish(p))) => ми отримуємо ці дані але відкидаємо їх. По ідеї retain це корисний флаг.
 - [ ] Обробляти пусте повідомлення яке скидає retain. Зараз повертається помилка десеріалізації.
+- [ ] Examples Last Will message and clean Retaition
 - [x] Спробувати як працює коли  нас два модуля, та макро в одному модулі, 
     а використання в другому
 - [x] А якщо в макросі генерувати ext trait для MqttClient
