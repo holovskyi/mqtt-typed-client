@@ -1,10 +1,9 @@
 mod modular_example;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-
 #[tokio::main]
 async fn main() {
-    // Initialize tracing subscriber with compact formatting
+	// Initialize tracing subscriber with compact formatting
 	tracing_subscriber::registry()
 		.with(
 			tracing_subscriber::EnvFilter::try_from_default_env()
@@ -20,5 +19,5 @@ async fn main() {
 				.compact(), // More compact output
 		)
 		.init();
-    modular_example::run_example().await.unwrap();
+	modular_example::run_example().await.unwrap();
 }

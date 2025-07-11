@@ -96,7 +96,6 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 	let (client, connection) =
 		MqttClient::<BincodeSerializer>::connect_with_config(config).await?;
 
-
 	info!("MQTT client created successfully");
 
 	info!(mqtt = SensorReading::MQTT_PATTERN, "Setting up subscriber");

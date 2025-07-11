@@ -4,7 +4,7 @@ use quote::quote;
 use syn::parse_quote;
 
 use super::*;
-use crate::analysis::{TopicParam, StructAnalysisContext};
+use crate::analysis::{StructAnalysisContext, TopicParam};
 
 /// Helper function for tests
 fn create_topic_pattern(pattern: &str) -> TopicPatternPath {
@@ -204,8 +204,9 @@ fn test_generate_mqtt_code_integration() {
 		let result = generate_mqtt_code(macro_args, &test_struct);
 
 		if test_case.should_succeed {
-			let generated = result
-				.unwrap_or_else(|_| panic!("Test '{}' should succeed", test_case.name));
+			let generated = result.unwrap_or_else(|_| {
+				panic!("Test '{}' should succeed", test_case.name)
+			});
 			let code = generated.to_string();
 
 			for expected in test_case.expected_contains {

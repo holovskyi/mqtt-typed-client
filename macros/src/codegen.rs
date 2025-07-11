@@ -62,27 +62,29 @@ impl CodeGenerator {
 		input_struct: &syn::DeriveInput,
 	) -> Result<proc_macro2::TokenStream, syn::Error> {
 		let struct_name = &input_struct.ident;
-		let names = crate::naming::TypedClientNames::from_struct_name(struct_name);
+		let names =
+			crate::naming::TypedClientNames::from_struct_name(struct_name);
 		let module_name = format_ident!("{}", names.method_name);
 
 		// Each function handles its own generation logic and flags
 		let from_mqtt_impl = self.generate_from_mqtt_impl(struct_name)?;
 		let subscriber_methods = self.generate_subscriber_methods();
-		let subscription_for_bind_extension = self.generate_subscription_for_bind_extension(struct_name);
+		let subscription_for_bind_extension =
+			self.generate_subscription_for_bind_extension(struct_name);
 
 		let publisher_methods = self.generate_publisher_methods()?;
 		let last_will_methods = self.generate_last_will_methods();
 
-		let typed_client_extension = self.generate_typed_client_extension(struct_name);
-		
+		let typed_client_extension =
+			self.generate_typed_client_extension(struct_name);
+
 		let constants = self.generate_constants();
 		let builder_methods = Self::generate_builder_methods();
-		
 
 		Ok(quote! {
 			#input_struct
 			pub mod #module_name {
-                use super::*;
+				use super::*;
 				#from_mqtt_impl
 				#typed_client_extension
 				#subscription_for_bind_extension
@@ -407,7 +409,9 @@ impl CodeGenerator {
 	///     "room"
 	/// )?;
 	/// ```
-	fn generate_subscriber_param_extractions(&self) -> Vec<proc_macro2::TokenStream> {
+	fn generate_subscriber_param_extractions(
+		&self,
+	) -> Vec<proc_macro2::TokenStream> {
 		self.context
 			.topic_params
 			.iter()
@@ -448,7 +452,9 @@ impl CodeGenerator {
 	///     topic,
 	/// })
 	/// ```
-	fn generate_subscriber_field_assignments(&self) -> Vec<proc_macro2::TokenStream> {
+	fn generate_subscriber_field_assignments(
+		&self,
+	) -> Vec<proc_macro2::TokenStream> {
 		let mut assignments = Vec::new();
 
 		// Add topic parameter fields

@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			let topic = publisher.topic();
 			println!("   Generated topic: {topic}");
 			assert_eq!(topic, "devices/temp_001/readings");
-			
+
 			// Test with QoS configuration
 			let configured_publisher = publisher.with_qos(QoS::AtLeastOnce);
 			configured_publisher.publish(&_test_data).await?;
@@ -76,8 +76,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!(
 		"\n3️⃣  Testing publisher with incompatible pattern (should fail):"
 	);
-	match SensorMessage::get_publisher_to(&client, "wrong/pattern/without/wildcards", sensor_id)
-	{
+	match SensorMessage::get_publisher_to(
+		&client,
+		"wrong/pattern/without/wildcards",
+		sensor_id,
+	) {
 		| Ok(_) => println!("   ❌ Should have failed!"),
 		| Err(e) => println!("   ✅ Correctly rejected: {e}"),
 	}
@@ -103,7 +106,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Direct publish with default pattern
 	println!("   📤 Publishing directly with default pattern...");
 	match SensorMessage::publish(&client, sensor_id, &_test_data).await {
-		| Ok(()) => println!("   ✅ Direct publish with default pattern successful"),
+		| Ok(()) => {
+			println!("   ✅ Direct publish with default pattern successful")
+		}
 		| Err(e) => println!("   ❌ Error: {e}"),
 	}
 

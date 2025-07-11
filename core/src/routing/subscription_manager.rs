@@ -217,8 +217,7 @@ where T: Send + Sync + 'static
 			self.topic_router.get_topics_for_unsubscribe();
 
 		for mqtt_topic in active_subscriptions {
-			if let Err(err) =
-				self.client.unsubscribe(mqtt_topic.as_str()).await
+			if let Err(err) = self.client.unsubscribe(mqtt_topic.as_str()).await
 			{
 				error!(
 					topic_pattern = %mqtt_topic,
@@ -313,11 +312,7 @@ where T: Send + Sync + 'static
 		let mut failed_topics = Vec::new();
 
 		for (mqtt_topic, qos) in subscriptions {
-			match self
-				.client
-				.subscribe(mqtt_topic.as_str(), qos)
-				.await
-			{
+			match self.client.subscribe(mqtt_topic.as_str(), qos).await {
 				| Ok(_) => {
 					debug!(topic = %mqtt_topic, qos = ?qos, "Successfully resubscribed");
 				}

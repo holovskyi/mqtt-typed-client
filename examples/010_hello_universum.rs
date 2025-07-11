@@ -94,8 +94,8 @@ async fn spawn_actor(
 fn get_broker_url() -> String {
 	std::env::var("MQTT_BROKER").unwrap_or_else(|_| {
 		"mqtt://broker.hivemq.com:1883?client_id=test_client_example"
-		//You can try other free mqtt broker
-		//"mqtt://broker.mqtt.cool:1883?client_id=test_client_example"
+			//You can try other free mqtt broker
+			//"mqtt://broker.mqtt.cool:1883?client_id=test_client_example"
 			.to_string()
 	})
 }

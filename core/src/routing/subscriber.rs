@@ -1,4 +1,7 @@
-use tokio::sync::mpsc::{error::{SendError, TrySendError}, Receiver, Sender};
+use tokio::sync::mpsc::{
+	Receiver, Sender,
+	error::{SendError, TrySendError},
+};
 use tracing::{debug, warn};
 
 use crate::{
@@ -33,11 +36,11 @@ impl<T> Subscriber<T> {
 	}
 
 	/// Unsubscribes from the topic pattern.
-	pub async fn unsubscribe(mut self) -> Result<(), SendError<SubscriptionId>> {
+	pub async fn unsubscribe(
+		mut self,
+	) -> Result<(), SendError<SubscriptionId>> {
 		if let Some(unsubscribe_tx) = self.unsubscribe_tx.take() {
-			unsubscribe_tx
-				.send(self.id)
-				.await
+			unsubscribe_tx.send(self.id).await
 		} else {
 			warn!(subscription_id = ?self.id, "Subscription already canceled");
 			Ok(())

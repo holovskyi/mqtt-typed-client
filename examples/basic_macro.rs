@@ -8,7 +8,7 @@ pub struct SensorReading {
 	room: String,
 	payload: String,
 }
- 
+
 fn main() {
 	println!("Topic pattern: {}", SensorReading::TOPIC_PATTERN);
 	println!("MQTT pattern: {}", SensorReading::MQTT_PATTERN);

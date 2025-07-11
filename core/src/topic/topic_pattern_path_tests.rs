@@ -204,7 +204,10 @@ mod with_parameters_tests {
 		let result = pattern.with_parameters(params).unwrap();
 
 		// topic_pattern() preserves original template
-		assert_eq!(result.topic_pattern(), "devices/{device_type}/+/status/{status_type}");
+		assert_eq!(
+			result.topic_pattern(),
+			"devices/{device_type}/+/status/{status_type}"
+		);
 		// mqtt_pattern() substitutes named params, preserves anonymous wildcards
 		assert_eq!(result.mqtt_pattern(), "devices/sensor/+/status/online");
 	}
@@ -306,7 +309,8 @@ mod with_parameters_tests {
 		let pattern = create_pattern("a/{first}/b/{second}/c");
 
 		// Test different parameter orders
-		let result1 = pattern.clone()
+		let result1 = pattern
+			.clone()
 			.with_parameters([("first", "1"), ("second", "2")])
 			.unwrap();
 		let result2 = pattern

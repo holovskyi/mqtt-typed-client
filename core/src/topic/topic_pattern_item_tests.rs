@@ -294,5 +294,3 @@ fn test_wildcards_mixed_with_text() {
 		panic!("Expected WildcardUsage error");
 	}
 }
-
-

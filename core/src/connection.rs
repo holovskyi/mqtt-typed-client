@@ -27,7 +27,9 @@ impl MqttConnection {
 	) -> Self {
 		Self {
 			client,
-			subscription_manager_controller: Some(subscription_manager_controller),
+			subscription_manager_controller: Some(
+				subscription_manager_controller,
+			),
 			event_loop_handle: Some(event_loop_handle),
 		}
 	}

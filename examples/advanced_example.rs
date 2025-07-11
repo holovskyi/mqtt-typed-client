@@ -128,7 +128,7 @@ async fn smart_building_monitor() -> Result<()> {
 	// let mut sigint = tokio::signal::unix::signal(
 	// 	tokio::signal::unix::SignalKind::interrupt(),
 	// )?;
-    let mut ctrl_c = Box::pin(signal::ctrl_c());
+	let mut ctrl_c = Box::pin(signal::ctrl_c());
 
 	let mut message_count = 0;
 	loop {
@@ -272,8 +272,7 @@ async fn simulate_building_data(
 		let device_id = format!("DEV-{:02}", i + 1);
 
 		// Publish to pattern with + wildcard
-		let topic =
-			format!("status/{building}/{device_type}/{device_id}");
+		let topic = format!("status/{building}/{device_type}/{device_id}");
 		client
 			.get_publisher::<DeviceStatus>(&topic)?
 			.publish(&status)
@@ -290,7 +289,8 @@ async fn simulate_building_data(
 			severity,
 			"temperature",
 			&format!(
-				"Temperature anomaly detected by {severity} monitoring in TechHub"
+				"Temperature anomaly detected by {severity} monitoring in \
+				 TechHub"
 			),
 		)
 		.await

@@ -3,9 +3,7 @@
 //! This shows how to use the new builder pattern with mqtt_topic macro
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{
-	BincodeSerializer, MqttClient, QoS,
-};
+use mqtt_typed_client::{BincodeSerializer, MqttClient, QoS};
 use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
 

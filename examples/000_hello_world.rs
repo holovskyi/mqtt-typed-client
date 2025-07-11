@@ -34,7 +34,8 @@ pub struct GreetingTopic {
 /// Get MQTT broker URL from environment or use default public broker
 fn broker_url() -> String {
 	std::env::var("MQTT_BROKER").unwrap_or_else(|_| {
-		"mqtt://broker.hivemq.com:1883?client_id=hello_world_example".to_string()
+		"mqtt://broker.hivemq.com:1883?client_id=hello_world_example"
+			.to_string()
 		//You can try other free mqtt broker
 		//"mqtt://broker.mqtt.cool:1883?client_id=test_client_example".to_string()
 	})
@@ -67,8 +68,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("Subscribed to: greetings/+/+");
 
-    // Small delay to ensure that subscription is ready
-    // This is just for demonstration purposes because subsciber 
+	// Small delay to ensure that subscription is ready
+	// This is just for demonstration purposes because subsciber
 	// and publisher are in the same process.
 	tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
@@ -79,13 +80,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("Publishing greeting message to topic: greetings/rust/rustacean");
 
-
 	// Publish message to topic "greetings/rust/rustacean"
 	// Parameters are automatically inserted into topic pattern
 	topic_client
 		.publish("rust", "rustacean", &hello_message)
 		.await?;
-
 
 	println!("Waiting for greeting message from broker...");
 	// Wait for the first received message (our own greeting in this case)

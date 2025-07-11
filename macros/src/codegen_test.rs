@@ -87,8 +87,8 @@ fn create_macro_args(pattern: &str, config: GenerationConfig) -> MacroArgs {
 		pattern: topic_pattern,
 		generate_subscriber,
 		generate_publisher,
-		generate_typed_client: true,  // Enable by default
-		generate_last_will: generate_publisher, 
+		generate_typed_client: true, // Enable by default
+		generate_last_will: generate_publisher,
 	}
 }
 
@@ -124,32 +124,25 @@ fn verify_generated_code(code: &str, checks: Vec<CodeCheck>, test_name: &str) {
 				let found = has_extract_call && has_param_name && has_index;
 				assert!(
 					found,
-					"Test '{test_name}': missing parameter extraction for '{param_name}' at \
-					 index {index}\nGenerated code: {code}"
+					"Test '{test_name}': missing parameter extraction for \
+					 '{param_name}' at index {index}\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::FieldAssignment(field) => {
-				let patterns =
-					[format!("{field} ,"), format!("{field},")];
+				let patterns = [format!("{field} ,"), format!("{field},")];
 				let found =
 					patterns.iter().any(|pattern| code.contains(pattern));
 				assert!(
 					found,
-					"Test '{test_name}': missing field assignment for '{field}'\nGenerated \
-					 code: {code}"
+					"Test '{test_name}': missing field assignment for \
+					 '{field}'\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::Constant { name, value } => {
 				let patterns = [
-					format!(
-						"pub const {name} : & 'static str = \"{value}\" ;"
-					),
-					format!(
-						"pub const {name}: &'static str = \"{value}\";"
-					),
-					format!(
-						"pub const {name} : &'static str = \"{value}\" ;"
-					),
+					format!("pub const {name} : & 'static str = \"{value}\" ;"),
+					format!("pub const {name}: &'static str = \"{value}\";"),
+					format!("pub const {name} : &'static str = \"{value}\" ;"),
 				];
 				let found =
 					patterns.iter().any(|pattern| code.contains(pattern));
@@ -170,7 +163,8 @@ fn verify_generated_code(code: &str, checks: Vec<CodeCheck>, test_name: &str) {
 					patterns.iter().any(|pattern| code.contains(pattern));
 				assert!(
 					found,
-					"Test '{test_name}': missing method '{method_name}'\nGenerated code: {code}"
+					"Test '{test_name}': missing method \
+					 '{method_name}'\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::TraitImpl(trait_name) => {
@@ -183,7 +177,8 @@ fn verify_generated_code(code: &str, checks: Vec<CodeCheck>, test_name: &str) {
 			| CodeCheck::PayloadType(type_name) => {
 				assert!(
 					code.contains(type_name),
-					"Test '{test_name}': missing payload type '{type_name}'\nGenerated code: {code}"
+					"Test '{test_name}': missing payload type \
+					 '{type_name}'\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::PublisherParam {
@@ -197,20 +192,23 @@ fn verify_generated_code(code: &str, checks: Vec<CodeCheck>, test_name: &str) {
 					|| code.contains(&param_pattern_spaced);
 				assert!(
 					found,
-					"Test '{test_name}': missing publisher parameter '{param_name}' with type \
-					 '{param_type}'\nGenerated code: {code}"
+					"Test '{test_name}': missing publisher parameter \
+					 '{param_name}' with type '{param_type}'\nGenerated code: \
+					 {code}"
 				);
 			}
 			| CodeCheck::FormatString(format_str) => {
 				assert!(
 					code.contains(format_str),
-					"Test '{test_name}': missing format string '{format_str}'\nGenerated code: {code}"
+					"Test '{test_name}': missing format string \
+					 '{format_str}'\nGenerated code: {code}"
 				);
 			}
 			| CodeCheck::NotPresent(text) => {
 				assert!(
 					!code.contains(text),
-					"Test '{test_name}': found unexpected text '{text}'\nGenerated code: {code}"
+					"Test '{test_name}': found unexpected text \
+					 '{text}'\nGenerated code: {code}"
 				);
 			}
 		}

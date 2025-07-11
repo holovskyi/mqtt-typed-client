@@ -88,9 +88,8 @@ impl TopicParam {
 #[cfg(test)]
 /// Test utilities for StructAnalysisContext
 impl StructAnalysisContext {
-	
 	/// Create a context from components
-	/// 
+	///
 	/// Useful for testing and advanced usage where you need to construct
 	/// the analysis context manually.
 	pub fn from_components(
@@ -294,6 +293,4 @@ impl StructAnalysisContext {
 		}
 		false
 	}
-
-
 }

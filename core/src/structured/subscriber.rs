@@ -3,7 +3,7 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use thiserror::Error;
-use tracing::{error};
+use tracing::error;
 
 use crate::{
 	MessageSerializer, MqttSubscriber, topic::topic_match::TopicMatch,
@@ -23,11 +23,11 @@ pub enum MessageConversionError<DE> {
 
 	/// Topic parameter expected but not found
 	#[error("Missing required parameter '{param}' at position {position}")]
-	TopicParameterMissing { 
+	TopicParameterMissing {
 		/// Parameter name
-		param: String, 
+		param: String,
 		/// Wildcard position in pattern
-		position: usize 
+		position: usize,
 	},
 
 	/// Topic parameter found but couldn't parse to target type

@@ -11,11 +11,10 @@ pub mod subscription_manager;
 
 // Re-export commonly used types for convenience
 pub use error::SubscriptionError;
-pub use subscription_manager::{CacheStrategy, SubscriptionConfig};
-
 // Re-export for internal crate usage only
+pub(crate) use subscriber::Subscriber;
+pub use subscription_manager::{CacheStrategy, SubscriptionConfig};
 pub(crate) use subscription_manager::{
 	SubscriptionManagerActor, SubscriptionManagerController,
 	SubscriptionManagerHandler,
 };
-pub(crate) use subscriber::Subscriber;

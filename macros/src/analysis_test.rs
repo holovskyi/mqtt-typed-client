@@ -58,8 +58,9 @@ fn run_analysis_test(test_case: AnalysisTestCase) {
 			has_topic_field,
 			param_names,
 		} => {
-			let context = result.unwrap_or_else(|_| panic!("Test '{}' should succeed but failed",
-				test_case.name));
+			let context = result.unwrap_or_else(|_| {
+				panic!("Test '{}' should succeed but failed", test_case.name)
+			});
 
 			assert_eq!(
 				context.param_count(),
@@ -219,9 +220,9 @@ fn test_topic_param_build() {
 		);
 
 		for (expected_name, expected_index) in test_case.expected_named {
-			let found_param = params.iter().find(|p| {
-				p.name.as_deref() == Some(expected_name)
-			});
+			let found_param = params
+				.iter()
+				.find(|p| p.name.as_deref() == Some(expected_name));
 
 			assert!(
 				found_param.is_some(),

@@ -3,9 +3,7 @@ use std::{sync::Arc, time::Duration};
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
 	BincodeSerializer, MessageSerializer, MqttClient, MqttClientError,
-	MqttPublisher,
-	topic::topic_match::TopicMatch,
-	TopicError,
+	MqttPublisher, TopicError, topic::topic_match::TopicMatch,
 };
 use tokio::time;
 use tracing::{debug, error, info};
@@ -81,9 +79,7 @@ impl SensorReading {
 			+ ::mqtt_typed_client::MessageSerializer<SensorData> {
 		let subscriber =
 			client.subscribe::<SensorData>(Self::MQTT_PATTERN).await?;
-		Ok(::mqtt_typed_client::MqttTopicSubscriber::new(
-			subscriber,
-		))
+		Ok(::mqtt_typed_client::MqttTopicSubscriber::new(subscriber))
 	}
 
 	//EMULATE PUBLISHING CODEGEN

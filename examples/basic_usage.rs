@@ -79,9 +79,7 @@ pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
 			| Ok(data) => {
 				info!(topic = %topic, data = ?data, count = count, "Received message");
 
-				println!(
-					"Received from {topic}: {data:?} (count: {count})"
-				);
+				println!("Received from {topic}: {data:?} (count: {count})");
 			}
 			| Err(err) => {
 				error!(topic = %topic, count = count, error = ?err, "Failed to deserialize message data");

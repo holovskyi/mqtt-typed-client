@@ -20,8 +20,5 @@ pub struct TemperatureTopic {
 	pub device_id: usize,
 
 	pub payload: TemperatureReading,
-    pub topic: Arc<TopicMatch>,
+	pub topic: Arc<TopicMatch>,
 }
-
-
-

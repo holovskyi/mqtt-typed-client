@@ -38,17 +38,20 @@ pub enum TopicMatchError {
 	/// Pattern ended unexpectedly while matching topic
 	#[error("Pattern ended unexpectedly while matching topic")]
 	UnexpectedEndOfPattern,
-	
+
 	/// Topic ended unexpectedly while matching pattern
 	#[error("Topic ended unexpectedly while matching pattern")]
 	UnexpectedEndOfTopic,
-	
+
 	/// Hash wildcard (#) found in unexpected position
 	#[error("Hash wildcard (#) found in unexpected position")]
 	UnexpectedHashSegment,
-	
+
 	/// Segment mismatch during topic matching
-	#[error("Segment mismatch at position {position}: expected '{expected}', found '{found}'")]
+	#[error(
+		"Segment mismatch at position {position}: expected '{expected}', \
+		 found '{found}'"
+	)]
 	SegmentMismatch {
 		/// Expected segment value
 		expected: String,
@@ -57,7 +60,7 @@ pub enum TopicMatchError {
 		/// Position where mismatch occurred
 		position: usize,
 	},
-	
+
 	/// Duplicate parameter name found in pattern
 	#[error("Duplicate parameter name found in pattern")]
 	DuplicateParameterName,

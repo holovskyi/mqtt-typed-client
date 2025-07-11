@@ -37,7 +37,8 @@ fn test_subscriptions(
 	for (pattern_str, sub_id) in subscriptions {
 		let pattern = new_from_string(pattern_str).unwrap();
 		let sub_id = make_subscription_id(*sub_id);
-		root.get_or_create_subscription_table(&pattern).insert(sub_id);
+		root.get_or_create_subscription_table(&pattern)
+			.insert(sub_id);
 	}
 
 	// Test all expected matches
@@ -59,7 +60,8 @@ fn test_subscriptions(
 		// Assert that actual matches equal expected matches
 		assert_eq!(
 			actual, expected,
-			"Path '{path}' matched subscriptions {actual:?}, expected {expected:?}"
+			"Path '{path}' matched subscriptions {actual:?}, expected \
+			 {expected:?}"
 		);
 	}
 }
@@ -216,15 +218,18 @@ fn test_same_subscriber_multiple_patterns() {
 
 	// Subscribe to pattern 1: Exact match
 	let pattern1 = new_from_string("devices/living-room/temperature").unwrap();
-	root.get_or_create_subscription_table(&pattern1).insert(sub_id.clone());
+	root.get_or_create_subscription_table(&pattern1)
+		.insert(sub_id.clone());
 
 	// Subscribe to pattern 2: Wildcard match
 	let pattern2 = new_from_string("devices/+/humidity").unwrap();
-	root.get_or_create_subscription_table(&pattern2).insert(sub_id.clone());
+	root.get_or_create_subscription_table(&pattern2)
+		.insert(sub_id.clone());
 
 	// Subscribe to pattern 3: Hash wildcard
 	let pattern3 = new_from_string("sensors/#").unwrap();
-	root.get_or_create_subscription_table(&pattern3).insert(sub_id.clone());
+	root.get_or_create_subscription_table(&pattern3)
+		.insert(sub_id.clone());
 
 	// Test each path individually
 	{
@@ -279,7 +284,8 @@ fn test_active_subscriptions(
 	for (pattern_str, sub_id) in subscriptions {
 		let pattern = new_from_string(pattern_str).unwrap();
 		let sub_id = make_subscription_id(*sub_id);
-		root.get_or_create_subscription_table(&pattern).insert(sub_id);
+		root.get_or_create_subscription_table(&pattern)
+			.insert(sub_id);
 	}
 
 	// Get actual active subscriptions
@@ -401,7 +407,8 @@ fn test_update_node(
 	for (pattern_str, sub_id) in initial_subs {
 		let pattern = new_from_string(pattern_str).unwrap();
 		let sub_id = make_subscription_id(*sub_id);
-		root.get_or_create_subscription_table(&pattern).insert(sub_id);
+		root.get_or_create_subscription_table(&pattern)
+			.insert(sub_id);
 	}
 
 	// Perform operations (subscribe or unsubscribe)
@@ -440,7 +447,8 @@ fn test_update_node(
 	// Assert that actual active subscriptions match expected
 	assert_eq!(
 		actual_map, expected_map,
-		"After update operations, active subscriptions are {actual_map:?}, expected {expected_map:?}"
+		"After update operations, active subscriptions are {actual_map:?}, \
+		 expected {expected_map:?}"
 	);
 }
 
@@ -563,7 +571,8 @@ fn test_unsubscribe_all() {
 	for (pattern_str, sub_id) in initial_subs {
 		let pattern = new_from_string(pattern_str).unwrap();
 		let sub_id = make_subscription_id(sub_id);
-		root.get_or_create_subscription_table(&pattern).insert(sub_id);
+		root.get_or_create_subscription_table(&pattern)
+			.insert(sub_id);
 	}
 
 	for (pattern_str, sub_id, _) in operations {

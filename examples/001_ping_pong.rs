@@ -74,11 +74,11 @@ fn broker_url() -> String {
 	})
 }
 
-type MySerializer = BincodeSerializer;
+type Serializer = BincodeSerializer;
 
 /// Handle player's game session
 async fn run_player(
-	client: MqttClient<MySerializer>,
+	client: MqttClient<Serializer>,
 	player: &str,
 	other_player: &str,
 	is_starter: bool,
@@ -105,7 +105,7 @@ async fn run_player(
 	// Main game loop: receive messages and respond
 	while let Some(result) = subscriber.receive().await {
 		match result {
-			Ok(response) => {
+			| Ok(response) => {
 				println!("{player:>10} received: {response:?}");
 
 				if response.payload.is_game_over() {
@@ -123,7 +123,7 @@ async fn run_player(
 					break;
 				}
 			}
-			Err(err) => {
+			| Err(err) => {
 				eprintln!("{player:>10} deserialization error: {err:?}");
 				continue;
 			}
@@ -154,13 +154,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let alice_handler =
 		async move { run_player(client_clone, "alice", "bob", false).await };
 	let bob_handler = async move {
-	    // NOTE: This sleep is a simplification for demonstration purposes.
-		// In production code, you should implement proper synchronization 
+		// NOTE: This sleep is a simplification for demonstration purposes.
+		// In production code, you should implement proper synchronization
 		// (e.g., discovery topic, heartbeat pattern, or message acknowledgment).
 		// See advanced examples for robust synchronization techniques.
 
 		// Give Alice time to subscribe first
-		tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await; 
+		tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 		run_player(client, "bob", "alice", true).await
 	};
 

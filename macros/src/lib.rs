@@ -64,7 +64,7 @@
 //!
 //! ```rust
 //! use mqtt_typed_client_macros::mqtt_topic;
-//! 
+//!
 //! // ✅ This works for both subscriber and publisher
 //! #[mqtt_topic("sensors/{sensor_id}/data")]
 //! struct SensorData { sensor_id: u32, payload: f64 }
@@ -76,7 +76,7 @@
 //! // ❌ This will cause a compile error
 //! // #[mqtt_topic("events/{event_type}/{details:#}")]
 //! // struct Event { /* ... */ }
-//! 
+//!
 //! // 🔧 Solution: Use separate structs
 //! #[mqtt_topic("events/{event_type}/{details:#}", subscriber)]  
 //! struct EventReceived { event_type: String, details: String, payload: Vec<u8> }
@@ -410,7 +410,7 @@ fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 		pattern: topic_pattern,
 		generate_subscriber,
 		generate_publisher,
-		generate_typed_client: true,  // Enable by default
+		generate_typed_client: true, // Enable by default
 		generate_last_will: generate_publisher, // Enable if publisher is requested
 	};
 
@@ -464,13 +464,14 @@ struct MacroArgs {
 #[cfg(test)]
 mod test_helpers {
 	use super::*;
-	
+
 	pub fn create_test_macro_args() -> MacroArgs {
 		let topic_pattern = TopicPatternPath::new_from_string(
 			"sensors/{sensor_id}/temp".to_string(),
 			CacheStrategy::NoCache,
-		).unwrap();
-		
+		)
+		.unwrap();
+
 		MacroArgs {
 			pattern: topic_pattern,
 			generate_subscriber: true,
@@ -480,5 +481,3 @@ mod test_helpers {
 		}
 	}
 }
-
-
