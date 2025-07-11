@@ -121,33 +121,29 @@ pub mod topic;
 
 // === Core Public API ===
 // Main client types
-pub use client::{MqttClient, MqttClientConfig, ClientSettings, MqttClientError, TypedLastWill};
+pub use client::{
+	ClientSettings, MqttClient, MqttClientConfig, MqttClientError,
+	TypedLastWill,
+};
+// High-level typed publishers and subscribers
+pub use client::{MqttPublisher, MqttSubscriber, SubscriptionBuilder};
 pub use connection::MqttConnection;
-
-// Re-export rumqttc types for advanced configuration
-pub use rumqttc::MqttOptions;
-
 // Message serialization
 pub use message_serializer::{BincodeSerializer, MessageSerializer};
-
+// === Advanced API ===
+// Advanced subscription configuration
+pub use routing::{CacheStrategy, SubscriptionConfig};
+// Re-export rumqttc types for advanced configuration
+pub use rumqttc::MqttOptions;
+// Essential external types
+pub use rumqttc::QoS;
 // Structured subscribers (macro support)
 pub use structured::{
 	FromMqttMessage, MessageConversionError, MqttTopicSubscriber,
 	extract_topic_parameter,
 };
-
-// Essential external types
-pub use rumqttc::QoS;
-
-// === Advanced API ===
-// Advanced subscription configuration
-pub use routing::{CacheStrategy, SubscriptionConfig};
-
-// High-level typed publishers and subscribers
-pub use client::{MqttPublisher, MqttSubscriber, SubscriptionBuilder};
-
 // Topic pattern types (for manual pattern handling)
-pub use topic::{TopicPatternPath, TopicPatternError, TopicError};
+pub use topic::{TopicError, TopicPatternError, TopicPatternPath};
 
 /// Result type alias for operations that may fail with MqttClientError
 pub type Result<T> = std::result::Result<T, MqttClientError>;
@@ -164,9 +160,9 @@ pub type Result<T> = std::result::Result<T, MqttClientError>;
 pub mod prelude {
 
 	pub use crate::{
-		BincodeSerializer, MqttClient, MqttClientConfig, ClientSettings, MqttClientError,
-		MqttConnection, MessageSerializer, MqttOptions, QoS, Result, SubscriptionBuilder,
-		TypedLastWill
+		BincodeSerializer, ClientSettings, MessageSerializer, MqttClient,
+		MqttClientConfig, MqttClientError, MqttConnection, MqttOptions, QoS,
+		Result, SubscriptionBuilder, TypedLastWill,
 	};
 }
 
@@ -183,19 +179,15 @@ pub mod prelude {
 /// ```
 pub mod advanced {
 
-	pub use crate::{
-		TopicPatternPath, TopicError, MqttPublisher, MqttSubscriber,
-		CacheStrategy, SubscriptionConfig,
-	};
-	
+	// High-level routing errors only
+	pub use crate::routing::SubscriptionError;
 	// Topic utilities
 	pub use crate::topic::{
-		limits, validation, TopicRouterError, SubscriptionId,
+		SubscriptionId, TopicRouterError, limits, validation,
 	};
-	
-	// High-level routing errors only
-	pub use crate::routing::{
-		SubscriptionError,
+	pub use crate::{
+		CacheStrategy, MqttPublisher, MqttSubscriber, SubscriptionConfig,
+		TopicError, TopicPatternPath,
 	};
 }
 
@@ -209,15 +201,11 @@ pub mod advanced {
 /// ```
 pub mod errors {
 
-	pub use crate::{
-		MqttClientError, MessageConversionError, TopicError, TopicPatternError,
-	};
-	
-	// Topic-related errors - specific types for advanced usage
-	pub use crate::topic::{
-		TopicMatcherError, TopicRouterError
-	};
-	
 	// High-level routing errors
-	pub use crate::routing::{SubscriptionError};
+	pub use crate::routing::SubscriptionError;
+	// Topic-related errors - specific types for advanced usage
+	pub use crate::topic::{TopicMatcherError, TopicRouterError};
+	pub use crate::{
+		MessageConversionError, MqttClientError, TopicError, TopicPatternError,
+	};
 }
