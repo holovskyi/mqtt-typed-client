@@ -141,12 +141,15 @@ impl<T> TopicRouter<T> {
 		// Look to add_subscriptions for reference to mirror this logic
 		let topic = self.subscriptions.remove(id);
 		match topic {
-			| Some((topic, _qos)) => {
-				let topic_now_empty =
-					self.topic_matcher.update_node(topic.slice(), |table| {
+			| Some((topic_pattern, _qos)) => {
+				let resolved_segments = topic_pattern.resolve_bound_segments();
+				let topic_now_empty = self.topic_matcher.update_node(
+					&resolved_segments,
+					|table| {
 						table.remove(id);
-					})?;
-				Ok((topic_now_empty, topic))
+					},
+				)?;
+				Ok((topic_now_empty, topic_pattern))
 			}
 			| None => Err(TopicRouterError::subscription_not_found(*id)),
 		}
@@ -175,7 +178,7 @@ impl<T> TopicRouter<T> {
 	) -> impl Iterator<Item = &(TopicPatternPath, QoS)> {
 		self.subscriptions.values()
 	}
-	
+
 	/// Helper method for finding maximum QoS among subscribers to a topic.
 	/// Currently used for future QoS downgrade implementation.
 	/// See TODO in unsubscribe() method.

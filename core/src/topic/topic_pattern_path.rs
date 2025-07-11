@@ -161,13 +161,13 @@ impl TopicPatternPath {
 
 	/// Returns the bound value for a named parameter, if it exists.
 	pub fn get_bound_value(&self, param_name: Option<&str>) -> Option<&ArcStr> {
-        let name = param_name?; // Якщо None - одразу повертаємо None
-        self.parameter_bindings
-            .as_ref()?
-            .iter()
-            .find(|(binding_name, _)| binding_name == name)
-            .map(|(_, value)| value)
-    }
+		let name = param_name?; // Якщо None - одразу повертаємо None
+		self.parameter_bindings
+			.as_ref()?
+			.iter()
+			.find(|(binding_name, _)| binding_name == name)
+			.map(|(_, value)| value)
+	}
 
 	#[cfg(test)]
 	/// Creates a topic pattern from segments directly, useful for testing.
@@ -197,43 +197,50 @@ impl TopicPatternPath {
 		Ok(pattern)
 	}
 
-	/// Returns MQTT pattern with wildcards for broker subscription.
+	/// Returns MQTT pattern with wildcards for broker subscription with bound parameters applied.
 	pub fn mqtt_pattern(&self) -> ArcStr {
 		match &self.parameter_bindings {
-			| Some(bindings) => self.generate_concrete_mqtt_pattern(bindings),
+			| Some(bindings) => {
+				let new_segments = self.apply_bindings_to_segments(bindings);
+				ArcStr::from(Self::to_mqtt_subscription_pattern(&new_segments))
+			}
 			| None => self.mqtt_topic_subscription.clone(),
 		}
 	}
 
-	fn generate_concrete_mqtt_pattern(
+	/// Resolves bound parameters into concrete segments
+	///
+	/// Returns segments with bound parameters replaced by their values.
+	/// Unbound wildcards remain as wildcards.
+	pub fn resolve_bound_segments(&self) -> Vec<TopicPatternItem> {
+		if let Some(ref bindings) = self.parameter_bindings {
+			self.apply_bindings_to_segments(bindings)
+		} else {
+			self.segments.clone()
+		}
+	}
+
+	// Internal helper that applies bindings to segments
+	fn apply_bindings_to_segments(
 		&self,
 		bindings: &[(ArcStr, ArcStr)],
-	) -> ArcStr {
+	) -> Vec<TopicPatternItem> {
 		let mut new_segments = self.segments.clone();
-		let mut is_applied = false;
 
 		for (param_name, value) in bindings {
 			if let Some(segment_pos) = new_segments.iter().position(|segment| {
                 matches!(segment, TopicPatternItem::Plus(Some(name)) if name == param_name)
             }) {
                 new_segments[segment_pos] = TopicPatternItem::Str(value.into());
-				is_applied = true;
             } else {
 				tracing::debug!(
-				pattern = %self.topic_pattern(),
-				"Parameter '{param_name}' not found in pattern"
+					pattern = %self.topic_pattern(),
+					"Parameter '{param_name}' not found in pattern"
 				);
-               panic!("Parameter '{param_name}' not found in pattern" );
             }
 		}
-		if !is_applied {
-			tracing::debug!(
-				pattern = %self.topic_pattern(),
-				"with_parameters() called with no applicable parameters - returning original pattern unchanged"
-			);
-			return self.mqtt_topic_subscription.clone();
-		}
-		ArcStr::from(Self::to_mqtt_subscription_pattern(&new_segments))
+
+		new_segments
 	}
 
 	/// Returns original pattern with named parameters.
@@ -397,11 +404,12 @@ impl TopicPatternPath {
 			matches!(segment, TopicPatternItem::Plus(Some(name)) if name.as_str() == param_name_arc.as_str())
 		});
 		if !param_exists {
-			return Err(TopicPatternError::wildcard_usage(
-				format!("Parameter '{param_name_arc}' not found in pattern '{}'", self.topic_pattern())
-			));
+			return Err(TopicPatternError::wildcard_usage(format!(
+				"Parameter '{param_name_arc}' not found in pattern '{}'",
+				self.topic_pattern()
+			)));
 		}
-		
+
 		let value_arc = value.into();
 
 		let bindings =
@@ -504,7 +512,6 @@ impl TopicPatternPath {
 		}
 		Ok(TopicMatch::from_match_result(topic, params, named_params))
 	}
-
 }
 
 impl std::fmt::Display for TopicPatternPath {

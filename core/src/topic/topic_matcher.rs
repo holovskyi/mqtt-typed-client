@@ -5,8 +5,8 @@ use std::collections::{HashMap, HashSet};
 use arcstr::Substr;
 use thiserror::Error;
 
-use super::topic_pattern_path::TopicPatternPath;
 use super::topic_pattern_item::TopicPatternItem;
+use super::topic_pattern_path::TopicPatternPath;
 use crate::topic::topic_match::TopicPath;
 
 /// Errors that can occur during topic matching operations
@@ -120,7 +120,8 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 	) -> &mut T {
 		let mut current_node = self;
 
-		for segment in topic_path.iter() {
+		let resolved_segments = topic_path.resolve_bound_segments();
+		for segment in resolved_segments {
 			match segment {
 				| TopicPatternItem::Str(s) => {
 					current_node = current_node
@@ -128,20 +129,12 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 						.entry(s.clone())
 						.or_default()
 				}
-				| TopicPatternItem::Plus(param_name) => {
-					match topic_path.get_bound_value(param_name.as_deref()) {
-						Some(bound_value) => {
-							current_node = current_node
-								.exact_children
-								.entry(bound_value.clone().into())
-								.or_default()
-						}
-						None => {
-							current_node = current_node
-								.single_level_wildcard_node
-								.get_or_insert_with(|| Box::new(TopicMatcherNode::new()))
-						}
-					}
+				| TopicPatternItem::Plus(_) => {
+					current_node = current_node
+						.single_level_wildcard_node
+						.get_or_insert_with(
+							|| Box::new(TopicMatcherNode::new()),
+						)
 				}
 				| TopicPatternItem::Hash(_) => {
 					// Hash wildcard must be the last segment, so we can return immediately
@@ -298,7 +291,8 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 		};
 		if let Some(plus_node) = &self.single_level_wildcard_node {
 			current_path.push(TopicPatternItem::Plus(None));
-			plus_node.collect_active_subscriptions_internal(current_path, result);
+			plus_node
+				.collect_active_subscriptions_internal(current_path, result);
 			current_path.pop();
 		};
 		for (exact_segment, child) in &self.exact_children {
@@ -311,7 +305,10 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 	#[cfg(test)]
 	pub fn collect_active_subscriptions(&self) -> Vec<(TopicPatternPath, &T)> {
 		let mut result = Vec::new();
-		self.collect_active_subscriptions_internal(&mut Vec::new(), &mut result);
+		self.collect_active_subscriptions_internal(
+			&mut Vec::new(),
+			&mut result,
+		);
 		result
 	}
 }
