@@ -3,12 +3,12 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use tokio::sync::mpsc::error::SendError;
-use tracing::{debug, warn};
+use tracing::warn;
 
 use crate::message_serializer::MessageSerializer;
 use crate::routing::Subscriber;
-use crate::topic::topic_match::TopicMatch;
 use crate::topic::SubscriptionId;
+use crate::topic::topic_match::TopicMatch;
 
 /// Message received from MQTT topic with deserialization result.
 pub type IncomingMessage<T, F> = (
@@ -45,11 +45,11 @@ where
 	pub async fn receive(&mut self) -> Option<IncomingMessage<T, F>> {
 		if let Some((topic, bytes)) = self.subscriber.recv().await {
 			let message = self.serializer.deserialize(&bytes);
-			
+
 			// Log deserialization attempts and failures
 			match &message {
-				Ok(_) => (),
-				Err(err) => {
+				| Ok(_) => (),
+				| Err(err) => {
 					warn!(
 						topic = %topic.topic_path(),
 						payload_size = bytes.len(),
@@ -58,7 +58,7 @@ where
 					);
 				}
 			}
-			
+
 			Some((topic, message))
 		} else {
 			None

@@ -15,10 +15,8 @@ authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 
 [dependencies]
-# Основна функціональність завжди доступна
 mqtt-typed-client-core = { path = "./core", version = "0.1.0" }
 
-# Макроси як опціональна feature
 mqtt-typed-client-macros = { path = "./macros", version = "0.1.0", optional = true }
 
 [features]
