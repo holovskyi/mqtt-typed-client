@@ -26,6 +26,7 @@ use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientError};
 use mqtt_typed_client_macros::mqtt_topic;
 use rand::Rng;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Message types for the ping pong game
 ///
@@ -99,30 +100,34 @@ async fn run_player(
 
 	// Starter player sends first message to opponent
 	if is_starter {
-		topic_client
-			.get_publisher(other_player)?
-			.with_retain(true)
-			.publish(&ping_message)
-			.await?;
+		topic_client.publish(other_player, &ping_message).await?;
 	}
 
 	// Main game loop: receive messages and respond
-	while let Some(Ok(response)) = subscriber.receive().await {
-		println!("{player:>10} received: {response:?}");
+	while let Some(result) = subscriber.receive().await {
+		match result {
+			Ok(response) => {
+				println!("{player:>10} received: {response:?}");
 
-		if response.payload.is_game_over() {
-			println!("{player:>10} Yarrr! I am the winner!");
-			break;
-		}
+				if response.payload.is_game_over() {
+					println!("{player:>10} Yarrr! I am the winner!");
+					break;
+				}
 
-		let reply = response.payload.next_move();
+				let reply = response.payload.next_move();
 
-		// Publish response to opponent's topic: "game/{other_player}"
-		topic_client.publish(other_player, &reply).await?;
+				// Publish response to opponent's topic: "game/{other_player}"
+				topic_client.publish(other_player, &reply).await?;
 
-		if reply.is_game_over() {
-			println!("{player:>10}: Ups... I'm lost...");
-			break;
+				if reply.is_game_over() {
+					println!("{player:>10}: Ups... I'm lost...");
+					break;
+				}
+			}
+			Err(err) => {
+				eprintln!("{player:>10} deserialization error: {err:?}");
+				continue;
+			}
 		}
 	}
 
@@ -131,6 +136,21 @@ async fn run_player(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	tracing_subscriber::registry()
+		.with(
+			tracing_subscriber::EnvFilter::try_from_default_env()
+				.unwrap_or_else(|_| "debug".into()),
+		)
+		.with(
+			tracing_subscriber::fmt::layer()
+				.with_target(true) // Hide module target for cleaner output
+				.with_thread_ids(false) // Hide thread IDs
+				.with_thread_names(false) // Hide thread names
+				.with_file(false) // Hide file info
+				.with_line_number(false) // Hide line numbers
+				.compact(), // More compact output
+		)
+		.init();
 	println!("Starting MQTT Ping Pong example...\n");
 
 	// Connect to MQTT broker using BincodeSerializer for efficient binary serialization
@@ -149,6 +169,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let alice_handler =
 		async move { run_player(client_clone, "alice", "bob", false).await };
 	let bob_handler = async move {
+	    // NOTE: This sleep is a simplification for demonstration purposes.
+		// In production code, you should implement proper synchronization 
+		// (e.g., discovery topic, heartbeat pattern, or message acknowledgment).
+		// See advanced examples for robust synchronization techniques.
+
+		// Give Alice time to subscribe
+		tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await; 
 		run_player(client, "bob", "alice", true).await
 	};
 
