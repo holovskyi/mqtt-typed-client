@@ -7,11 +7,15 @@
     async fn run(mut event_loop: EventLoop, subscription_manager: SubscriptionManagerHandler<Bytes>)
     При певній кількості помилок, ми виходимо з циклу. Але можливо треба зробити передачу помилки на інші рівні, спідписникам та пудлішерам?
 - [ ] В опції макроса додати notypedclient та nolastwill
-- [ ] розібратися в типах лицензії
+- [x] розібратися в типах лицензії
 - [ ] Чи бачить клієнт згенерованний тип на кшталт SensorReadingSubscriptionBuilderExt? Чи варто скорочувати назву?
-- [ ] Спробувати як працює коли  нас два модуля, та макро в одному модулі, 
-    а використання в другому
+- [ ] автогенерація client_id
+- [ ] Дефолтний серіалізатор Bincode
+- [ ] let mut subscriber = topic_client.subscribe().await?; - subscriber.topic() and .pattern() methods
 - [ ] Проблема з кріптік помилкою, коли ми оголошуємо структуру для payload, але забуваємо виставити в ній derive для того щоб потім кастомний серіалізатор міг працювати з структурою. Наприклад для BincodeSerializer треба Encode та Decode. Але маємо помилку в якій складно визначити що саме потрібно
+- [ ] Додати підтвердженну підписку. Зараз subscribe не аналізує результату підписки. Треба додати в event_loop механізм який по Outgoing(Subscribe(1)) отримує id пакета для підписки. А поттім чекає Incoming(SubAck(SubAck { pkid: 1, return_codes: [Success(AtLeastOnce)] })), з результатом підписки, та надає цей результат користувачу. Але тут є проблеа того що зараз Outgoing(Subscribe()), має тількі pkid, без конкретних фільтрів, тож нам треба форкнути rumqttc та у src/lib.rs змінити Outgoing::Subscribe(u16) => outgoing::Subscribe(Subscribe). 
+- [x] Спробувати як працює коли  нас два модуля, та макро в одному модулі, 
+    а використання в другому
 - [x] А якщо в макросі генерувати ext trait для MqttClient
     Щоб працювати з конкретними типами повідомленнь замість 
     SensorMessage::publish(&client, sensor_id, &_test_data).await
