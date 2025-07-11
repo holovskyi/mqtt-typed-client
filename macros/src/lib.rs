@@ -387,6 +387,7 @@ fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 
 	// Check for multi-level wildcards if publisher is requested
 	if generate_publisher && topic_pattern.contains_hash() {
+		#[rustfmt::skip]
 		return Err(syn::Error::new_spanned(
 			&pattern,
 			format!(
