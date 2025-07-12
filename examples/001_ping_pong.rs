@@ -154,10 +154,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let alice_handler =
 		async move { run_player(client_clone, "alice", "bob", false).await };
 	let bob_handler = async move {
-		// NOTE: This sleep is a simplification for demonstration purposes.
-		// In production code, you should implement proper synchronization
-		// (e.g., discovery topic, heartbeat pattern, or message acknowledgment).
-		// See advanced examples for robust synchronization techniques.
+		// DEMO SIMPLIFICATION: MQTT provides SUBACK confirmation for subscriptions,
+		// but rumqttc doesn't expose this ACK in its API. Using sleep as workaround.
+		// Production code should implement discovery patterns or use MQTT libraries
+		// that provide subscription confirmation callbacks.
 
 		// Give Alice time to subscribe first
 		tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
