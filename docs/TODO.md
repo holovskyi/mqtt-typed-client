@@ -1,22 +1,25 @@
 ## TODO
 
-- [x] Last will message
+- [ ] Examples Last Will message and clean Retaition
+- [ ] <easy> автогенерація client_id
+- [ ] <mid> Дефолтний серіалізатор Bincode
+- [ ] <easy> Додати серіалізатори json, та serde related.
+- [ ] <mid> Додати флаги retain, qos, dup в метадата вхідного повідомлення. У async_client.rs/Ok(Incoming(Publish(p))) => ми отримуємо ці дані але відкидаємо їх. По ідеї retain це корисний флаг. Можливо через raw_data поле у структурі топіка, на кшталт автозаповняюмого поля topic: Arc<TopicMatch>)
+- [ ] <mid> Обробляти пусте повідомлення яке скидає retain. Зараз повертається помилка десеріалізації.
+- [ ] <mid> Додати в mqtt_topic macro, параметр дефолтний рівень QoS
+- [ ] <easy> let mut subscriber = topic_client.subscribe().await?; - subscriber.topic() and .pattern() methods
+- [ ] <hard> Додати підтвердженну підписку. Зараз subscribe не аналізує результату підписки. Треба додати в event_loop механізм який по Outgoing(Subscribe(1)) отримує id пакета для підписки. А поттім чекає Incoming(SubAck(SubAck { pkid: 1, return_codes: [Success(AtLeastOnce)] })), з результатом підписки, та надає цей результат користувачу. Але тут є проблеа того що зараз Outgoing(Subscribe()), має тількі pkid, без конкретних фільтрів, тож нам треба форкнути rumqttc та у src/lib.rs змінити Outgoing::Subscribe(u16) => outgoing::Subscribe(Subscribe). 
 - [ ] Protocol compression. Compositional approach - separate serialization and compression. Adaptive mechanism (based on message type and size)
 - [ ] mqtt_typed_client::client::async_client::MqttClient
     impl<F> MqttClient<F>
     async fn run(mut event_loop: EventLoop, subscription_manager: SubscriptionManagerHandler<Bytes>)
     При певній кількості помилок, ми виходимо з циклу. Але можливо треба зробити передачу помилки на інші рівні, спідписникам та пудлішерам?
 - [ ] В опції макроса додати notypedclient та nolastwill
-- [x] розібратися в типах лицензії
 - [ ] Чи бачить клієнт згенерованний тип на кшталт SensorReadingSubscriptionBuilderExt? Чи варто скорочувати назву?
-- [ ] автогенерація client_id
-- [ ] Дефолтний серіалізатор Bincode
-- [ ] let mut subscriber = topic_client.subscribe().await?; - subscriber.topic() and .pattern() methods
 - [ ] Проблема з кріптік помилкою, коли ми оголошуємо структуру для payload, але забуваємо виставити в ній derive для того щоб потім кастомний серіалізатор міг працювати з структурою. Наприклад для BincodeSerializer треба Encode та Decode. Але маємо помилку в якій складно визначити що саме потрібно
-- [ ] Додати підтвердженну підписку. Зараз subscribe не аналізує результату підписки. Треба додати в event_loop механізм який по Outgoing(Subscribe(1)) отримує id пакета для підписки. А поттім чекає Incoming(SubAck(SubAck { pkid: 1, return_codes: [Success(AtLeastOnce)] })), з результатом підписки, та надає цей результат користувачу. Але тут є проблеа того що зараз Outgoing(Subscribe()), має тількі pkid, без конкретних фільтрів, тож нам треба форкнути rumqttc та у src/lib.rs змінити Outgoing::Subscribe(u16) => outgoing::Subscribe(Subscribe). 
-- [ ] Додати флаги retain, qos, dup в метадата вхідного повідомлення. У async_client.rs/Ok(Incoming(Publish(p))) => ми отримуємо ці дані але відкидаємо їх. По ідеї retain це корисний флаг.
-- [ ] Обробляти пусте повідомлення яке скидає retain. Зараз повертається помилка десеріалізації.
-- [ ] Examples Last Will message and clean Retaition
+
+- [x] Last will message
+- [x] розібратися в типах лицензії
 - [x] Спробувати як працює коли  нас два модуля, та макро в одному модулі, 
     а використання в другому
 - [x] А якщо в макросі генерувати ext trait для MqttClient
