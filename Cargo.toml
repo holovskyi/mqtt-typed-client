@@ -25,6 +25,7 @@ macros = ["mqtt-typed-client-macros"]
 
 [dev-dependencies]
 bincode = "2.0.1"
+dotenv = "0.15.0"
 rand = "0.9.1"
 rumqttc = "0.24.0"
 rustls-pemfile = "2.1.0"

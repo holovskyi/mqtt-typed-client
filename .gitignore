@@ -17,6 +17,11 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+.env.*.local
+
+# Exception: example configs are safe to commit (NO SECRETS!)
+!examples/.env         # ⚠️ ONLY safe defaults - no passwords/keys!
+!examples/.env.example
 
 # Documentation build
 doc/
