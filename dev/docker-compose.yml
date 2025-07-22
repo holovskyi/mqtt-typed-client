@@ -1,0 +1,58 @@
+services:
+  # MQTT broker for development
+  emqx:
+    image: emqx/emqx:latest
+    container_name: mqtt-client-dev-broker
+    ports:
+      - "1883:1883"     # MQTT
+      - "8883:8883"     # MQTTS (TLS)
+      - "8083:8083"     # WebSocket
+      - "8084:8084"     # WebSocket Secure
+      - "18083:18083"   # Dashboard (admin:public)
+    volumes:
+      - "./certs:/opt/emqx/etc/certs"
+      - mqtt-data:/opt/emqx/data        
+      - mqtt-logs:/opt/emqx/log         
+    environment:
+      # TLS Configuration
+      - EMQX_LISTENERS__SSL__DEFAULT__BIND=8883
+      - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CERTFILE=/opt/emqx/etc/certs/cert.pem
+      - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__KEYFILE=/opt/emqx/etc/certs/key.pem
+      #- EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CACERTFILE=/opt/emqx/etc/certs/ca.pem
+      - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__VERIFY=verify_none # Change to 'verify_peer' for production
+      - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__FAIL_IF_NO_PEER_CERT=false # Change to 'true' for production
+      # Додаткові налаштування для self-signed сертифікатів
+      #- EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__HONOR_CIPHER_ORDER=false
+      #- EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CLIENT_RENEGOTIATION=true
+      #- EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__SECURE_RENEGOTIATE=false
+
+      #- EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__VERSIONS=tlsv1.2,tlsv1.3
+      #- EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CIPHERS=ECDHE-ECDSA-AES256-GCM-SHA384,ECDHE-RSA-AES256-GCM-SHA384
+      
+      # Dashboard credentials
+      - EMQX_DASHBOARD__DEFAULT_USERNAME=admin
+      - EMQX_DASHBOARD__DEFAULT_PASSWORD=public
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: MQTT client tools for testing
+  mosquitto-clients:
+    image: eclipse-mosquitto:latest
+    container_name: mqtt-typed-client-tools
+    depends_on:
+      - emqx
+    entrypoint: ["sleep", "infinity"]
+    volumes:
+      - "./certs:/certs"
+    profiles:
+      - tools  # Only start with: docker-compose --profile tools up
+
+volumes:
+  mqtt-data:
+    name: mqtt-client-dev-data
+  mqtt-logs:
+    name: mqtt-client-dev-logs

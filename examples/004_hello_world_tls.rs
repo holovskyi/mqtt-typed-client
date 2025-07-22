@@ -9,8 +9,14 @@
 //! Example: "greetings/rust/alice" → GreetingTopic { language: "rust", sender: "alice", payload: Message }
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, MqttClient};
+use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientConfig};
 use mqtt_typed_client_macros::mqtt_topic;
+use rumqttc::Transport;
+
+use std::{fs, io::BufReader};
+use rumqttc::tokio_rustls::rustls::{ClientConfig, RootCertStore};
+
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Message payload - automatically serialized/deserialized with bincode
 #[derive(Encode, Decode, Debug)]
@@ -31,35 +37,71 @@ pub struct GreetingTopic {
 	payload: Message, // Automatically deserialized message payload
 }
 
-/// Get MQTT broker URL from environment or use default public broker
-fn broker_url() -> String {
-	std::env::var("MQTT_BROKER").unwrap_or_else(|_| {
-		//"mqtt://broker.hivemq.com:1883?client_id=hello_world_example".to_string()
-		//You can try other free mqtt broker
-		//"mqtt://broker.mqtt.cool:1883?client_id=test_client_example".to_string()
-		//"mqtts://broker.mqtt.cool:8883?client_id=test_client_example".to_string()
-		//"mqtts://broker.hivemq.com:8883?client_id=test_client_example".to_string()
-		//"mqtts://test.mosquitto.org:8883?client_id=test_client_example".to_string()
-		//"mqtts://broker.emqx.io:8883?client_id=test_client_example".to_string() //OK
-		"mqtt://localhost:1883?client_id=test_client_example1".to_string()
-	})
+/// Create TLS configuration with custom CA certificate
+fn create_tls_config() -> Result<ClientConfig, Box<dyn std::error::Error>> {
+	let mut root_cert_store = RootCertStore::empty();
+	
+	// Load CA certificate
+	let ca_cert = fs::read("dev/certs/ca.pem")?;
+	let mut reader = BufReader::new(&ca_cert[..]);
+	
+	// Parse PEM certificates
+	let certs = rustls_pemfile::certs(&mut reader);
+	for cert in certs {
+		let cert = cert?;
+		root_cert_store.add(cert)?;
+	}
+	
+	let config = ClientConfig::builder()
+		.with_root_certificates(root_cert_store)
+		.with_no_client_auth();
+	
+	Ok(config)
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+		// Initialize logging
+	tracing_subscriber::registry()
+	    .with(
+	        tracing_subscriber::EnvFilter::try_from_default_env()
+	            .unwrap_or_else(|_| "debug".into()),
+	    )
+	    .with(
+	        tracing_subscriber::fmt::layer()
+	            .with_target(true)
+	            .with_thread_ids(false)
+	            .with_thread_names(false)
+	            .with_file(false)
+	            .with_line_number(false)
+	            .compact(),
+	    )
+	    .init();
 	println!("Starting MQTT Hello World example...\n");
 
-	// Connect to MQTT broker using BincodeSerializer for efficient binary serialization
-	let (client, connection) =
-		MqttClient::<BincodeSerializer>::connect(&broker_url())
-			.await
-			.inspect_err(|e| {
-				eprintln!("Connection failed: {e}");
-				eprintln!(
-					"Try: MQTT_BROKER=\"mqtt://localhost:1883\" cargo run \
-					 --example 000_hello_world"
-				);
-			})?;
+	// === 1. CONNECTION ===
+	// Create TLS configuration with custom CA certificate
+	let tls_config = create_tls_config()?;
+	
+	// Configure MQTT client with TLS
+	let mut config = MqttClientConfig::<BincodeSerializer>::new(
+		"hello_world_tls_client",
+		"localhost",
+		8883,
+	);
+	
+	// Set TLS transport
+	config.connection.set_transport(Transport::tls_with_config(tls_config.into()));
+	
+	// Connect to MQTT broker using custom configuration
+	let (client, connection) = MqttClient::connect_with_config(config)
+		.await
+		.inspect_err(|e| {
+			eprintln!("Connection failed: {e}");
+			eprintln!(
+				"Ensure EMQX is running with TLS on localhost:8883 and CA cert exists in emqx-certs/ca.pem"
+			);
+		})?;
 
 	println!("Connected to MQTT broker");
 

@@ -22,10 +22,12 @@
 //! 4. Each move has a 5% chance to end the game
 //! 5. The player who sends GameOver loses, the other wins
 
+use std::time::Duration;
+
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientError};
 use mqtt_typed_client_macros::mqtt_topic;
-use rand::Rng;
+use rand::{Rng, rng};
 
 /// Message types for the ping pong game
 ///
@@ -39,9 +41,9 @@ enum PingPongMessage {
 }
 
 impl PingPongMessage {
-	/// Generate next move with 95% chance to continue, 5% chance to end game
 	fn next_move(&self) -> PingPongMessage {
-		if !rand::rng().random_bool(0.95) {
+		// Generate next move with 95% chance to continue, 5% chance to end game
+		if rng().random_bool(0.05) {
 			return PingPongMessage::GameOver;
 		}
 		match self {
@@ -95,10 +97,10 @@ async fn run_player(
 		.subscribe()
 		.await?;
 
-	let ping_message = PingPongMessage::Ping(0);
-
 	// Starter player sends first message to opponent
 	if is_starter {
+		let ping_message = PingPongMessage::Ping(0);
+		println!("{player:>10}: starts the game with {ping_message:?}\n");
 		topic_client.publish(other_player, &ping_message).await?;
 	}
 
@@ -106,7 +108,7 @@ async fn run_player(
 	while let Some(result) = subscriber.receive().await {
 		match result {
 			| Ok(response) => {
-				println!("{player:>10} received: {response:?}");
+				println!("{player:>10} received: {:?}", response.payload);
 
 				if response.payload.is_game_over() {
 					println!("{player:>10} Yarrr! I am the winner!");
@@ -137,6 +139,7 @@ async fn run_player(
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("Starting MQTT Ping Pong example...\n");
 
+	// === 1. CONNECTION ===
 	// Connect to MQTT broker using BincodeSerializer for efficient binary serialization
 	// BincodeSerializer provides compact, fast serialization for structured data
 	let (client, connection) =
@@ -150,24 +153,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				);
 			})?;
 
+	println!("- Connected to MQTT broker\n");
+
+	// === 2. PLAYER SETUP ===
 	let client_clone = client.clone();
 	let alice_handler =
 		async move { run_player(client_clone, "alice", "bob", false).await };
 	let bob_handler = async move {
+		// === 3. GAME INITIALIZATION ===
+		// Give Alice time to subscribe first
+
 		// DEMO SIMPLIFICATION: MQTT provides SUBACK confirmation for subscriptions,
 		// but rumqttc doesn't expose this ACK in its API. Using sleep as workaround.
 		// Production code should implement discovery patterns or use MQTT libraries
 		// that provide subscription confirmation callbacks.
-
-		// Give Alice time to subscribe first
-		tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+		tokio::time::sleep(Duration::from_millis(1000)).await;
 		run_player(client, "bob", "alice", true).await
 	};
 
+	// === 4. CONCURRENT GAMEPLAY ===
 	let _ = tokio::join!(alice_handler, bob_handler);
 
+	// === 5. CLEANUP ===
 	connection.shutdown().await?;
-	println!("\nGoodbye!");
+	println!("\n- Goodbye!");
 
 	Ok(())
 }
