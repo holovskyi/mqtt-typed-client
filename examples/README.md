@@ -67,6 +67,28 @@ This directory contains examples demonstrating how to use the `mqtt-typed-client
 - Cache size optimization
 - Credential management
 
+### ⚰️ **003_hello_world_lwt.rs** - Last Will & Testament (LWT)
+**What it demonstrates:**
+- MQTT Last Will & Testament functionality
+- Ungraceful vs graceful disconnect handling
+- Two separate client connections (subscriber/publisher)
+- LWT message configuration and triggering
+
+**Key concepts:**
+- LWT configuration with typed topics
+- Unexpected disconnect simulation
+- Message differentiation (normal vs LWT)
+- Multi-terminal example usage
+
+**Usage:**
+```bash
+# Terminal 1: Start subscriber
+cargo run --example 003_hello_world_lwt
+
+# Terminal 2: Run publisher (sends greeting then crashes)
+cargo run --example 003_hello_world_lwt -- --publisher
+```
+
 ### 🔒 **004_hello_world_tls.rs** - TLS/SSL Connections
 **What it demonstrates:**
 - Secure MQTT connections (MQTTS)
@@ -112,9 +134,10 @@ MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example 000_hello_worl
 **Recommended order for learning:**
 
 1. **000_hello_world.rs** - Start here to understand basics
-2. **002_configuration.rs** - Learn about client configuration  
-3. **001_ping_pong.rs** - See multi-client patterns
-4. **004_hello_world_tls.rs** - Add security with TLS
+2. **001_ping_pong.rs** - See multi-client patterns
+3. **002_configuration.rs** - Learn about client configuration  
+4. **003_hello_world_lwt.rs** - Understand MQTT reliability features
+5. **004_hello_world_tls.rs** - Add security with TLS
 
 ## 🔧 Troubleshooting
 
