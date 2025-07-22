@@ -77,6 +77,7 @@ pub fn build_url(client_id_prefix: &str) -> String {
 /// # Arguments
 /// * `url` - The MQTT broker URL that failed to connect
 /// * `error` - The connection error that occurred
+#[allow(dead_code)]
 pub fn print_connection_error(url: &str, error: &dyn std::error::Error) {
     let example_name = get_example_name();
     
@@ -138,6 +139,7 @@ pub fn get_mqtt_broker_host_port() -> (String, u16) {
 /// 
 /// Attempts to get the example name from the current executable.
 /// Falls back to "example" if detection fails.
+#[allow(dead_code)]
 fn get_example_name() -> String {
     std::env::args()
         .next()
