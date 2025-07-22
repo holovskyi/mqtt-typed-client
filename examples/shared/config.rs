@@ -13,14 +13,14 @@ use uuid::Uuid;
 /// - `MQTT_BROKER=mqtt://broker.hivemq.com:1883` - Public broker
 /// - `MQTT_BROKER=mqtts://localhost:8883` - Local TLS broker (default)
 pub fn broker_url() -> String {
-    // Load .env files (local overrides committed defaults)
-    dotenv::dotenv().ok();
+    // Load .env files with explicit paths (working dir is project root)
+    dotenv::from_filename("examples/.env").ok();
     if std::path::Path::new("examples/.env.local").exists() {
         dotenv::from_filename("examples/.env.local").ok();
     }
     
     env::var("MQTT_BROKER").unwrap_or_else(|_| {
-        "mqtts://localhost:8883".to_string()
+        "mqtt://localhost:1883".to_string()
     })
 }
 
@@ -63,4 +63,49 @@ pub fn build_url(client_id_prefix: &str) -> String {
         // URL has no query parameters, start with ?
         format!("{base_url}?client_id={client_id}")
     }
+}
+
+/// Print helpful connection error message with troubleshooting tips
+/// 
+/// Helper function to display user-friendly error messages with actionable advice.
+/// Keeps examples clean while providing comprehensive troubleshooting guidance.
+/// Automatically detects example name from the current executable.
+/// 
+/// # Arguments
+/// * `url` - The MQTT broker URL that failed to connect
+/// * `error` - The connection error that occurred
+pub fn print_connection_error(url: &str, error: &dyn std::error::Error) {
+    let example_name = get_example_name();
+    
+    eprintln!("❌ Connection failed to: {}", url);
+    eprintln!("   Error: {}", error);
+    eprintln!();
+    eprintln!("💡 Troubleshooting:");
+    
+    if url.contains("localhost") {
+        eprintln!("   • Start local MQTT broker: cd dev && docker-compose up -d");
+        eprintln!("   • Check if broker is running: docker-compose ps");
+    } else {
+        eprintln!("   • Check network connection");
+        eprintln!("   • Verify broker URL is correct");
+    }
+    
+    eprintln!("   • Try a public broker: MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example {}", example_name);
+    eprintln!("   • Enable debug logs: RUST_LOG=debug cargo run --example {}", example_name);
+}
+
+/// Extract example name from current executable path
+/// 
+/// Attempts to get the example name from the current executable.
+/// Falls back to "example" if detection fails.
+fn get_example_name() -> String {
+    std::env::args()
+        .next()
+        .and_then(|path| {
+            std::path::Path::new(&path)
+                .file_stem()
+                .and_then(|name| name.to_str())
+                .map(|s| s.to_string())
+        })
+        .unwrap_or_else(|| "example".to_string())
 }

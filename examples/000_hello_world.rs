@@ -8,6 +8,8 @@
 //! Topic pattern: "greetings/{language}/{sender}"
 //! Example: "greetings/rust/alice" → GreetingTopic { language: "rust", sender: "alice", payload: Message }
 
+mod shared;
+
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient};
 use mqtt_typed_client_macros::mqtt_topic;
@@ -31,35 +33,26 @@ pub struct GreetingTopic {
 	payload: Message, // Automatically deserialized message payload
 }
 
-/// Get MQTT broker URL from environment or use default public broker
-fn broker_url() -> String {
-	std::env::var("MQTT_BROKER").unwrap_or_else(|_| {
-		//"mqtt://broker.hivemq.com:1883?client_id=hello_world_example".to_string()
-		//You can try other free mqtt broker
-		//"mqtt://broker.mqtt.cool:1883?client_id=test_client_example".to_string()
-		//"mqtts://broker.mqtt.cool:8883?client_id=test_client_example".to_string()
-		//"mqtts://broker.hivemq.com:8883?client_id=test_client_example".to_string()
-		//"mqtts://test.mosquitto.org:8883?client_id=test_client_example".to_string()
-		//"mqtts://broker.emqx.io:8883?client_id=test_client_example".to_string() //OK
-		"mqtt://localhost:1883?client_id=test_client_example1".to_string()
-	})
-}
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	// Initialize tracing - respects RUST_LOG environment variable
+	shared::tracing::setup(None);
+
 	println!("Starting MQTT Hello World example...\n");
 
+	// === 1. CONNECTION ===
 	// Connect to MQTT broker using BincodeSerializer for efficient binary serialization
-	let (client, connection) =
-		MqttClient::<BincodeSerializer>::connect(&broker_url())
-			.await
-			.inspect_err(|e| {
-				eprintln!("Connection failed: {e}");
-				eprintln!(
-					"Try: MQTT_BROKER=\"mqtt://localhost:1883\" cargo run \
-					 --example 000_hello_world"
-				);
-			})?;
+	// URL and client_id are automatically configured from environment or defaults
+	let connection_url = shared::config::build_url("hello_world");
+	println!("Connecting to MQTT broker: {}", connection_url);
+	
+	let (client, connection) = MqttClient::<BincodeSerializer>::connect(&connection_url)
+		.await
+		.inspect_err(|e| {
+			shared::config::print_connection_error(&connection_url, e);
+		})?;
 
 	println!("Connected to MQTT broker");
 
@@ -75,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// === 3. MESSAGE PUBLISHING ===
 	// Small delay to ensure that subscription is ready
-	// This is just for demonstration purposes because subsciber
+	// This is just for demonstration purposes because subscriber
 	// and publisher are in the same process.
 	tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 

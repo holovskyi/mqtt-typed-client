@@ -23,6 +23,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 /// cargo run --example hello_world
 /// ```
 pub fn setup(force_level: Option<&str>) {
+    // Load .env files first to make RUST_LOG available
+    load_env_files();
+    
     // Check for explicit disable flag
     if std::env::var("RUST_LOG_DISABLE").is_ok() {
         return; // No tracing
@@ -44,7 +47,15 @@ pub fn setup(force_level: Option<&str>) {
     // Initialize tracing with consistent formatting
     tracing_subscriber::registry()
         .with(filter)
-        .with(create_fmt_layer())
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_target(true)
+                .with_thread_ids(false)
+                .with_thread_names(false)
+                .with_file(false)
+                .with_line_number(false)
+                .compact(),
+        )
         .init();
 }
 
@@ -58,13 +69,13 @@ pub fn setup_with_level(level: &str) {
     setup(Some(level));
 }
 
-/// Create consistent formatting layer for all tracing setups
-fn create_fmt_layer() -> tracing_subscriber::fmt::Layer<tracing_subscriber::Registry> {
-    tracing_subscriber::fmt::layer()
-        .with_target(true)
-        .with_thread_ids(false)
-        .with_thread_names(false)
-        .with_file(false)
-        .with_line_number(false)
-        .compact()
+/// Load .env files with explicit paths
+/// 
+/// Loads configuration from .env files in the same order as config module.
+/// This ensures consistency between tracing and config loading.
+fn load_env_files() {
+    dotenv::from_filename("examples/.env").ok();
+    if std::path::Path::new("examples/.env.local").exists() {
+        dotenv::from_filename("examples/.env.local").ok();
+    }
 }
