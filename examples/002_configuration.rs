@@ -9,13 +9,14 @@
 //! This example shows a single sensor publishing temperature data
 //! and a monitor receiving it, with detailed configuration explanations.
 
+mod shared;
+
 use std::time::Duration;
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientConfig};
 use mqtt_typed_client_macros::mqtt_topic;
 use rumqttc::QoS;
-use uuid::Uuid;
 
 /// Sensor data payload containing temperature measurement
 #[derive(Encode, Decode, Debug)]
@@ -38,14 +39,22 @@ pub struct TemperatureTopic {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	// Initialize tracing - respects RUST_LOG environment variable
+	shared::tracing::setup(None);
+
 	println!("Starting MQTT Configuration Example...\n");
 
 	// === 1. CONNECTION CONFIGURATION ===
-	let client_id = format!("temp_sensor_{}", Uuid::new_v4());
+	// Get host and port from environment configuration
+	let (host, port) = shared::config::get_mqtt_broker_host_port();
+	let client_id = shared::config::get_client_id("temp_sensor");
+	
+	println!("Configuring MQTT client for {host}:{port}");
+	
 	let mut config = MqttClientConfig::<BincodeSerializer>::new(
 		&client_id,
-		"broker.mqtt.cool",
-		1883,
+		&host,
+		port,
 	);
 
 	// Configure connection parameters
@@ -61,7 +70,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	config.settings.topic_cache_size = 50; // Maximum cached topic patterns
 
 	// Connect with configuration
-	let (client, connection) = MqttClient::connect_with_config(config).await?;
+	let (client, connection) = MqttClient::connect_with_config(config)
+		.await
+		.inspect_err(|e| {
+			shared::config::print_connection_error(&format!("{host}:{port}"), e);
+		})?;
 	println!("✓ Connected with custom configuration\n");
 
 	// === 3. SUBSCRIBER CONFIGURATION ===

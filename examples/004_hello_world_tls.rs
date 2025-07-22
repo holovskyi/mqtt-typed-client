@@ -1,12 +1,15 @@
-//! # Hello World - MQTT Typed Client
+//! # Hello World TLS - MQTT Typed Client
 //!
-//! A simple example demonstrating key features:
-//! - Automatic topic parameter parsing with `#[mqtt_topic]` macro
-//! - Type-safe message routing
-//! - Automatic serialization/deserialization
+//! Demonstrates secure MQTT connections with TLS/SSL:
+//! - Custom CA certificate configuration
+//! - TLS transport setup with rustls
+//! - Self-signed certificate handling for development
+//! - Type-safe message routing over secure connections
 //!
 //! Topic pattern: "greetings/{language}/{sender}"
 //! Example: "greetings/rust/alice" → GreetingTopic { language: "rust", sender: "alice", payload: Message }
+
+mod shared;
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientConfig};
@@ -15,8 +18,6 @@ use rumqttc::Transport;
 
 use std::{fs, io::BufReader};
 use rumqttc::tokio_rustls::rustls::{ClientConfig, RootCertStore};
-
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Message payload - automatically serialized/deserialized with bincode
 #[derive(Encode, Decode, Debug)]
@@ -61,31 +62,21 @@ fn create_tls_config() -> Result<ClientConfig, Box<dyn std::error::Error>> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-		// Initialize logging
-	tracing_subscriber::registry()
-	    .with(
-	        tracing_subscriber::EnvFilter::try_from_default_env()
-	            .unwrap_or_else(|_| "debug".into()),
-	    )
-	    .with(
-	        tracing_subscriber::fmt::layer()
-	            .with_target(true)
-	            .with_thread_ids(false)
-	            .with_thread_names(false)
-	            .with_file(false)
-	            .with_line_number(false)
-	            .compact(),
-	    )
-	    .init();
-	println!("Starting MQTT Hello World example...\n");
+	// Initialize tracing - respects RUST_LOG environment variable
+	shared::tracing::setup(None);
 
-	// === 1. CONNECTION ===
+	println!("Starting MQTT Hello World TLS example...\n");
+
+	// === 1. TLS CONFIGURATION ===
 	// Create TLS configuration with custom CA certificate
 	let tls_config = create_tls_config()?;
 	
-	// Configure MQTT client with TLS
+	// Generate unique client ID for this example
+	let client_id = shared::config::get_client_id("hello_world_tls");
+	
+	// Configure MQTT client with TLS - explicitly using localhost:8883 for TLS demo
 	let mut config = MqttClientConfig::<BincodeSerializer>::new(
-		"hello_world_tls_client",
+		&client_id,
 		"localhost",
 		8883,
 	);
@@ -93,14 +84,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Set TLS transport
 	config.connection.set_transport(Transport::tls_with_config(tls_config.into()));
 	
-	// Connect to MQTT broker using custom configuration
+	println!("Connecting to MQTT broker with TLS: localhost:8883");
+	
+	// Connect to MQTT broker using custom TLS configuration
 	let (client, connection) = MqttClient::connect_with_config(config)
 		.await
 		.inspect_err(|e| {
-			eprintln!("Connection failed: {e}");
-			eprintln!(
-				"Ensure EMQX is running with TLS on localhost:8883 and CA cert exists in emqx-certs/ca.pem"
-			);
+			shared::config::print_connection_error("mqtts://localhost:8883", e);
+			eprintln!();
+			eprintln!("🔒 TLS-specific troubleshooting:");
+			eprintln!("   • Ensure CA certificate exists: dev/certs/ca.pem");
+			eprintln!("   • Check certificate permissions and format");
+			eprintln!("   • Try plain MQTT: MQTT_BROKER=\"mqtt://localhost:1883\"");
 		})?;
 
 	println!("Connected to MQTT broker");
@@ -117,7 +112,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// === 3. MESSAGE PUBLISHING ===
 	// Small delay to ensure that subscription is ready
-	// This is just for demonstration purposes because subsciber
+	// This is just for demonstration purposes because subscriber
 	// and publisher are in the same process.
 	tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 

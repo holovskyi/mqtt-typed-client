@@ -65,6 +65,7 @@ pub fn setup(force_level: Option<&str>) {
 /// 
 /// # Arguments
 /// * `level` - Tracing level: "trace", "debug", "info", "warn", "error"
+#[allow(dead_code)]
 pub fn setup_with_level(level: &str) {
     setup(Some(level));
 }

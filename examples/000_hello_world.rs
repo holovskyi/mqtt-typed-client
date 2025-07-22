@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Connect to MQTT broker using BincodeSerializer for efficient binary serialization
 	// URL and client_id are automatically configured from environment or defaults
 	let connection_url = shared::config::build_url("hello_world");
-	println!("Connecting to MQTT broker: {}", connection_url);
+	println!("Connecting to MQTT broker: {connection_url}");
 	
 	let (client, connection) = MqttClient::<BincodeSerializer>::connect(&connection_url)
 		.await

@@ -12,6 +12,7 @@ use uuid::Uuid;
 /// # Examples
 /// - `MQTT_BROKER=mqtt://broker.hivemq.com:1883` - Public broker
 /// - `MQTT_BROKER=mqtts://localhost:8883` - Local TLS broker (default)
+#[allow(dead_code)]
 pub fn broker_url() -> String {
     // Load .env files with explicit paths (working dir is project root)
     dotenv::from_filename("examples/.env").ok();
@@ -35,6 +36,7 @@ pub fn broker_url() -> String {
 /// # Examples
 /// - `get_client_id("hello_world")` → `"hello_world_a1b2c3d4"`
 /// - `get_client_id("sensor")` → `"sensor_e5f6g7h8"`
+#[allow(dead_code)]
 pub fn get_client_id(prefix: &str) -> String {
     let uuid = Uuid::new_v4().to_string();
     let short_uuid = &uuid[..8]; // Take first 8 characters
@@ -52,6 +54,7 @@ pub fn get_client_id(prefix: &str) -> String {
 /// # Examples
 /// - `build_url("hello_world")` → `"mqtts://localhost:8883?client_id=hello_world_a1b2c3d4"`
 /// - With custom broker: `"mqtt://broker.com:1883?client_id=sensor_e5f6g7h8"`
+#[allow(dead_code)]
 pub fn build_url(client_id_prefix: &str) -> String {
     let base_url = broker_url();
     let client_id = get_client_id(client_id_prefix);
@@ -90,8 +93,45 @@ pub fn print_connection_error(url: &str, error: &dyn std::error::Error) {
         eprintln!("   • Verify broker URL is correct");
     }
     
-    eprintln!("   • Try a public broker: MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example {}", example_name);
-    eprintln!("   • Enable debug logs: RUST_LOG=debug cargo run --example {}", example_name);
+    eprintln!("   • Try a public broker: MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example {example_name}");
+    eprintln!("   • Enable debug logs: RUST_LOG=debug cargo run --example {example_name}");
+}
+
+/// Parse MQTT broker URL to extract host and port
+/// 
+/// Extracts host and port from MQTT broker URL for use with MqttClientConfig.
+/// Handles both mqtt:// and mqtts:// schemes with appropriate default ports.
+/// 
+/// # Examples
+/// - `get_mqtt_broker_host_port()` with MQTT_BROKER="mqtt://localhost:1883" → ("localhost", 1883)
+/// - `get_mqtt_broker_host_port()` with MQTT_BROKER="mqtts://localhost:8883" → ("localhost", 8883)
+/// - `get_mqtt_broker_host_port()` with MQTT_BROKER="mqtt://broker.hivemq.com:1883" → ("broker.hivemq.com", 1883)
+#[allow(dead_code)]
+pub fn get_mqtt_broker_host_port() -> (String, u16) {
+    let url = broker_url();
+    
+    // Simple URL parsing for common MQTT URL formats
+    // For production use, consider using a proper URL parsing library
+    
+    if let Some(without_scheme) = url.strip_prefix("mqtt://").or_else(|| url.strip_prefix("mqtts://")) {
+        let is_tls = url.starts_with("mqtts://");
+        let default_port = if is_tls { 8883 } else { 1883 };
+        
+        if let Some((host, port_str)) = without_scheme.split_once(':') {
+            // Extract port, ignoring query parameters
+            let port_part = port_str.split('?').next().unwrap_or(port_str);
+            if let Ok(port) = port_part.parse::<u16>() {
+                return (host.to_string(), port);
+            }
+        } else {
+            // No port specified, use default
+            let host = without_scheme.split('?').next().unwrap_or(without_scheme);
+            return (host.to_string(), default_port);
+        }
+    }
+    
+    // Fallback if parsing fails
+    ("localhost".to_string(), 1883)
 }
 
 /// Extract example name from current executable path

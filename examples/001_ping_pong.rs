@@ -22,6 +22,8 @@
 //! 4. Each move has a 5% chance to end the game
 //! 5. The player who sends GameOver loses, the other wins
 
+mod shared;
+
 use std::time::Duration;
 
 use bincode::{Decode, Encode};
@@ -67,20 +69,10 @@ pub struct PingPongTopic {
 	payload: PingPongMessage,
 }
 
-/// Get MQTT broker URL from environment or use default test broker
-fn broker_url() -> String {
-	std::env::var("MQTT_BROKER").unwrap_or_else(|_| {
-		//"mqtt://broker.hivemq.com:1883?client_id=test_client_example".to_string()
-		// You can try other free MQTT brokers
-		"mqtt://broker.mqtt.cool:1883?client_id=test_client_example".to_string()
-	})
-}
-
-type Serializer = BincodeSerializer;
 
 /// Handle player's game session
 async fn run_player(
-	client: MqttClient<Serializer>,
+	client: MqttClient<BincodeSerializer>,
 	player: &str,
 	other_player: &str,
 	is_starter: bool,
@@ -137,21 +129,22 @@ async fn run_player(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	// Initialize tracing - respects RUST_LOG environment variable
+	shared::tracing::setup(None);
+
 	println!("Starting MQTT Ping Pong example...\n");
 
 	// === 1. CONNECTION ===
 	// Connect to MQTT broker using BincodeSerializer for efficient binary serialization
-	// BincodeSerializer provides compact, fast serialization for structured data
-	let (client, connection) =
-		MqttClient::<BincodeSerializer>::connect(&broker_url())
-			.await
-			.inspect_err(|e| {
-				eprintln!("Connection failed: {e}");
-				eprintln!(
-					"Try: MQTT_BROKER=\"mqtt://localhost:1883\" cargo run \
-					 --example 001_ping_pong"
-				);
-			})?;
+	// URL and client_id are automatically configured from environment or defaults
+	let connection_url = shared::config::build_url("ping_pong");
+	println!("Connecting to MQTT broker: {connection_url}");
+	
+	let (client, connection) = MqttClient::<BincodeSerializer>::connect(&connection_url)
+		.await
+		.inspect_err(|e| {
+			shared::config::print_connection_error(&connection_url, e);
+		})?;
 
 	println!("- Connected to MQTT broker\n");
 
