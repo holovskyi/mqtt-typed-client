@@ -4,13 +4,16 @@ This directory contains examples demonstrating how to use the `mqtt-typed-client
 
 ## 🚀 Quick Start
 
+**⚠️ Important:** Always run examples from the project root directory!
+
 1. **Start local MQTT broker:**
    ```bash
    cd dev
    docker-compose up -d
+   cd ..  # Return to project root
    ```
 
-2. **Run your first example:**
+2. **Run your first example (from project root):**
    ```bash
    cargo run --example 000_hello_world
    ```
@@ -115,6 +118,21 @@ MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example 000_hello_worl
 
 ## 🔧 Troubleshooting
 
+### ⚠️ Wrong Working Directory
+
+**Error:** `No such file or directory: examples/.env` or config not loading
+```bash
+# Solution: Make sure you're in the project root directory
+pwd  # Should show: /path/to/mqtt-typed-client
+ls   # Should show: Cargo.toml, examples/, dev/, etc.
+
+# If you're in examples/ directory:
+cd ..
+
+# Then run examples:
+cargo run --example 000_hello_world
+```
+
 ### Connection Issues
 
 **Error:** `Connection failed to mqtt://localhost:1883`
@@ -176,10 +194,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## 🚀 Creating New Examples
 
+**⚠️ Remember:** Examples must be run from project root directory!
+
 1. **Copy template from 000_hello_world.rs**
 2. **Update client_id prefix** in `build_url(\"your_example_name\")`
 3. **Add your MQTT logic**
-4. **Test with local broker**
+4. **Test from project root:** `cargo run --example your_example_name`
 5. **Update this README with your example**
 
 ## 📖 Additional Resources
