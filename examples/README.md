@@ -102,6 +102,19 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - TLS transport configuration
 - Development vs production certificates
 
+### 🔧 **005_hello_world_serializers.rs** - Custom Message Serializers
+**What it demonstrates:**
+- Using different serializers (MessagePack vs built-in Bincode)
+- Creating custom MessageSerializer trait implementation
+- Easy serializer switching with minimal code changes
+- Same MQTT logic with different data formats
+
+**Key concepts:**
+- MessageSerializer trait implementation
+- serde::DeserializeOwned requirement
+- Binary vs text serialization formats
+- Custom serializer wrapper creation
+
 ## 🛠️ Configuration
 
 Examples use configuration files for easy setup:
@@ -138,6 +151,7 @@ MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example 000_hello_worl
 3. **002_configuration.rs** - Learn about client configuration  
 4. **003_hello_world_lwt.rs** - Understand MQTT reliability features
 5. **004_hello_world_tls.rs** - Add security with TLS
+6. **005_hello_world_serializers.rs** - Custom message serialization
 
 ## 🔧 Troubleshooting
 

@@ -129,7 +129,7 @@ pub use client::{
 pub use client::{MqttPublisher, MqttSubscriber, SubscriptionBuilder};
 pub use connection::MqttConnection;
 // Message serialization
-pub use message_serializer::{BincodeSerializer, MessageSerializer};
+pub use message_serializer::{BincodeSerializer, JsonSerializer, MessageSerializer};
 // === Advanced API ===
 // Advanced subscription configuration
 pub use routing::{CacheStrategy, SubscriptionConfig};
@@ -160,7 +160,7 @@ pub type Result<T> = std::result::Result<T, MqttClientError>;
 pub mod prelude {
 
 	pub use crate::{
-		BincodeSerializer, ClientSettings, MessageSerializer, MqttClient,
+		BincodeSerializer, JsonSerializer, ClientSettings, MessageSerializer, MqttClient,
 		MqttClientConfig, MqttClientError, MqttConnection, MqttOptions, QoS,
 		Result, SubscriptionBuilder, TypedLastWill,
 	};

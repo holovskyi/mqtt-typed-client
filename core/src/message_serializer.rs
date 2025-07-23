@@ -3,6 +3,7 @@
 use std::fmt::Debug;
 
 use bincode::{Decode, Encode};
+use serde::{de::DeserializeOwned, Serialize};
 
 /// Trait for serializing and deserializing MQTT message payloads.
 ///
@@ -53,5 +54,33 @@ where T: Encode + Decode<()> + 'static
 
 	fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError> {
 		bincode::decode_from_slice(bytes, self.config).map(|(value, _)| value)
+	}
+}
+
+/// JSON serializer using serde_json.
+///
+/// Requires types to implement `serde::Serialize` and `serde::de::DeserializeOwned`.
+#[derive(Clone, Default)]
+pub struct JsonSerializer;
+
+impl JsonSerializer {
+	/// Creates a new JSON serializer.
+	pub fn new() -> Self {
+		Self::default()
+	}
+}
+
+impl<T> MessageSerializer<T> for JsonSerializer
+where T: Serialize + DeserializeOwned + 'static
+{
+	type SerializeError = serde_json::Error;
+	type DeserializeError = serde_json::Error;
+
+	fn serialize(&self, data: &T) -> Result<Vec<u8>, Self::SerializeError> {
+		serde_json::to_vec(data)
+	}
+
+	fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError> {
+		serde_json::from_slice(bytes)
 	}
 }
