@@ -138,6 +138,15 @@ pub use message_serializer::JsonSerializer;
 pub use message_serializer::MessagePackSerializer;
 #[cfg(feature = "cbor")]
 pub use message_serializer::CborSerializer;
+#[cfg(feature = "postcard")]
+pub use message_serializer::PostcardSerializer;
+#[cfg(feature = "protobuf")]
+pub use message_serializer::ProtobufSerializer;
+#[cfg(feature = "ron")]
+pub use message_serializer::RonSerializer;
+#[cfg(feature = "flexbuffers")]
+pub use message_serializer::FlexbuffersSerializer;
+
 // === Advanced API ===
 // Advanced subscription configuration
 pub use routing::{CacheStrategy, SubscriptionConfig};
@@ -181,6 +190,15 @@ pub mod prelude {
 	pub use crate::MessagePackSerializer;
 	#[cfg(feature = "cbor")]
 	pub use crate::CborSerializer;
+	#[cfg(feature = "postcard")]
+	pub use crate::PostcardSerializer;
+	#[cfg(feature = "protobuf")]
+	pub use crate::ProtobufSerializer;
+	#[cfg(feature = "ron")]
+	pub use crate::RonSerializer;
+	#[cfg(feature = "flexbuffers")]
+	pub use crate::FlexbuffersSerializer;
+
 }
 
 /// Advanced types and utilities for complex use cases

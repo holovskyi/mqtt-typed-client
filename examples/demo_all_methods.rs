@@ -29,7 +29,7 @@ async fn demonstrate_builder_api() -> Result<(), Box<dyn std::error::Error>> {
 
 	// This would work with a real MQTT broker:
 	let (client, connection) = MqttClient::<BincodeSerializer>::connect(
-		"mqtt://broker.hivemq.com:1883?client_id=test_builder",
+		"mqtt://localhost:1883?client_id=test_builder",
 	)
 	.await?;
 

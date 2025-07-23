@@ -115,6 +115,30 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - Binary vs text serialization formats
 - Custom serializer wrapper creation
 
+### 💯 **100_all_serializers_demo.rs** - Complete Serializer Test Suite
+**What it demonstrates:**
+- Full publish/subscribe cycle testing for all 8 available serializers
+- Serialization and deserialization verification
+- Connection testing for schema-based serializers (Protobuf)
+- Comprehensive coverage of the entire serialization architecture
+
+**Available serializers tested:**
+- **Serde-compatible:** JSON, MessagePack, CBOR, Postcard, RON, Flexbuffers
+- **Bincode:** Native Rust binary format
+- **Schema-based:** Protobuf (connection-only, requires generated types)
+
+**Key concepts:**
+- Complete serialization ecosystem demonstration
+- Feature flag system (requires --all-features)
+- Real-world publish/subscribe verification
+- Error handling and diagnostics
+
+**Usage:**
+```bash
+# Requires all serializer features to be enabled
+cargo run --example 100_all_serializers_demo --all-features
+```
+
 ## 🛠️ Configuration
 
 Examples use configuration files for easy setup:
@@ -152,6 +176,7 @@ MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example 000_hello_worl
 4. **003_hello_world_lwt.rs** - Understand MQTT reliability features
 5. **004_hello_world_tls.rs** - Add security with TLS
 6. **005_hello_world_serializers.rs** - Custom message serialization
+7. **100_all_serializers_demo.rs** - Complete serialization ecosystem test
 
 ## 🔧 Troubleshooting
 

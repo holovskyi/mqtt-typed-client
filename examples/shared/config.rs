@@ -81,8 +81,8 @@ pub fn build_url(client_id_prefix: &str) -> String {
 pub fn print_connection_error(url: &str, error: &dyn std::error::Error) {
     let example_name = get_example_name();
     
-    eprintln!("❌ Connection failed to: {}", url);
-    eprintln!("   Error: {}", error);
+    eprintln!("❌ Connection failed to: {url}");
+    eprintln!("   Error: {error}");
     eprintln!();
     eprintln!("💡 Troubleshooting:");
     

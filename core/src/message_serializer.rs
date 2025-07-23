@@ -163,3 +163,145 @@ where T: Serialize + DeserializeOwned + 'static
 		ciborium::de::from_reader(bytes)
 	}
 }
+
+/// Postcard serializer using postcard crate.
+///
+/// Requires types to implement `serde::Serialize` and `serde::de::DeserializeOwned`.
+/// Optimized for no_std environments and embedded systems.
+/// 
+/// Available when the `postcard` feature is enabled.
+#[cfg(feature = "postcard")]
+#[derive(Clone, Default)]
+pub struct PostcardSerializer;
+
+#[cfg(feature = "postcard")]
+impl PostcardSerializer {
+	/// Creates a new Postcard serializer.
+	pub fn new() -> Self {
+		Self::default()
+	}
+}
+
+#[cfg(feature = "postcard")]
+impl<T> MessageSerializer<T> for PostcardSerializer
+where T: Serialize + DeserializeOwned + 'static
+{
+	type SerializeError = postcard::Error;
+	type DeserializeError = postcard::Error;
+
+	fn serialize(&self, data: &T) -> Result<Vec<u8>, Self::SerializeError> {
+		postcard::to_allocvec(data)
+	}
+
+	fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError> {
+		postcard::from_bytes(bytes)
+	}
+}
+
+/// Protocol Buffers serializer using prost crate.
+///
+/// Requires types to implement `prost::Message` trait.
+/// Industry standard for high-performance data interchange.
+/// 
+/// Available when the `protobuf` feature is enabled.
+#[cfg(feature = "protobuf")]
+#[derive(Clone, Default)]
+pub struct ProtobufSerializer;
+
+#[cfg(feature = "protobuf")]
+impl ProtobufSerializer {
+	/// Creates a new Protobuf serializer.
+	pub fn new() -> Self {
+		Self::default()
+	}
+}
+
+#[cfg(feature = "protobuf")]
+impl<T> MessageSerializer<T> for ProtobufSerializer
+where T: prost::Message + Default + 'static
+{
+	type SerializeError = prost::EncodeError;
+	type DeserializeError = prost::DecodeError;
+
+	fn serialize(&self, data: &T) -> Result<Vec<u8>, Self::SerializeError> {
+		let mut buf = Vec::new();
+		data.encode(&mut buf)?;
+		Ok(buf)
+	}
+
+	fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError> {
+		T::decode(bytes)
+	}
+}
+
+/// RON (Rusty Object Notation) serializer using ron crate.
+///
+/// Requires types to implement `serde::Serialize` and `serde::de::DeserializeOwned`.
+/// Human-readable format ideal for configuration files and debugging.
+/// 
+/// Available when the `ron` feature is enabled.
+#[cfg(feature = "ron")]
+#[derive(Clone, Default)]
+pub struct RonSerializer;
+
+#[cfg(feature = "ron")]
+impl RonSerializer {
+	/// Creates a new RON serializer.
+	pub fn new() -> Self {
+		Self::default()
+	}
+}
+
+#[cfg(feature = "ron")]
+impl<T> MessageSerializer<T> for RonSerializer
+where T: Serialize + DeserializeOwned + 'static
+{
+	type SerializeError = Box<dyn std::error::Error + Send + Sync>;
+	type DeserializeError = Box<dyn std::error::Error + Send + Sync>;
+
+	fn serialize(&self, data: &T) -> Result<Vec<u8>, Self::SerializeError> {
+		let string = ron::to_string(data)?;
+		Ok(string.into_bytes())
+	}
+
+	fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError> {
+		let string = std::str::from_utf8(bytes)?; // Clean error handling without hacks
+		Ok(ron::from_str(string)?)
+	}
+}
+
+/// Flexbuffers serializer using flexbuffers crate.
+///
+/// Requires types to implement `serde::Serialize` and `serde::de::DeserializeOwned`.
+/// Zero-copy schemaless binary format from Google FlatBuffers.
+/// 
+/// Available when the `flexbuffers` feature is enabled.
+#[cfg(feature = "flexbuffers")]
+#[derive(Clone, Default)]
+pub struct FlexbuffersSerializer;
+
+#[cfg(feature = "flexbuffers")]
+impl FlexbuffersSerializer {
+	/// Creates a new Flexbuffers serializer.
+	pub fn new() -> Self {
+		Self::default()
+	}
+}
+
+#[cfg(feature = "flexbuffers")]
+impl<T> MessageSerializer<T> for FlexbuffersSerializer
+where T: Serialize + DeserializeOwned + 'static
+{
+	type SerializeError = flexbuffers::SerializationError;
+	type DeserializeError = flexbuffers::DeserializationError;
+
+	fn serialize(&self, data: &T) -> Result<Vec<u8>, Self::SerializeError> {
+		flexbuffers::to_vec(data)
+	}
+
+	fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError> {
+		flexbuffers::from_slice(bytes)
+	}
+}
+
+
