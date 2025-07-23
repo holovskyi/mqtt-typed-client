@@ -35,18 +35,21 @@ pub struct GreetingTopic {
 ///
 /// This shows how to wrap any serde-compatible serialization library
 /// for use with the MQTT typed client.
+///
+/// Note: MessagePackSerializer is also available as built-in serializer
+/// in mqtt-typed-client-core with the "messagepack" feature enabled.
+/// This implementation is shown for educational purposes.
 #[derive(Clone, Default)]
 pub struct MessagePackSerializer;
 
 impl MessagePackSerializer {
 	pub fn new() -> Self {
-		Self::default()
+		Self
 	}
 }
 
 impl<T> MessageSerializer<T> for MessagePackSerializer
-where
-	T: serde::Serialize + serde::de::DeserializeOwned + 'static,
+where T: serde::Serialize + serde::de::DeserializeOwned + 'static
 {
 	type SerializeError = rmp_serde::encode::Error;
 	type DeserializeError = rmp_serde::decode::Error;
@@ -70,12 +73,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let connection_url = shared::config::build_url("serializers_demo");
 
 	// MessagePack serializer (binary format)
-	let (client, connection) = MqttClient::<MessagePackSerializer>::connect(&connection_url)
-		.await
-		.inspect_err(|e| {
-			shared::config::print_connection_error(&connection_url, e);
-		})?;
-	
+	let (client, connection) =
+		MqttClient::<MessagePackSerializer>::connect(&connection_url)
+			.await
+			.inspect_err(|e| {
+				shared::config::print_connection_error(&connection_url, e);
+			})?;
+
 	// To use JsonSerializer instead, comment the above and uncomment below:
 	// use mqtt_typed_client::JsonSerializer;
 	// let (client, connection) = MqttClient::<JsonSerializer>::connect(&connection_url)
@@ -104,8 +108,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("Waiting for message...");
 	if let Some(Ok(greeting)) = subscriber.receive().await {
-		println!("Received from {}/{}: {} (timestamp: {})", 
-			greeting.language, greeting.sender, greeting.payload.text, greeting.payload.timestamp);
+		println!(
+			"Received from {}/{}: {} (timestamp: {})",
+			greeting.language,
+			greeting.sender,
+			greeting.payload.text,
+			greeting.payload.timestamp
+		);
 	}
 
 	connection.shutdown().await?;

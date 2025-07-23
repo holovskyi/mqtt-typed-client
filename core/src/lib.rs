@@ -129,7 +129,13 @@ pub use client::{
 pub use client::{MqttPublisher, MqttSubscriber, SubscriptionBuilder};
 pub use connection::MqttConnection;
 // Message serialization
-pub use message_serializer::{BincodeSerializer, JsonSerializer, MessageSerializer};
+pub use message_serializer::{BincodeSerializer, MessageSerializer};
+#[cfg(feature = "json")]
+pub use message_serializer::JsonSerializer;
+#[cfg(feature = "messagepack")]
+pub use message_serializer::MessagePackSerializer;
+#[cfg(feature = "cbor")]
+pub use message_serializer::CborSerializer;
 // === Advanced API ===
 // Advanced subscription configuration
 pub use routing::{CacheStrategy, SubscriptionConfig};
@@ -160,10 +166,17 @@ pub type Result<T> = std::result::Result<T, MqttClientError>;
 pub mod prelude {
 
 	pub use crate::{
-		BincodeSerializer, JsonSerializer, ClientSettings, MessageSerializer, MqttClient,
+		BincodeSerializer, ClientSettings, MessageSerializer, MqttClient,
 		MqttClientConfig, MqttClientError, MqttConnection, MqttOptions, QoS,
 		Result, SubscriptionBuilder, TypedLastWill,
 	};
+	
+	#[cfg(feature = "json")]
+	pub use crate::JsonSerializer;
+	#[cfg(feature = "messagepack")]
+	pub use crate::MessagePackSerializer;
+	#[cfg(feature = "cbor")]
+	pub use crate::CborSerializer;
 }
 
 /// Advanced types and utilities for complex use cases
