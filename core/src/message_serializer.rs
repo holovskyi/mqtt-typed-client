@@ -2,6 +2,7 @@
 
 use std::fmt::Debug;
 
+#[cfg(feature = "bincode-serializer")]
 use bincode::{Decode, Encode};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -25,11 +26,15 @@ pub trait MessageSerializer<T>:
 /// Default serializer using bincode format.
 ///
 /// Requires types to implement `bincode::Encode` and `bincode::Decode`.
+/// 
+/// Available when the `bincode-serializer` feature is enabled (default).
+#[cfg(feature = "bincode-serializer")]
 #[derive(Clone, Default)]
 pub struct BincodeSerializer {
 	config: bincode::config::Configuration,
 }
 
+#[cfg(feature = "bincode-serializer")]
 impl BincodeSerializer {
 	/// Creates a new serializer with default configuration.
 	pub fn new() -> Self {
@@ -42,6 +47,7 @@ impl BincodeSerializer {
 	}
 }
 
+#[cfg(feature = "bincode-serializer")]
 impl<T> MessageSerializer<T> for BincodeSerializer
 where T: Encode + Decode<()> + 'static
 {

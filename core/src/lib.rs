@@ -129,7 +129,9 @@ pub use client::{
 pub use client::{MqttPublisher, MqttSubscriber, SubscriptionBuilder};
 pub use connection::MqttConnection;
 // Message serialization
-pub use message_serializer::{BincodeSerializer, MessageSerializer};
+pub use message_serializer::MessageSerializer;
+#[cfg(feature = "bincode-serializer")]
+pub use message_serializer::BincodeSerializer;
 #[cfg(feature = "json")]
 pub use message_serializer::JsonSerializer;
 #[cfg(feature = "messagepack")]
@@ -166,11 +168,13 @@ pub type Result<T> = std::result::Result<T, MqttClientError>;
 pub mod prelude {
 
 	pub use crate::{
-		BincodeSerializer, ClientSettings, MessageSerializer, MqttClient,
+		ClientSettings, MessageSerializer, MqttClient,
 		MqttClientConfig, MqttClientError, MqttConnection, MqttOptions, QoS,
 		Result, SubscriptionBuilder, TypedLastWill,
 	};
 	
+	#[cfg(feature = "bincode-serializer")]
+	pub use crate::BincodeSerializer;
 	#[cfg(feature = "json")]
 	pub use crate::JsonSerializer;
 	#[cfg(feature = "messagepack")]
