@@ -44,6 +44,7 @@ tracing = "0.1.41"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 uuid = { version = "1.17.0", features = ["v4"] }
 rmp-serde = "1.3"
+chrono = { version = "0.4.41", features = ["serde"] }
 
 [[example]]
 name = "100_all_serializers_demo"
