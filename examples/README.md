@@ -139,6 +139,33 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - t=15s: Clear retained messages from broker storage
 - t=18s: Subscriber-4 connects → receives nothing (storage empty)
 
+### 🎯 **[007_custom_patterns.rs](007_custom_patterns.rs)** - Custom Topic Patterns
+**What it demonstrates:**
+- Overriding default topic patterns from `#[mqtt_topic]` macro
+- Environment-specific topic routing (dev/prod prefixes)
+- Pattern compatibility validation and type safety
+- Advanced subscription, publishing, and Last Will configuration
+
+**Key concepts:**
+- `.with_pattern()` for custom subscription patterns
+- `.get_publisher_to()` for custom publishing patterns
+- `.last_will_to()` for custom Last Will patterns
+- Pattern compatibility rules (same parameters, names, order)
+- Multi-tenant and environment isolation patterns
+
+**API comparison:**
+```rust
+// Standard usage:
+topic_client.subscribe().await?
+topic_client.publish("rust", "alice", &msg).await?
+GreetingTopic::last_will("rust", "client", msg)
+
+// Custom patterns:
+topic_client.subscription().with_pattern("dev/greetings/{language}/{sender}")?.subscribe().await?
+topic_client.get_publisher_to("dev/greetings/{language}/{sender}", "rust", "alice")?.publish(&msg).await?
+GreetingTopic::last_will_to("dev/greetings/{language}/{sender}", "rust", "client", msg)?
+```
+
 ### 💯 **[100_all_serializers_demo.rs](100_all_serializers_demo.rs)** - Complete Serializer Test Suite
 **What it demonstrates:**
 - Full publish/subscribe cycle testing for all 8 available serializers
@@ -201,7 +228,8 @@ MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example 000_hello_worl
 5. **[004_hello_world_tls.rs](004_hello_world_tls.rs)** - Add security with TLS
 6. **[005_hello_world_serializers.rs](005_hello_world_serializers.rs)** - Custom message serialization
 7. **[006_retain_and_clear.rs](006_retain_and_clear.rs)** - MQTT retained messages and broker storage
-8. **[100_all_serializers_demo.rs](100_all_serializers_demo.rs)** - Complete serialization ecosystem test
+8. **[007_custom_patterns.rs](007_custom_patterns.rs)** - Override default topic patterns for advanced routing
+9. **[100_all_serializers_demo.rs](100_all_serializers_demo.rs)** - Complete serialization ecosystem test
 
 ## 🔧 Troubleshooting
 
