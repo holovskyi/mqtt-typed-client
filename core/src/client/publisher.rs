@@ -65,12 +65,27 @@ where F: MessageSerializer<T>
 
 	/// Publishes data to the configured topic.
 	pub async fn publish(&self, data: &T) -> Result<(), MqttClientError> {
+		self.publish_with_retain_override(data, self.retain).await
+	}
+
+	/// Publishes data with retain flag explicitly set to true.
+	pub async fn publish_retain(&self, data: &T) -> Result<(), MqttClientError> {
+		self.publish_with_retain_override(data, true).await
+	}
+
+	/// Publishes data with retain flag explicitly set to false.
+	pub async fn publish_normal(&self, data: &T) -> Result<(), MqttClientError> {
+		self.publish_with_retain_override(data, false).await
+	}
+
+	/// Internal helper to avoid code duplication
+	async fn publish_with_retain_override(&self, data: &T, retain: bool) -> Result<(), MqttClientError> {
 		let payload = self
 			.serializer
 			.serialize(data)
 			.map_err(|e| MqttClientError::Serialization(format!("{e:?}")))?;
 		self.client
-			.publish(self.topic.as_str(), self.qos, self.retain, payload)
+			.publish(self.topic.as_str(), self.qos, retain, payload)
 			.await
 			.map_err(MqttClientError::from)
 	}

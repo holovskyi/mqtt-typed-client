@@ -110,11 +110,8 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
     let topic_client = client.retain_demo_topic();
 
     // === 2. PUBLISHER SETUP ===
-    // Create two semantically different publishers with different retain behavior:
-    // - retained_publisher: All messages stored by broker for future subscribers
-    // - normal_publisher: Messages only delivered to currently active subscribers
-    let retained_publisher = topic_client.get_publisher()?.with_retain(true);
-    let normal_publisher = topic_client.get_publisher()?; // Uses default retain: false
+    // Create one publisher and use new convenience methods
+    let publisher = topic_client.get_publisher()?;
 
     println!("[PUBLISHER] Publishers configured, starting demo sequence...\n");
 
@@ -130,7 +127,7 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("[PUBLISHER] t=0s: Publishing retained message #1");
     println!("           → Broker will store this message for future subscribers");
-    retained_publisher.publish(&msg1).await?;
+    publisher.publish_retain(&msg1).await?;
 
     // Wait 5 seconds for demonstration timing
     tokio::time::sleep(Duration::from_secs(5)).await;
@@ -142,7 +139,7 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("[PUBLISHER] t=5s: Publishing retained message #2 (replaces #1)");
     println!("           → Broker replaces previous retained message with this one");
-    retained_publisher.publish(&msg2).await?;
+    publisher.publish_retain(&msg2).await?;
 
     tokio::time::sleep(Duration::from_secs(5)).await;
 
@@ -153,14 +150,14 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("[PUBLISHER] t=10s: Publishing non-retained message #3");
     println!("            → Only currently connected subscribers will receive this");
-    normal_publisher.publish(&msg3).await?;
+    publisher.publish_normal(&msg3).await?;
 
     tokio::time::sleep(Duration::from_secs(5)).await;
 
     // === 7. CLEAR RETAINED MESSAGE ===
     println!("[PUBLISHER] t=15s: Clearing retained message from broker");
     println!("            → Sends empty payload with retain=true to remove stored message");
-    retained_publisher.clear_retained().await?;
+    publisher.clear_retained().await?;
 
     tokio::time::sleep(Duration::from_secs(5)).await;
     println!("[PUBLISHER] t=20s: Demo sequence completed\n");
