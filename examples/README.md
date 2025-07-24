@@ -29,7 +29,7 @@ This directory contains examples demonstrating how to use the `mqtt-typed-client
 
 ## 📚 Examples Index
 
-### 🌟 **000_hello_world.rs** - Basic Usage
+### 🌟 **[000_hello_world.rs](000_hello_world.rs)** - Basic Usage
 **What it demonstrates:**
 - Basic publish/subscribe pattern
 - Topic parameter extraction with `#[mqtt_topic]` macro
@@ -41,7 +41,7 @@ This directory contains examples demonstrating how to use the `mqtt-typed-client
 - BincodeSerializer for efficient binary serialization
 - Wildcard subscriptions: `greetings/+/+`
 
-### 🏓 **001_ping_pong.rs** - Multi-Client Communication  
+### 🏓 **[001_ping_pong.rs](001_ping_pong.rs)** - Multi-Client Communication  
 **What it demonstrates:**
 - Multiple MQTT clients in one application
 - Inter-client communication patterns
@@ -54,7 +54,7 @@ This directory contains examples demonstrating how to use the `mqtt-typed-client
 - Random event generation
 - Graceful shutdown handling
 
-### ⚙️ **002_configuration.rs** - Advanced Configuration
+### ⚙️ **[002_configuration.rs](002_configuration.rs)** - Advanced Configuration
 **What it demonstrates:**
 - Custom MQTT client settings
 - Connection parameter tuning
@@ -67,7 +67,7 @@ This directory contains examples demonstrating how to use the `mqtt-typed-client
 - Cache size optimization
 - Credential management
 
-### ⚰️ **003_hello_world_lwt.rs** - Last Will & Testament (LWT)
+### ⚰️ **[003_hello_world_lwt.rs](003_hello_world_lwt.rs)** - Last Will & Testament (LWT)
 **What it demonstrates:**
 - MQTT Last Will & Testament functionality
 - Ungraceful vs graceful disconnect handling
@@ -89,7 +89,7 @@ cargo run --example 003_hello_world_lwt
 cargo run --example 003_hello_world_lwt -- --publisher
 ```
 
-### 🔒 **004_hello_world_tls.rs** - TLS/SSL Connections
+### 🔒 **[004_hello_world_tls.rs](004_hello_world_tls.rs)** - TLS/SSL Connections
 **What it demonstrates:**
 - Secure MQTT connections (MQTTS)
 - Custom TLS certificate handling
@@ -102,7 +102,7 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - TLS transport configuration
 - Development vs production certificates
 
-### 🔧 **005_hello_world_serializers.rs** - Custom Message Serializers
+### 🔧 **[005_hello_world_serializers.rs](005_hello_world_serializers.rs)** - Custom Message Serializers
 **What it demonstrates:**
 - Using different serializers (MessagePack vs built-in Bincode)
 - Creating custom MessageSerializer trait implementation
@@ -115,7 +115,7 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - Binary vs text serialization formats
 - Custom serializer wrapper creation
 
-### 🔄 **006_retain_and_clear.rs** - MQTT Retained Messages
+### 🔄 **[006_retain_and_clear.rs](006_retain_and_clear.rs)** - MQTT Retained Messages
 **What it demonstrates:**
 - MQTT retained message functionality with multiple clients
 - Message persistence and broker storage behavior
@@ -139,7 +139,7 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - t=15s: Clear retained messages from broker storage
 - t=18s: Subscriber-4 connects → receives nothing (storage empty)
 
-### 💯 **100_all_serializers_demo.rs** - Complete Serializer Test Suite
+### 💯 **[100_all_serializers_demo.rs](100_all_serializers_demo.rs)** - Complete Serializer Test Suite
 **What it demonstrates:**
 - Full publish/subscribe cycle testing for all 8 available serializers
 - Serialization and deserialization verification
@@ -194,14 +194,14 @@ MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example 000_hello_worl
 
 **Recommended order for learning:**
 
-1. **000_hello_world.rs** - Start here to understand basics
-2. **001_ping_pong.rs** - See multi-client patterns
-3. **002_configuration.rs** - Learn about client configuration  
-4. **003_hello_world_lwt.rs** - Understand MQTT reliability features
-5. **004_hello_world_tls.rs** - Add security with TLS
-6. **005_hello_world_serializers.rs** - Custom message serialization
-7. **006_retain_and_clear.rs** - MQTT retained messages and broker storage
-8. **100_all_serializers_demo.rs** - Complete serialization ecosystem test
+1. **[000_hello_world.rs](000_hello_world.rs)** - Start here to understand basics
+2. **[001_ping_pong.rs](001_ping_pong.rs)** - See multi-client patterns
+3. **[002_configuration.rs](002_configuration.rs)** - Learn about client configuration  
+4. **[003_hello_world_lwt.rs](003_hello_world_lwt.rs)** - Understand MQTT reliability features
+5. **[004_hello_world_tls.rs](004_hello_world_tls.rs)** - Add security with TLS
+6. **[005_hello_world_serializers.rs](005_hello_world_serializers.rs)** - Custom message serialization
+7. **[006_retain_and_clear.rs](006_retain_and_clear.rs)** - MQTT retained messages and broker storage
+8. **[100_all_serializers_demo.rs](100_all_serializers_demo.rs)** - Complete serialization ecosystem test
 
 ## 🔧 Troubleshooting
 
