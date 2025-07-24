@@ -115,6 +115,30 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - Binary vs text serialization formats
 - Custom serializer wrapper creation
 
+### 🔄 **006_retain_and_clear.rs** - MQTT Retained Messages
+**What it demonstrates:**
+- MQTT retained message functionality with multiple clients
+- Message persistence and broker storage behavior
+- Retained message replacement and clearing
+- Different connection timing scenarios
+
+**Key concepts:**
+- Retained vs non-retained messages
+- Broker message storage and delivery to new subscribers
+- `clear_retained()` functionality with empty payloads
+- Multi-client demonstration with timing coordination
+- Automatic empty payload filtering
+
+**Timeline demonstration:**
+- t=0s: First retained message stored by broker
+- t=1s: Subscriber-1 connects → receives retained message #1
+- t=5s: Second retained message replaces first in broker storage
+- t=6s: Subscriber-2 connects → receives retained message #1 (timing)
+- t=10s: Non-retained message → only active subscribers receive
+- t=11s: Subscriber-3 connects → receives retained message #2
+- t=15s: Clear retained messages from broker storage
+- t=18s: Subscriber-4 connects → receives nothing (storage empty)
+
 ### 💯 **100_all_serializers_demo.rs** - Complete Serializer Test Suite
 **What it demonstrates:**
 - Full publish/subscribe cycle testing for all 8 available serializers
@@ -176,7 +200,8 @@ MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example 000_hello_worl
 4. **003_hello_world_lwt.rs** - Understand MQTT reliability features
 5. **004_hello_world_tls.rs** - Add security with TLS
 6. **005_hello_world_serializers.rs** - Custom message serialization
-7. **100_all_serializers_demo.rs** - Complete serialization ecosystem test
+7. **006_retain_and_clear.rs** - MQTT retained messages and broker storage
+8. **100_all_serializers_demo.rs** - Complete serialization ecosystem test
 
 ## 🔧 Troubleshooting
 
