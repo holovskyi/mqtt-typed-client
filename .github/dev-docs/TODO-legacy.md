@@ -1,11 +1,11 @@
 ## TODO
 
-- [ ] Examples Last Will message and clean Retaition
+- [x] Examples Last Will message and clean Retaition
 - [ ] <easy> автогенерація client_id
 - [ ] <mid> Дефолтний серіалізатор Bincode
-- [ ] <easy> Додати серіалізатори json, та serde related.
+- [x] <easy> Додати серіалізатори json, та serde related.
 - [ ] <mid> Додати флаги retain, qos, dup в метадата вхідного повідомлення. У async_client.rs/Ok(Incoming(Publish(p))) => ми отримуємо ці дані але відкидаємо їх. По ідеї retain це корисний флаг. Можливо через raw_data поле у структурі топіка, на кшталт автозаповняюмого поля topic: Arc<TopicMatch>)
-- [ ] <mid> Обробляти пусте повідомлення яке скидає retain. Зараз повертається помилка десеріалізації.
+- [x] <mid> Обробляти пусте повідомлення яке скидає retain. Зараз повертається помилка десеріалізації.
 - [ ] <mid> Додати в mqtt_topic macro, параметр дефолтний рівень QoS
 - [ ] <easy> let mut subscriber = topic_client.subscribe().await?; - subscriber.topic() and .pattern() methods
 - [ ] <hard> Додати підтвердженну підписку. Зараз subscribe не аналізує результату підписки. Треба додати в event_loop механізм який по Outgoing(Subscribe(1)) отримує id пакета для підписки. А поттім чекає Incoming(SubAck(SubAck { pkid: 1, return_codes: [Success(AtLeastOnce)] })), з результатом підписки, та надає цей результат користувачу. Але тут є проблеа того що зараз Outgoing(Subscribe()), має тількі pkid, без конкретних фільтрів, тож нам треба форкнути rumqttc та у src/lib.rs змінити Outgoing::Subscribe(u16) => outgoing::Subscribe(Subscribe). 
@@ -14,7 +14,7 @@
     impl<F> MqttClient<F>
     async fn run(mut event_loop: EventLoop, subscription_manager: SubscriptionManagerHandler<Bytes>)
     При певній кількості помилок, ми виходимо з циклу. Але можливо треба зробити передачу помилки на інші рівні, спідписникам та пудлішерам?
-- [ ] В опції макроса додати notypedclient та nolastwill
+- [ ] <off>В опції макроса додати notypedclient та nolastwill
 - [ ] Чи бачить клієнт згенерованний тип на кшталт SensorReadingSubscriptionBuilderExt? Чи варто скорочувати назву?
 - [ ] Проблема з кріптік помилкою, коли ми оголошуємо структуру для payload, але забуваємо виставити в ній derive для того щоб потім кастомний серіалізатор міг працювати з структурою. Наприклад для BincodeSerializer треба Encode та Decode. Але маємо помилку в якій складно визначити що саме потрібно
 - [x] publish_retained(data) як shortcut для with_retain(true).publish(data) та publish_temporary(data) як shortcut для with_retain(false).publish(data)? Перший точно можна. А другий варіант навіщо не зрозуміло.
@@ -36,10 +36,9 @@ let mut subscriber = TemperatureSensor::subscribe_with_pattern(&client, "data/{b
 
 ## Publish Checklist
 
-- [x] Remove all TODOs from public API
-- [ ] Examples Simple, Middle, Avanced
+- [x] Examples Simple, Middle, Avanced
 - [ ] Write README.md with clear getting started guide
-- [ ] Fix Cargo.toml (repository, keywords, description)
+- [x] Fix Cargo.toml (repository, keywords, description)
 - [ ] Comprehensive testing - cover main scenarios
 - [ ] API documentation - all public elements documented
 
