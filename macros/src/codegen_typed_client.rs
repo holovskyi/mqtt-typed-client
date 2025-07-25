@@ -244,6 +244,7 @@ mod tests {
 
 		let result = generator.generate_typed_client_struct();
 		let expected = quote! {
+			#[derive(Clone)]
 			pub struct TestMessageClient<F> {
 				client: ::mqtt_typed_client_core::MqttClient<F>,
 			}

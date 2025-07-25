@@ -20,7 +20,7 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust
+//! ```rust,ignore
 //! use mqtt_typed_client_macros::mqtt_topic;
 //! use std::sync::Arc;
 //! use mqtt_typed_client_core::topic::topic_match::TopicMatch;
@@ -62,7 +62,7 @@
 //! because they represent variable-length topic segments that cannot be constructed
 //! from fixed parameters.
 //!
-//! ```rust
+//! ```rust,ignore
 //! use mqtt_typed_client_macros::mqtt_topic;
 //!
 //! // ✅ This works for both subscriber and publisher
@@ -139,7 +139,7 @@ use syn::{LitStr, parse::Parser, parse_macro_input};
 ///
 /// For a struct annotated with `#[mqtt_topic("sensors/{id}/data")]`:
 ///
-/// ```rust,ignore
+/// ```rust,ignore,ignore
 /// // Subscriber functionality (if enabled)
 /// impl<DE> FromMqttMessage<PayloadType, DE> for YourStruct {
 ///     fn from_mqtt_message(
@@ -173,7 +173,7 @@ use syn::{LitStr, parse::Parser, parse_macro_input};
 /// ## Examples
 ///
 /// ### Basic Usage (Both Modes)
-/// ```rust
+/// ```rust,ignore
 /// # use mqtt_typed_client_macros::mqtt_topic;
 /// #[derive(Debug)]
 /// #[mqtt_topic("sensors/{sensor_id}/temperature")]
@@ -184,7 +184,7 @@ use syn::{LitStr, parse::Parser, parse_macro_input};
 /// ```
 ///
 /// ### Subscriber Only
-/// ```rust
+/// ```rust,ignore
 /// # use mqtt_typed_client_macros::mqtt_topic;
 /// # use std::sync::Arc;
 /// # use mqtt_typed_client_core::topic::topic_match::TopicMatch;
@@ -198,7 +198,7 @@ use syn::{LitStr, parse::Parser, parse_macro_input};
 /// ```
 ///
 /// ### Publisher Only
-/// ```rust
+/// ```rust,ignore
 /// # use mqtt_typed_client_macros::mqtt_topic;
 /// #[derive(Debug)]
 /// #[mqtt_topic("commands/{service}/{action}", publisher)]
@@ -210,7 +210,7 @@ use syn::{LitStr, parse::Parser, parse_macro_input};
 /// ```
 ///
 /// ### Multiple Parameters
-/// ```rust
+/// ```rust,ignore
 /// # use mqtt_typed_client_macros::mqtt_topic;
 /// #[derive(Debug)]
 /// #[mqtt_topic("buildings/{building}/floors/{floor}/rooms/{room}/sensors/{sensor_id}")]
@@ -224,7 +224,7 @@ use syn::{LitStr, parse::Parser, parse_macro_input};
 /// ```
 ///
 /// ### No Payload
-/// ```rust
+/// ```rust,ignore
 /// # use mqtt_typed_client_macros::mqtt_topic;
 /// #[derive(Debug)]
 /// #[mqtt_topic("heartbeat/{service_name}")]

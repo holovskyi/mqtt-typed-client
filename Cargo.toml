@@ -49,3 +49,7 @@ chrono = { version = "0.4.41", features = ["serde"] }
 [[example]]
 name = "100_all_serializers_demo"
 required-features = ["bincode", "json", "messagepack", "cbor", "postcard", "ron", "flexbuffers", "protobuf"]
+
+[[test]]
+name = "serializers_integration"
+required-features = ["bincode", "json", "messagepack", "cbor", "postcard", "ron", "flexbuffers", "protobuf"]
