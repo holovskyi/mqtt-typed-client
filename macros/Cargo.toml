@@ -2,8 +2,14 @@
 name = "mqtt-typed-client-macros"
 version = "0.1.0"
 edition = "2021"
-description = "Macros for the mqtt_typed_client library"
+description = "Procedural macros for the mqtt-typed-client library"
+publish = false
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/holovskyi/mqtt-typed-client"
+keywords = ["mqtt", "macros", "typed", "procedural"]
+categories = ["development-tools::procedural-macro-helpers"]
+authors = ["Artem Holovskyi <artem.holovskyi@gmail.com>"]
+readme = "README.md"
 
 [lib]
 proc-macro = true
@@ -12,9 +18,9 @@ proc-macro = true
 proc-macro2 = "1.0.95"
 quote = "1.0.40"
 syn = "2.0.103"
-mqtt-typed-client-core = { path = "../core" }
+mqtt-typed-client-core = { path = "../core", version = "0.1.0" }
 
 [dev-dependencies]
 tokio = "1.45.1"
-mqtt-typed-client-core = { path = "../core" }
+mqtt-typed-client-core = { path = "../core", version = "0.1.0" }
 

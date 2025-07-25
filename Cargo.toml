@@ -8,10 +8,10 @@ version = "0.1.0"
 edition = "2021"
 description = "Type-safe MQTT client with procedural macros for Rust"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/your-username/mqtt-typed-client"
+repository = "https://github.com/holovskyi/mqtt-typed-client"
 keywords = ["mqtt", "async", "client", "typed", "macros"]
 categories = ["network-programming", "asynchronous"]
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Artem Holovskyi <artem.holovskyi@gmail.com>"]
 readme = "README.md"
 
 [dependencies]
