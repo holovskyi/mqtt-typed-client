@@ -46,8 +46,8 @@ Feature requests are welcome! Please:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mqtt_typed_client.git
-cd mqtt_typed_client
+git clone https://github.com/holovskyi/mqtt-typed-client.git
+cd mqtt-typed-client
 
 # Run tests
 cargo test --all
@@ -84,14 +84,20 @@ cargo clippy --all-targets --all-features
 ## Project Structure
 
 ```
-mqtt_typed_client/
+mqtt-typed-client/
 ├── src/
-│   ├── client/          # High-level client API
-│   ├── routing/         # Message routing system
-│   ├── topic/           # Topic pattern handling
-│   ├── structured/      # Structured subscribers
 │   └── lib.rs          # Main library entry
+├── core/
+│   ├── src/
+│   │   ├── client/          # High-level client API
+│   │   ├── routing/         # Message routing system
+│   │   ├── topic/           # Topic pattern handling
+│   │   ├── structured/      # Structured subscribers
+│   │   └── lib.rs          # Core library entry
+│   └── Cargo.toml
 ├── macros/             # Procedural macros
+│   ├── src/
+│   └── Cargo.toml
 ├── examples/           # Usage examples
 └── docs/              # Additional documentation
 ```
