@@ -166,6 +166,35 @@ topic_client.get_publisher_to("dev/greetings/{language}/{sender}", "rust", "alic
 GreetingTopic::last_will_to("dev/greetings/{language}/{sender}", "rust", "client", msg)?
 ```
 
+### 🏗️ **[008_modular_example.rs](008_modular_example.rs)** - Modular Project Architecture
+**What it demonstrates:**
+- Organizing MQTT applications with multiple modules
+- Separating topic definitions from business logic
+- Clean import patterns and code organization
+- Multiple subscription strategies (wildcard vs. filtered)
+- Production-ready error handling and graceful shutdown
+
+**Key concepts:**
+- Modular topic definitions in separate files
+- Type-safe MQTT operations with custom data structures
+- Subscription patterns: wildcard (`sensors/+/+/+/data`) vs. specific filters
+- Publisher/subscriber coordination with proper timing
+- Structured logging and timeout handling
+
+**Project structure:**
+```
+modular_example/
+├── mod.rs          # Module exports
+├── topics.rs       # Topic definitions and data structures  
+└── runner.rs       # Business logic and execution flow
+```
+
+**Topic pattern:** `sensors/{location}/{sensor_type}/{device_id}/data`
+- **Publishing:** `client.temperature_topic().get_publisher("Home", "floor", 37)`
+- **Wildcard subscription:** Receives from all sensors
+- **Filtered subscription:** Only specific device with caching
+- **Data flow:** Real sensor data → MQTT → Multiple typed subscribers
+
 ### 💯 **[100_all_serializers_demo.rs](100_all_serializers_demo.rs)** - Complete Serializer Test Suite
 **What it demonstrates:**
 - Full publish/subscribe cycle testing for all 8 available serializers
@@ -229,7 +258,8 @@ MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example 000_hello_worl
 6. **[005_hello_world_serializers.rs](005_hello_world_serializers.rs)** - Custom message serialization
 7. **[006_retain_and_clear.rs](006_retain_and_clear.rs)** - MQTT retained messages and broker storage
 8. **[007_custom_patterns.rs](007_custom_patterns.rs)** - Override default topic patterns for advanced routing
-9. **[100_all_serializers_demo.rs](100_all_serializers_demo.rs)** - Complete serialization ecosystem test
+9. **[008_modular_example.rs](008_modular_example.rs)** - Organize complex applications with modular architecture
+10. **[100_all_serializers_demo.rs](100_all_serializers_demo.rs)** - Complete serialization ecosystem test
 
 ## 🔧 Troubleshooting
 
