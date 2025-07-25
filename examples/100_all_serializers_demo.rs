@@ -61,7 +61,7 @@ where
 	<S as MessageSerializer<TestMessage>>::SerializeError: std::fmt::Debug,
 	<S as MessageSerializer<TestMessage>>::DeserializeError: std::fmt::Debug,
 {
-	println!("Testing {} serializer...", name);
+	println!("Testing {name} serializer...");
 
 	let url = format!(
 		"mqtt://localhost:1883?client_id=test_{}",
@@ -80,7 +80,7 @@ where
 
 	// Publish test message
 	let message = TestMessage {
-		text: format!("Hello from {} serializer!", name),
+		text: format!("Hello from {name} serializer!"),
 		id: 42,
 	};
 
@@ -97,15 +97,15 @@ where
 					received_message.text,
 					received_message.id
 				);
-				println!("{} (serialize + deserialize successful)", name);
+				println!("{name} (serialize + deserialize successful)");
 			}
 			| Err(e) => {
-				println!("{} (deserialization error: {:?})", name, e);
-				return Err(format!("Deserialization failed: {:?}", e).into());
+				println!("{name} (deserialization error: {e:?})");
+				return Err(format!("Deserialization failed: {e:?}").into());
 			}
 		}
 	} else {
-		println!("{} (no message received)", name);
+		println!("{name} (no message received)");
 		return Err("No message received".into());
 	}
 
@@ -118,7 +118,7 @@ async fn test_connection_only<S>(
 	name: &str,
 ) -> Result<(), Box<dyn std::error::Error>>
 where S: Default + Clone + Send + Sync + 'static {
-	println!("Testing {} serializer (connection only)...", name);
+	println!("Testing {name} serializer (connection only)...");
 
 	let url = format!(
 		"mqtt://localhost:1883?client_id=test_{}",
@@ -132,9 +132,6 @@ where S: Default + Clone + Send + Sync + 'static {
 
 	connection.shutdown().await?;
 
-	println!(
-		"{} (connection successful, messaging requires generated types)",
-		name
-	);
+	println!("{name} (connection successful, messaging requires generated types)");
 	Ok(())
 }

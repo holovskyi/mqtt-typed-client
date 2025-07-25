@@ -109,7 +109,7 @@ pub struct MessagePackSerializer;
 impl MessagePackSerializer {
 	/// Creates a new MessagePack serializer.
 	pub fn new() -> Self {
-		Self::default()
+		Self
 	}
 }
 
@@ -142,7 +142,7 @@ pub struct CborSerializer;
 impl CborSerializer {
 	/// Creates a new CBOR serializer.
 	pub fn new() -> Self {
-		Self::default()
+		Self
 	}
 }
 
@@ -178,7 +178,7 @@ pub struct PostcardSerializer;
 impl PostcardSerializer {
 	/// Creates a new Postcard serializer.
 	pub fn new() -> Self {
-		Self::default()
+		Self
 	}
 }
 
@@ -212,7 +212,7 @@ pub struct ProtobufSerializer;
 impl ProtobufSerializer {
 	/// Creates a new Protobuf serializer.
 	pub fn new() -> Self {
-		Self::default()
+		Self
 	}
 }
 
@@ -248,7 +248,7 @@ pub struct RonSerializer;
 impl RonSerializer {
 	/// Creates a new RON serializer.
 	pub fn new() -> Self {
-		Self::default()
+		Self
 	}
 }
 
@@ -284,7 +284,7 @@ pub struct FlexbuffersSerializer;
 impl FlexbuffersSerializer {
 	/// Creates a new Flexbuffers serializer.
 	pub fn new() -> Self {
-		Self::default()
+		Self
 	}
 }
 

@@ -97,23 +97,21 @@ where
 	match MqttClient::<S>::connect(&url).await {
 		| Ok((client, connection)) => {
 			// Connection successful - test full cycle if possible
-			println!("{} serializer: Connection successful", name);
+			println!("{name} serializer: Connection successful");
 
 			// Test publisher creation
 			let topic = format!("test/integration/{}", name.to_lowercase());
 			let publisher = client.get_publisher::<TestMessage>(&topic);
 			assert!(
 				publisher.is_ok(),
-				"{} serializer: Failed to create publisher",
-				name
+				"{name} serializer: Failed to create publisher",
 			);
 
 			// If we have both publisher and can create subscriber, test full cycle
 			match client.subscribe::<TestMessage>(topic.as_str()).await {
 				| Ok(mut subscriber) => {
 					println!(
-						"{} serializer: Testing full publish/subscribe cycle",
-						name
+						"{name} serializer: Testing full publish/subscribe cycle",
 					);
 
 					// Small delay to ensure subscription is ready
@@ -122,7 +120,7 @@ where
 
 					// Publish test message
 					let message = TestMessage {
-						text: format!("Integration test for {}", name),
+						text: format!("Integration test for {name}"),
 						id: 123,
 					};
 
@@ -130,8 +128,7 @@ where
 						publisher.unwrap().publish(&message).await
 					{
 						println!(
-							"{} serializer: Message published successfully",
-							name
+							"{name} serializer: Message published successfully",
 						);
 
 						// Try to receive with timeout
@@ -145,53 +142,46 @@ where
 								match result {
 									| Ok(received_message) => {
 										assert_eq!(
-											received_message, message,
-											"{} serializer: Message mismatch",
-											name
+										received_message, message,
+										"{name} serializer: Message mismatch",
 										);
 										println!(
-											"{} serializer: Full cycle \
-											 successful (serialize + \
-											 deserialize)",
-											name
+										"{name} serializer: Full cycle \
+										successful (serialize + \
+										deserialize)",
 										);
 									}
 									| Err(e) => {
 										panic!(
-											"{} serializer: Deserialization \
-											 failed: {:?}",
-											name, e
+										"{name} serializer: Deserialization \
+										failed: {e:?}",
 										);
 									}
 								}
 							}
 							| Ok(None) => {
 								println!(
-									"{} serializer: ⚠️ No message received \
+									"{name} serializer: ⚠️ No message received \
 									 (broker might be busy)",
-									name
 								);
 							}
 							| Err(_) => {
 								println!(
-									"{} serializer: ⚠️ Receive timeout \
+									"{name} serializer: ⚠️ Receive timeout \
 									 (broker might be slow)",
-									name
 								);
 							}
 						}
 					} else {
 						println!(
-							"{} serializer: ⚠️ Publish failed (broker might \
-							 be busy)",
-							name
+						"{name} serializer: ⚠️ Publish failed (broker might \
+						be busy)",
 						);
 					}
 				}
 				| Err(e) => {
 					println!(
-						"{} serializer: ⚠️ Subscription failed: {:?}",
-						name, e
+					"{name} serializer: ⚠️ Subscription failed: {e:?}",
 					);
 				}
 			}
@@ -200,25 +190,22 @@ where
 			let shutdown_result = connection.shutdown().await;
 			assert!(
 				shutdown_result.is_ok(),
-				"{} serializer: Failed to shutdown",
-				name
+				"{name} serializer: Failed to shutdown",
 			);
 
-			println!("{} serializer: Integration test completed", name);
+			println!("{name} serializer: Integration test completed");
 		}
 		| Err(e) => {
 			// Connection failed - this is OK in CI/test environments without MQTT broker
 			println!(
-				"{} serializer: Connection failed (expected in CI without \
-				 broker): {:?}",
-				name, e
+				"{name} serializer: Connection failed (expected in CI without \
+				 broker): {e:?}",
 			);
 
 			// Even without broker, we can test that the serializer compiles and can be instantiated
 			let _serializer = S::default();
 			println!(
-				"{} serializer: Serializer instantiation successful",
-				name
+				"{name} serializer: Serializer instantiation successful",
 			);
 		}
 	}
@@ -234,7 +221,7 @@ where S: Default + Clone + Send + Sync + 'static {
 
 	match MqttClient::<S>::connect(&url).await {
 		| Ok((client, connection)) => {
-			println!("{} serializer: Connection successful", name);
+			println!("{name} serializer: Connection successful");
 
 			// Connection works - serializer is properly implemented
 			let _ = client; // Acknowledge we have a working client
@@ -242,29 +229,25 @@ where S: Default + Clone + Send + Sync + 'static {
 			let shutdown_result = connection.shutdown().await;
 			assert!(
 				shutdown_result.is_ok(),
-				"{} serializer: Failed to shutdown",
-				name
+				"{name} serializer: Failed to shutdown",
 			);
 
 			println!(
-				"{} serializer: Connection test successful (messaging \
+				"{name} serializer: Connection test successful (messaging \
 				 requires generated types)",
-				name
 			);
 		}
 		| Err(e) => {
 			// Connection failed - this is OK in CI/test environments without MQTT broker
 			println!(
-				"{} serializer: Connection failed (expected in CI without \
-				 broker): {:?}",
-				name, e
+				"{name} serializer: Connection failed (expected in CI without \
+				 broker): {e:?}",
 			);
 
 			// Even without broker, we can test that the serializer compiles and can be instantiated
 			let _serializer = S::default();
 			println!(
-				"{} serializer: Serializer instantiation successful",
-				name
+				"{name} serializer: Serializer instantiation successful",
 			);
 		}
 	}
@@ -322,7 +305,7 @@ mod compilation_tests {
 		assert_eq!(test_msg, cloned);
 
 		// Test Debug trait
-		let debug_str = format!("{:?}", test_msg);
+		let debug_str = format!("{test_msg:?}");
 		assert!(debug_str.contains("Test message"));
 		assert!(debug_str.contains("42"));
 
