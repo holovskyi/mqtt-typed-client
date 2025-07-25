@@ -17,7 +17,7 @@ use crate::{MessageSerializer, MqttClientError, TypedLastWill};
 /// ## Low-Resource Environments (IoT devices, embedded systems):
 /// ```rust
 /// use mqtt_typed_client_core::ClientSettings;
-/// 
+///
 /// ClientSettings {
 ///     topic_cache_size: 20,           // Minimal cache for memory conservation
 ///     event_loop_capacity: 5,         // Small buffer for low throughput
@@ -30,7 +30,7 @@ use crate::{MessageSerializer, MqttClientError, TypedLastWill};
 /// ## High-Throughput Applications (real-time data processing):
 /// ```rust
 /// use mqtt_typed_client_core::ClientSettings;
-/// 
+///
 /// ClientSettings {
 ///     topic_cache_size: 1000,         // Large cache for performance
 ///     event_loop_capacity: 100,       // Large buffer for message bursts
@@ -43,7 +43,7 @@ use crate::{MessageSerializer, MqttClientError, TypedLastWill};
 /// ## Balanced General Use (recommended defaults):
 /// ```rust
 /// use mqtt_typed_client_core::ClientSettings;
-/// 
+///
 /// ClientSettings::default(); // Uses conservative but performant settings
 /// ```
 #[derive(Debug, Clone)]

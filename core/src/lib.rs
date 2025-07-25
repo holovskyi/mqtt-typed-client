@@ -129,24 +129,23 @@ pub use client::{
 pub use client::{MqttPublisher, MqttSubscriber, SubscriptionBuilder};
 pub use connection::MqttConnection;
 // Message serialization
-pub use message_serializer::MessageSerializer;
 #[cfg(feature = "bincode-serializer")]
 pub use message_serializer::BincodeSerializer;
+#[cfg(feature = "cbor")]
+pub use message_serializer::CborSerializer;
+#[cfg(feature = "flexbuffers")]
+pub use message_serializer::FlexbuffersSerializer;
 #[cfg(feature = "json")]
 pub use message_serializer::JsonSerializer;
 #[cfg(feature = "messagepack")]
 pub use message_serializer::MessagePackSerializer;
-#[cfg(feature = "cbor")]
-pub use message_serializer::CborSerializer;
+pub use message_serializer::MessageSerializer;
 #[cfg(feature = "postcard")]
 pub use message_serializer::PostcardSerializer;
 #[cfg(feature = "protobuf")]
 pub use message_serializer::ProtobufSerializer;
 #[cfg(feature = "ron")]
 pub use message_serializer::RonSerializer;
-#[cfg(feature = "flexbuffers")]
-pub use message_serializer::FlexbuffersSerializer;
-
 // === Advanced API ===
 // Advanced subscription configuration
 pub use routing::{CacheStrategy, SubscriptionConfig};
@@ -176,29 +175,27 @@ pub type Result<T> = std::result::Result<T, MqttClientError>;
 /// ```
 pub mod prelude {
 
-	pub use crate::{
-		ClientSettings, MessageSerializer, MqttClient,
-		MqttClientConfig, MqttClientError, MqttConnection, MqttOptions, QoS,
-		Result, SubscriptionBuilder, TypedLastWill,
-	};
-	
 	#[cfg(feature = "bincode-serializer")]
 	pub use crate::BincodeSerializer;
+	#[cfg(feature = "cbor")]
+	pub use crate::CborSerializer;
+	#[cfg(feature = "flexbuffers")]
+	pub use crate::FlexbuffersSerializer;
 	#[cfg(feature = "json")]
 	pub use crate::JsonSerializer;
 	#[cfg(feature = "messagepack")]
 	pub use crate::MessagePackSerializer;
-	#[cfg(feature = "cbor")]
-	pub use crate::CborSerializer;
 	#[cfg(feature = "postcard")]
 	pub use crate::PostcardSerializer;
 	#[cfg(feature = "protobuf")]
 	pub use crate::ProtobufSerializer;
 	#[cfg(feature = "ron")]
 	pub use crate::RonSerializer;
-	#[cfg(feature = "flexbuffers")]
-	pub use crate::FlexbuffersSerializer;
-
+	pub use crate::{
+		ClientSettings, MessageSerializer, MqttClient, MqttClientConfig,
+		MqttClientError, MqttConnection, MqttOptions, QoS, Result,
+		SubscriptionBuilder, TypedLastWill,
+	};
 }
 
 /// Advanced types and utilities for complex use cases

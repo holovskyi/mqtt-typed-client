@@ -90,7 +90,10 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 	let topic_client = client.greeting_topic();
 	let mut subscriber = topic_client.subscribe().await?;
 
-	println!("Subscribed to: greetings/+/+ (will receive both normal and LWT messages)");
+	println!(
+		"Subscribed to: greetings/+/+ (will receive both normal and LWT \
+		 messages)"
+	);
 
 	// === 3. RECEIVING MESSAGES ===
 	// Wait for messages from the publisher
@@ -110,10 +113,10 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 
 					// Distinguish between normal messages and LWT messages
 					if greeting.payload.text.contains("LWT") {
-					println!("[{}] LWT from {}/{}: {} (publisher disconnected unexpectedly)", 
+					println!("[{}] LWT from {}/{}: {} (publisher disconnected unexpectedly)",
 					message_count, greeting.language, greeting.sender, greeting.payload.text);
 					} else {
-					println!("[{}] Greeting from {}/{}: {}", 
+					println!("[{}] Greeting from {}/{}: {}",
 					message_count, greeting.language, greeting.sender, greeting.payload.text);
 					}
 					},
@@ -166,8 +169,8 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 	let (client, _connection) = MqttClient::connect_with_config(config)
 		.await
 		.inspect_err(|e| {
-			shared::config::print_connection_error(&connection_url, e);
-		})?;
+		shared::config::print_connection_error(&connection_url, e);
+	})?;
 
 	println!("Publisher connected with LWT configured");
 
@@ -193,7 +196,7 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 	tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
 	println!("Publisher crashing now! (LWT should be triggered)");
-	
+
 	// This simulates an unexpected disconnect - the LWT will be published by broker
 	// Note: std::process::exit() prevents graceful DISCONNECT message
 	std::process::exit(0);

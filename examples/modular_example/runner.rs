@@ -1,15 +1,15 @@
 use std::time::Duration;
+
 use mqtt_typed_client::prelude::*;
 use tokio::select;
 
+use super::topics::TemperatureReading;
 // Import patterns demonstration:
 // Variant A - Import everything (less explicit but convenient)
 // use super::topics::*;
 
 // Variant B - Specific imports (recommended for clarity and avoiding conflicts)
-use super::topics::TemperatureReading;
 use super::topics::temperature_topic::*;
-
 // Import shared utilities
 use crate::shared;
 
@@ -21,11 +21,12 @@ pub async fn run_example() -> Result<()> {
 	let connection_url = shared::config::build_url("modular_sensor_system");
 	println!("Connecting to MQTT broker: {connection_url}");
 
-	let (client, connection) = MqttClient::<BincodeSerializer>::connect(&connection_url)
-		.await
-		.inspect_err(|e| {
-			shared::config::print_connection_error(&connection_url, e);
-		})?;
+	let (client, connection) =
+		MqttClient::<BincodeSerializer>::connect(&connection_url)
+			.await
+			.inspect_err(|e| {
+				shared::config::print_connection_error(&connection_url, e);
+			})?;
 
 	println!("- Connected to MQTT broker\n");
 
@@ -80,7 +81,9 @@ pub async fn run_example() -> Result<()> {
 		.with_cache(100)
 		.subscribe()
 		.await?;
-	println!("- Subscribed to: sensors/+/+/370/data (with 100-message cache)\n");
+	println!(
+		"- Subscribed to: sensors/+/+/370/data (with 100-message cache)\n"
+	);
 
 	// === 6. MESSAGE PROCESSING ===
 	println!("Listening for temperature messages...\n");
@@ -102,8 +105,8 @@ pub async fn run_example() -> Result<()> {
 							println!("   Location: {} | Sensor: {} | Device: {}", 
 								temp_msg.location, temp_msg.sensor_type, temp_msg.device_id);
 							println!("   Data: temp={}°C, humidity={:?}%, battery={:?}%\n", 
-								temp_msg.payload.temperature, 
-								temp_msg.payload.humidity, 
+								temp_msg.payload.temperature,
+								temp_msg.payload.humidity,
 								temp_msg.payload.battery_level);
 
 							if message_count >= max_messages {
@@ -146,8 +149,8 @@ pub async fn run_example() -> Result<()> {
 	}
 
 	match monitoring_result {
-		Ok(_) => println!("Processed {message_count} messages successfully"),
-		Err(_) => println!("Demo timeout reached ({timeout_duration:?})"),
+		| Ok(_) => println!("Processed {message_count} messages successfully"),
+		| Err(_) => println!("Demo timeout reached ({timeout_duration:?})"),
 	}
 
 	// Graceful connection shutdown

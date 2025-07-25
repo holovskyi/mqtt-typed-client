@@ -48,14 +48,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Get host and port from environment configuration
 	let (host, port) = shared::config::get_mqtt_broker_host_port();
 	let client_id = shared::config::get_client_id("temp_sensor");
-	
+
 	println!("Configuring MQTT client for {host}:{port}");
-	
-	let mut config = MqttClientConfig::<BincodeSerializer>::new(
-		&client_id,
-		&host,
-		port,
-	);
+
+	let mut config =
+		MqttClientConfig::<BincodeSerializer>::new(&client_id, &host, port);
 
 	// Configure connection parameters
 	config
@@ -73,7 +70,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let (client, connection) = MqttClient::connect_with_config(config)
 		.await
 		.inspect_err(|e| {
-			shared::config::print_connection_error(&format!("{host}:{port}"), e);
+			shared::config::print_connection_error(
+				&format!("{host}:{port}"),
+				e,
+			);
 		})?;
 	println!("✓ Connected with custom configuration\n");
 

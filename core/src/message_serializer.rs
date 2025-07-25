@@ -4,7 +4,7 @@ use std::fmt::Debug;
 
 #[cfg(feature = "bincode-serializer")]
 use bincode::{Decode, Encode};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 /// Trait for serializing and deserializing MQTT message payloads.
 ///
@@ -26,7 +26,7 @@ pub trait MessageSerializer<T>:
 /// Default serializer using bincode format.
 ///
 /// Requires types to implement `bincode::Encode` and `bincode::Decode`.
-/// 
+///
 /// Available when the `bincode-serializer` feature is enabled (default).
 #[cfg(feature = "bincode-serializer")]
 #[derive(Clone, Default)]
@@ -66,7 +66,7 @@ where T: Encode + Decode<()> + 'static
 /// JSON serializer using serde_json.
 ///
 /// Requires types to implement `serde::Serialize` and `serde::de::DeserializeOwned`.
-/// 
+///
 /// Available when the `json` feature is enabled.
 #[cfg(feature = "json")]
 #[derive(Clone, Default)]
@@ -99,7 +99,7 @@ where T: Serialize + DeserializeOwned + 'static
 /// MessagePack serializer using rmp-serde.
 ///
 /// Requires types to implement `serde::Serialize` and `serde::de::DeserializeOwned`.
-/// 
+///
 /// Available when the `messagepack` feature is enabled.
 #[cfg(feature = "messagepack")]
 #[derive(Clone, Default)]
@@ -132,7 +132,7 @@ where T: Serialize + DeserializeOwned + 'static
 /// CBOR serializer using ciborium.
 ///
 /// Requires types to implement `serde::Serialize` and `serde::de::DeserializeOwned`.
-/// 
+///
 /// Available when the `cbor` feature is enabled.
 #[cfg(feature = "cbor")]
 #[derive(Clone, Default)]
@@ -168,7 +168,7 @@ where T: Serialize + DeserializeOwned + 'static
 ///
 /// Requires types to implement `serde::Serialize` and `serde::de::DeserializeOwned`.
 /// Optimized for no_std environments and embedded systems.
-/// 
+///
 /// Available when the `postcard` feature is enabled.
 #[cfg(feature = "postcard")]
 #[derive(Clone, Default)]
@@ -202,7 +202,7 @@ where T: Serialize + DeserializeOwned + 'static
 ///
 /// Requires types to implement `prost::Message` trait.
 /// Industry standard for high-performance data interchange.
-/// 
+///
 /// Available when the `protobuf` feature is enabled.
 #[cfg(feature = "protobuf")]
 #[derive(Clone, Default)]
@@ -238,7 +238,7 @@ where T: prost::Message + Default + 'static
 ///
 /// Requires types to implement `serde::Serialize` and `serde::de::DeserializeOwned`.
 /// Human-readable format ideal for configuration files and debugging.
-/// 
+///
 /// Available when the `ron` feature is enabled.
 #[cfg(feature = "ron")]
 #[derive(Clone, Default)]
@@ -274,7 +274,7 @@ where T: Serialize + DeserializeOwned + 'static
 ///
 /// Requires types to implement `serde::Serialize` and `serde::de::DeserializeOwned`.
 /// Zero-copy schemaless binary format from Google FlatBuffers.
-/// 
+///
 /// Available when the `flexbuffers` feature is enabled.
 #[cfg(feature = "flexbuffers")]
 #[derive(Clone, Default)]
@@ -303,5 +303,3 @@ where T: Serialize + DeserializeOwned + 'static
 		flexbuffers::from_slice(bytes)
 	}
 }
-
-

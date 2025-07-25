@@ -60,12 +60,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// === 1. CONNECTION ===
 	let connection_url = shared::config::build_url("custom_patterns");
 	println!("Connecting to MQTT broker: {connection_url}");
-	
-	let (client, connection) = MqttClient::<BincodeSerializer>::connect(&connection_url)
-		.await
-		.inspect_err(|e| {
-			shared::config::print_connection_error(&connection_url, e);
-		})?;
+
+	let (client, connection) =
+		MqttClient::<BincodeSerializer>::connect(&connection_url)
+			.await
+			.inspect_err(|e| {
+				shared::config::print_connection_error(&connection_url, e);
+			})?;
 
 	println!("Connected to MQTT broker");
 
@@ -78,15 +79,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// === 2. CUSTOM SUBSCRIPTION WITH .with_pattern() ===
 	// Instead of: topic_client.subscribe().await?
 	// Use: topic_client.subscription().with_pattern().subscribe().await?
-	
+
 	println!("Setting up custom subscription with environment prefix...");
-	
+
 	let mut custom_subscriber = topic_client
 		.subscription()
 		.with_pattern("dev/greetings/{language}/{sender}")? // Compatible: same {language}, {sender}
 		.subscribe()
 		.await?;
-	
+
 	println!("Subscribed to: dev/greetings/+/+");
 
 	// Small delay to ensure subscription is ready
@@ -103,11 +104,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("Publishing to custom pattern...");
 
 	let custom_publisher = topic_client.get_publisher_to(
-		"dev/greetings/{language}/{sender}",  // Compatible custom pattern
-		"rust",     // {language} parameter
-		"dev_user"  // {sender} parameter
+		"dev/greetings/{language}/{sender}", // Compatible custom pattern
+		"rust",                              // {language} parameter
+		"dev_user",                          // {sender} parameter
 	)?;
-	
+
 	custom_publisher.publish(&message).await?;
 	println!("Published to: dev/greetings/rust/dev_user");
 
@@ -123,14 +124,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		"dev/greetings/{language}/{sender}", // Compatible custom pattern
 		"rust",
 		"dev_client",
-		lwt_message
-	)?.qos(QoS::AtLeastOnce);
-	
+		lwt_message,
+	)?
+	.qos(QoS::AtLeastOnce);
+
 	println!("Custom LWT topic: {}", custom_lwt.topic);
 
 	// === 5. RECEIVING MESSAGES ===
 	println!("\nWaiting for published message...");
-	
+
 	if let Some(Ok(greeting)) = custom_subscriber.receive().await {
 		println!("Received custom greeting:");
 		println!("   Language: {}", greeting.language);

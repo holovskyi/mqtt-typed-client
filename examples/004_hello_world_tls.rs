@@ -11,12 +11,12 @@
 
 mod shared;
 
+use std::{fs, io::BufReader};
+
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientConfig};
 use mqtt_typed_client_macros::mqtt_topic;
 use rumqttc::Transport;
-
-use std::{fs, io::BufReader};
 use rumqttc::tokio_rustls::rustls::{ClientConfig, RootCertStore};
 
 /// Message payload - automatically serialized/deserialized with bincode
@@ -41,22 +41,22 @@ pub struct GreetingTopic {
 /// Create TLS configuration with custom CA certificate
 fn create_tls_config() -> Result<ClientConfig, Box<dyn std::error::Error>> {
 	let mut root_cert_store = RootCertStore::empty();
-	
+
 	// Load CA certificate
 	let ca_cert = fs::read("dev/certs/ca.pem")?;
 	let mut reader = BufReader::new(&ca_cert[..]);
-	
+
 	// Parse PEM certificates
 	let certs = rustls_pemfile::certs(&mut reader);
 	for cert in certs {
 		let cert = cert?;
 		root_cert_store.add(cert)?;
 	}
-	
+
 	let config = ClientConfig::builder()
 		.with_root_certificates(root_cert_store)
 		.with_no_client_auth();
-	
+
 	Ok(config)
 }
 
@@ -70,22 +70,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// === 1. TLS CONFIGURATION ===
 	// Create TLS configuration with custom CA certificate
 	let tls_config = create_tls_config()?;
-	
+
 	// Generate unique client ID for this example
 	let client_id = shared::config::get_client_id("hello_world_tls");
-	
+
 	// Configure MQTT client with TLS - explicitly using localhost:8883 for TLS demo
 	let mut config = MqttClientConfig::<BincodeSerializer>::new(
 		&client_id,
 		"localhost",
 		8883,
 	);
-	
+
 	// Set TLS transport
-	config.connection.set_transport(Transport::tls_with_config(tls_config.into()));
-	
+	config
+		.connection
+		.set_transport(Transport::tls_with_config(tls_config.into()));
+
 	println!("Connecting to MQTT broker with TLS: localhost:8883");
-	
+
 	// Connect to MQTT broker using custom TLS configuration
 	let (client, connection) = MqttClient::connect_with_config(config)
 		.await
@@ -95,7 +97,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			eprintln!("🔒 TLS-specific troubleshooting:");
 			eprintln!("   • Ensure CA certificate exists: dev/certs/ca.pem");
 			eprintln!("   • Check certificate permissions and format");
-			eprintln!("   • Try plain MQTT: MQTT_BROKER=\"mqtt://localhost:1883\"");
+			eprintln!(
+				"   • Try plain MQTT: MQTT_BROKER=\"mqtt://localhost:1883\""
+			);
 		})?;
 
 	println!("Connected to MQTT broker");

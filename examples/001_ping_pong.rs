@@ -69,7 +69,6 @@ pub struct PingPongTopic {
 	payload: PingPongMessage,
 }
 
-
 /// Handle player's game session
 async fn run_player(
 	client: MqttClient<BincodeSerializer>,
@@ -139,12 +138,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// URL and client_id are automatically configured from environment or defaults
 	let connection_url = shared::config::build_url("ping_pong");
 	println!("Connecting to MQTT broker: {connection_url}");
-	
-	let (client, connection) = MqttClient::<BincodeSerializer>::connect(&connection_url)
-		.await
-		.inspect_err(|e| {
-			shared::config::print_connection_error(&connection_url, e);
-		})?;
+
+	let (client, connection) =
+		MqttClient::<BincodeSerializer>::connect(&connection_url)
+			.await
+			.inspect_err(|e| {
+				shared::config::print_connection_error(&connection_url, e);
+			})?;
 
 	println!("- Connected to MQTT broker\n");
 
