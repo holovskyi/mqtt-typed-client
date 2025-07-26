@@ -23,7 +23,7 @@
 //!
 //! ## Demo Timeline (20 seconds total):
 //!
-//! ```
+//! ```text
 //! t=0s:  Publisher sends retained message #1 → stored by broker
 //! t=1s:  Subscriber-1 connects → receives retained message #1
 //! t=5s:  Publisher sends retained message #2 → replaces #1 in broker storage

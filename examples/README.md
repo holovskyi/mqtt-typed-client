@@ -258,7 +258,7 @@ MQTT_PASSWORD=your_password
 ### Environment Variables
 You can override any setting:
 ```bash
-MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example 000_hello_world
+MQTT_BROKER="mqtt://broker.hivemq.com:1883" cargo run --example 000_hello_world
 ```
 
 ## 🎯 Learning Path
@@ -305,8 +305,8 @@ cd dev && docker-compose up -d
 ```bash
 # Solutions:
 1. Check if TLS broker is running: docker-compose ps
-2. Use plain MQTT: MQTT_BROKER=\"mqtt://localhost:1883\"
-3. Try public broker: MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\"
+2. Use plain MQTT: MQTT_BROKER="mqtt://localhost:1883"
+3. Try public broker: MQTT_BROKER="mqtt://broker.hivemq.com:1883"
 ```
 
 ### No Logging Output
@@ -322,7 +322,7 @@ RUST_LOG=debug cargo run --example 000_hello_world
 ```bash
 # If ports 1883/8883 are in use, modify dev/docker-compose.yml
 # Or use external broker:
-MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example 000_hello_world
+MQTT_BROKER="mqtt://broker.hivemq.com:1883" cargo run --example 000_hello_world
 ```
 
 ## 🧩 Code Structure
@@ -338,7 +338,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     shared::tracing::setup(None);
     
     // Connect with automatic URL and client_id generation
-    let connection_url = shared::config::build_url(\"example_name\");
+    let connection_url = shared::config::build_url("example_name");
     let (client, connection) = MqttClient::<BincodeSerializer>::connect(&connection_url)
         .await
         .inspect_err(|e| {
@@ -357,7 +357,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 **⚠️ Remember:** Examples must be run from project root directory!
 
 1. **Copy template from 000_hello_world.rs**
-2. **Update client_id prefix** in `build_url(\"your_example_name\")`
+2. **Update client_id prefix** in `build_url("your_example_name")`
 3. **Add your MQTT logic**
 4. **Test from project root:** `cargo run --example your_example_name`
 5. **Update this README with your example**

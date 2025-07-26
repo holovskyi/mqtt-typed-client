@@ -11,7 +11,7 @@
 //! - Proper error handling and graceful shutdown
 //!
 //! Project structure:
-//! ```
+//! ```text
 //! modular_example/
 //! ├── mod.rs          # Module exports
 //! ├── topics.rs       # Topic definitions and data structures
