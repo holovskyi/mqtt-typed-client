@@ -1,6 +1,6 @@
 # Launch Plan (MVP v0.1.0)
 
-- [ ] Check how generated documentation and README look
+- [x] Check how generated documentation and README look
 - [ ] Publish on GitHub
 - [ ] Verify everything is ok
 - [ ] Publish on crates.io  
