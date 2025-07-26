@@ -269,21 +269,6 @@ You can override any setting:
 MQTT_BROKER="mqtt://broker.hivemq.com:1883" cargo run --example 000_hello_world
 ```
 
-## 🎯 Learning Path
-
-**Recommended order for learning:**
-
-1. **[000_hello_world.rs](000_hello_world.rs#example)** - Start here to understand basics
-2. **[001_ping_pong.rs](001_ping_pong.rs#example)** - See multi-client patterns
-3. **[002_configuration.rs](002_configuration.rs#example)** - Learn about client configuration  
-4. **[003_hello_world_lwt.rs](003_hello_world_lwt.rs#example)** - Understand MQTT reliability features
-5. **[004_hello_world_tls.rs](004_hello_world_tls.rs#example)** - Add security with TLS
-6. **[005_hello_world_serializers.rs](005_hello_world_serializers.rs#example)** - Custom message serialization
-7. **[006_retain_and_clear.rs](006_retain_and_clear.rs#example)** - MQTT retained messages and broker storage
-8. **[007_custom_patterns.rs](007_custom_patterns.rs#example)** - Override default topic patterns for advanced routing
-9. **[008_modular_example.rs](008_modular_example.rs#example)** - Organize complex applications with modular architecture
-10. **[100_all_serializers_demo.rs](100_all_serializers_demo.rs#example)** - Complete serialization ecosystem test
-
 ## 🔧 Troubleshooting
 
 ### ⚠️ Wrong Working Directory
