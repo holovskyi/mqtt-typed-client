@@ -18,6 +18,8 @@
 - [ ] **Smart protocol compression support**  
   Implement adaptive compression based on message type and size. Use compositional approach separating serialization and compression layers for maximum flexibility.
 
+- [ ] **Advanced backpressure handling is planned for future releases**
+
 ## Architecture Improvements
 
 - [ ] **Create minimal library version for embedded devices**  

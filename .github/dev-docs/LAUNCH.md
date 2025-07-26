@@ -14,5 +14,3 @@
 - [x] MSRV verification - how to determine MSRV for my library
 - [ ] Automated ChangeLog maintenance
 - [ ] Automated version assignment (whether to synchronize versions between /, core, macros)
-
-
