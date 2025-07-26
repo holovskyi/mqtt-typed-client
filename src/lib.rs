@@ -1,6 +1,6 @@
 //! # MQTT Typed Client
 //!
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("../docs/generated/README.doc.md")]
 //!
 //! ## API Reference
 //!

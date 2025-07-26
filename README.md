@@ -105,7 +105,7 @@ async fn main() -> Result<()> {
 
 ## 📚 Examples
 
-See [`crate::examples`] - Complete usage examples with source code
+See [examples/](examples/) - Complete usage examples with source code
 
 - `000_hello_world.rs` - Basic publish/subscribe with macros
 - `001_ping_pong.rs` - Multi-client communication
