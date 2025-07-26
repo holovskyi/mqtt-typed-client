@@ -1,6 +1,6 @@
 # MQTT Typed Client Macros
 
-Procedural macros for the mqtt-typed-client library.
+Procedural macros for type-safe async MQTT client with automatic topic routing.
 
 This crate provides the `#[mqtt_topic]` macro that generates type-safe MQTT topic handling code.
 

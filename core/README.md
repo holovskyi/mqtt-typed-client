@@ -1,6 +1,6 @@
 # MQTT Typed Client Core
 
-Core functionality for the mqtt-typed-client library providing type-safe MQTT operations.
+Core functionality for type-safe async MQTT client with automatic topic routing.
 
 This crate contains the fundamental components:
 - MQTT client implementation with async/await support

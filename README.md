@@ -2,14 +2,14 @@
 
 # 🦀 MQTT Typed Client
 
-A **high-level, asynchronous, type-safe MQTT client** built on top of rumqttc
+A **type-safe async MQTT client** built on top of rumqttc
+
+**Automatic topic routing and subscription management** with **compile-time guarantees**
 
 [![Crates.io](https://img.shields.io/crates/v/mqtt-typed-client.svg)](https://crates.io/crates/mqtt-typed-client)
 [![Documentation](https://docs.rs/mqtt-typed-client/badge.svg)](https://docs.rs/mqtt-typed-client)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 [![MSRV](https://img.shields.io/badge/MSRV-1.85.1-blue.svg)](https://blog.rust-lang.org/2025/01/09/Rust-1.85.0.html)
-
-**Zero-cost abstractions** and **compile-time guarantees** for MQTT communication
 
 </div>
 
@@ -30,7 +30,7 @@ A **high-level, asynchronous, type-safe MQTT client** built on top of rumqttc
 Add to your `Cargo.toml`:
 ```toml
 [dependencies]
-mqtt-typed-client = "0.1"
+mqtt-typed-client = "0.1.0"
 ```
 
 ```rust
@@ -138,7 +138,7 @@ Multiple serialization formats are supported via feature flags:
 Enable additional serializers:
 ```toml
 [dependencies]
-mqtt-typed-client = { version = "0.1", features = ["messagepack", "cbor"] }
+mqtt-typed-client = { version = "0.1.0", features = ["messagepack", "cbor"] }
 ```
 
 Custom serializers can be implemented by implementing the `MessageSerializer` trait.
