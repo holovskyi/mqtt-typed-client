@@ -54,3 +54,6 @@ required-features = ["bincode", "json", "messagepack", "cbor", "postcard", "ron"
 [[test]]
 name = "serializers_integration"
 required-features = ["bincode", "json", "messagepack", "cbor", "postcard", "ron", "flexbuffers", "protobuf"]
+
+[build-dependencies]
+regex = "1.0"
