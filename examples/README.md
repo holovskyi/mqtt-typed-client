@@ -2,6 +2,21 @@
 
 This directory contains examples demonstrating how to use the `mqtt-typed-client` library. Each example showcases different features and use cases.
 
+## 📋 Quick Navigation
+
+Jump directly to any example:
+
+- **[000_hello_world](#000_hello_worldrs---basic-usage)** - Basic Usage
+- **[001_ping_pong](#001_ping_pongrs---multi-client-communication)** - Multi-Client Communication
+- **[002_configuration](#⚙️-002_configurationrs---advanced-configuration)** - Advanced Configuration
+- **[003_hello_world_lwt](#003_hello_world_lwtrs---last-will--testament-lwt)** - Last Will & Testament
+- **[004_hello_world_tls](#🔒-004_hello_world_tlsrs---tlsssl-connections)** - TLS/SSL Connections
+- **[005_hello_world_serializers](#🔧-005_hello_world_serializersrs---custom-message-serializers)** - Custom Serializers
+- **[006_retain_and_clear](#🔄-006_retain_and_clearrs---mqtt-retained-messages)** - Retained Messages
+- **[007_custom_patterns](#007_custom_patternsrs---custom-topic-patterns)** - Custom Topic Patterns
+- **[008_modular_example](#008_modular_examplers---modular-project-architecture)** - Modular Architecture
+- **[100_all_serializers_demo](#100_all_serializers_demors---complete-serializer-test-suite)** - Complete Serializer Test Suite
+
 ## 🚀 Quick Start
 
 **⚠️ Important:** Always run examples from the project root directory!
@@ -29,7 +44,7 @@ This directory contains examples demonstrating how to use the `mqtt-typed-client
 
 ## 📚 Examples Index
 
-### 🌟 **[000_hello_world.rs](000_hello_world.rs)** - Basic Usage
+### <a id="000_hello_worldrs---basic-usage"></a>**[000_hello_world.rs](example_000_hello_world/index.html)** - Basic Usage
 **What it demonstrates:**
 - Basic publish/subscribe pattern
 - Topic parameter extraction with `#[mqtt_topic]` macro
@@ -41,7 +56,7 @@ This directory contains examples demonstrating how to use the `mqtt-typed-client
 - BincodeSerializer for efficient binary serialization
 - Wildcard subscriptions: `greetings/+/+`
 
-### 🏓 **[001_ping_pong.rs](001_ping_pong.rs)** - Multi-Client Communication  
+### <a id="001_ping_pongrs---multi-client-communication"></a>**[001_ping_pong.rs](example_001_ping_pong/index.html)** - Multi-Client Communication  
 **What it demonstrates:**
 - Multiple MQTT clients in one application
 - Inter-client communication patterns
@@ -54,7 +69,7 @@ This directory contains examples demonstrating how to use the `mqtt-typed-client
 - Random event generation
 - Graceful shutdown handling
 
-### ⚙️ **[002_configuration.rs](002_configuration.rs)** - Advanced Configuration
+### <a id="⚙️-002_configurationrs---advanced-configuration"></a>⚙️ **[002_configuration.rs](example_002_configuration/index.html)** - Advanced Configuration
 **What it demonstrates:**
 - Custom MQTT client settings
 - Connection parameter tuning
@@ -67,7 +82,7 @@ This directory contains examples demonstrating how to use the `mqtt-typed-client
 - Cache size optimization
 - Credential management
 
-### ⚰️ **[003_hello_world_lwt.rs](003_hello_world_lwt.rs)** - Last Will & Testament (LWT)
+### <a id="003_hello_world_lwtrs---last-will--testament-lwt"></a>**[003_hello_world_lwt.rs](example_003_hello_world_lwt/index.html)** - Last Will & Testament (LWT)
 **What it demonstrates:**
 - MQTT Last Will & Testament functionality
 - Ungraceful vs graceful disconnect handling
@@ -89,7 +104,7 @@ cargo run --example 003_hello_world_lwt
 cargo run --example 003_hello_world_lwt -- --publisher
 ```
 
-### 🔒 **[004_hello_world_tls.rs](004_hello_world_tls.rs)** - TLS/SSL Connections
+### <a id="🔒-004_hello_world_tlsrs---tlsssl-connections"></a>🔒 **[004_hello_world_tls.rs](example_004_hello_world_tls/index.html)** - TLS/SSL Connections
 **What it demonstrates:**
 - Secure MQTT connections (MQTTS)
 - Custom TLS certificate handling
@@ -102,7 +117,7 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - TLS transport configuration
 - Development vs production certificates
 
-### 🔧 **[005_hello_world_serializers.rs](005_hello_world_serializers.rs)** - Custom Message Serializers
+### <a id="🔧-005_hello_world_serializersrs---custom-message-serializers"></a>🔧 **[005_hello_world_serializers.rs](example_005_hello_world_serializers/index.html)** - Custom Message Serializers
 **What it demonstrates:**
 - Using different serializers (MessagePack vs built-in Bincode)
 - Creating custom MessageSerializer trait implementation
@@ -115,7 +130,7 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - Binary vs text serialization formats
 - Custom serializer wrapper creation
 
-### 🔄 **[006_retain_and_clear.rs](006_retain_and_clear.rs)** - MQTT Retained Messages
+### <a id="🔄-006_retain_and_clearrs---mqtt-retained-messages"></a>🔄 **[006_retain_and_clear.rs](example_006_retain_and_clear/index.html)** - MQTT Retained Messages
 **What it demonstrates:**
 - MQTT retained message functionality with multiple clients
 - Message persistence and broker storage behavior
@@ -139,7 +154,7 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - t=15s: Clear retained messages from broker storage
 - t=18s: Subscriber-4 connects → receives nothing (storage empty)
 
-### 🎯 **[007_custom_patterns.rs](007_custom_patterns.rs)** - Custom Topic Patterns
+### <a id="007_custom_patternsrs---custom-topic-patterns"></a>**[007_custom_patterns.rs](example_007_custom_patterns/index.html)** - Custom Topic Patterns
 **What it demonstrates:**
 - Overriding default topic patterns from `#[mqtt_topic]` macro
 - Environment-specific topic routing (dev/prod prefixes)
@@ -166,7 +181,7 @@ topic_client.get_publisher_to("dev/greetings/{language}/{sender}", "rust", "alic
 GreetingTopic::last_will_to("dev/greetings/{language}/{sender}", "rust", "client", msg)?
 ```
 
-### 🏗️ **[008_modular_example.rs](008_modular_example.rs)** - Modular Project Architecture
+### <a id="008_modular_examplers---modular-project-architecture"></a>**[008_modular_example.rs](example_008_modular_example/index.html)** - Modular Project Architecture
 **What it demonstrates:**
 - Organizing MQTT applications with multiple modules
 - Separating topic definitions from business logic
@@ -182,7 +197,7 @@ GreetingTopic::last_will_to("dev/greetings/{language}/{sender}", "rust", "client
 - Structured logging and timeout handling
 
 **Project structure:**
-```
+```text
 modular_example/
 ├── mod.rs          # Module exports
 ├── topics.rs       # Topic definitions and data structures  
@@ -195,7 +210,7 @@ modular_example/
 - **Filtered subscription:** Only specific device with caching
 - **Data flow:** Real sensor data → MQTT → Multiple typed subscribers
 
-### 💯 **[100_all_serializers_demo.rs](100_all_serializers_demo.rs)** - Complete Serializer Test Suite
+### <a id="100_all_serializers_demors---complete-serializer-test-suite"></a>**[100_all_serializers_demo.rs](example_100_all_serializers_demo/index.html)** - Complete Serializer Test Suite
 **What it demonstrates:**
 - Full publish/subscribe cycle testing for all 8 available serializers
 - Serialization and deserialization verification
@@ -250,16 +265,16 @@ MQTT_BROKER=\"mqtt://broker.hivemq.com:1883\" cargo run --example 000_hello_worl
 
 **Recommended order for learning:**
 
-1. **[000_hello_world.rs](000_hello_world.rs)** - Start here to understand basics
-2. **[001_ping_pong.rs](001_ping_pong.rs)** - See multi-client patterns
-3. **[002_configuration.rs](002_configuration.rs)** - Learn about client configuration  
-4. **[003_hello_world_lwt.rs](003_hello_world_lwt.rs)** - Understand MQTT reliability features
-5. **[004_hello_world_tls.rs](004_hello_world_tls.rs)** - Add security with TLS
-6. **[005_hello_world_serializers.rs](005_hello_world_serializers.rs)** - Custom message serialization
-7. **[006_retain_and_clear.rs](006_retain_and_clear.rs)** - MQTT retained messages and broker storage
-8. **[007_custom_patterns.rs](007_custom_patterns.rs)** - Override default topic patterns for advanced routing
-9. **[008_modular_example.rs](008_modular_example.rs)** - Organize complex applications with modular architecture
-10. **[100_all_serializers_demo.rs](100_all_serializers_demo.rs)** - Complete serialization ecosystem test
+1. **[000_hello_world.rs](example_000_hello_world/index.html)** - Start here to understand basics
+2. **[001_ping_pong.rs](example_001_ping_pong/index.html)** - See multi-client patterns
+3. **[002_configuration.rs](example_002_configuration/index.html)** - Learn about client configuration  
+4. **[003_hello_world_lwt.rs](example_003_hello_world_lwt/index.html)** - Understand MQTT reliability features
+5. **[004_hello_world_tls.rs](example_004_hello_world_tls/index.html)** - Add security with TLS
+6. **[005_hello_world_serializers.rs](example_005_hello_world_serializers/index.html)** - Custom message serialization
+7. **[006_retain_and_clear.rs](example_006_retain_and_clear/index.html)** - MQTT retained messages and broker storage
+8. **[007_custom_patterns.rs](example_007_custom_patterns/index.html)** - Override default topic patterns for advanced routing
+9. **[008_modular_example.rs](example_008_modular_example/index.html)** - Organize complex applications with modular architecture
+10. **[100_all_serializers_demo.rs](example_100_all_serializers_demo/index.html)** - Complete serialization ecosystem test
 
 ## 🔧 Troubleshooting
 

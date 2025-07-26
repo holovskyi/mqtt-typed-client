@@ -1,35 +1,203 @@
-# MQTT Typed Client
+<div align="center">
 
-A Rust library providing a typed MQTT client with pattern-based routing and automatic subscription management.
+# 🦀 MQTT Typed Client
 
-[![Crates.io](https://img.shields.io/crates/v/mqtt_typed_client.svg)](https://crates.io/crates/mqtt_typed_client)
-[![Documentation](https://docs.rs/mqtt_typed_client/badge.svg)](https://docs.rs/mqtt_typed_client)
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
+A **high-level, asynchronous, type-safe MQTT client** built on top of rumqttc
 
-## Features
+[![Crates.io](https://img.shields.io/crates/v/mqtt-typed-client.svg)](https://crates.io/crates/mqtt-typed-client)
+[![Documentation](https://docs.rs/mqtt-typed-client/badge.svg)](https://docs.rs/mqtt-typed-client)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
+[![MSRV](https://img.shields.io/badge/MSRV-1.85.1-blue.svg)](https://blog.rust-lang.org/2025/01/09/Rust-1.85.0.html)
 
-- 🔐 **Type-safe Message Handling**: Compile-time guarantees for message serialization/deserialization
-- 🔍 **Pattern-based Routing**: Full support for MQTT wildcard patterns (`+`, `#`)
-- 🚀 **Automatic Subscription Management**: Handles subscription lifecycle automatically
-- 🛑 **Graceful Shutdown**: Proper resource cleanup and connection termination
-- ⚡ **Async/Await Support**: Built on top of `tokio` for high-performance async operations
-- 🔄 **Error Handling**: Comprehensive error types with automatic retry logic
-- 📦 **Pluggable Serialization**: Bincode serializer included, easy to add custom serializers
-- 🏃‍♂️ **Production Ready**: Memory-efficient with proper backpressure handling
+**Zero-cost abstractions** and **compile-time guarantees** for MQTT communication
 
-## Quick Start
+</div>
 
-Add this to your `Cargo.toml`:
+## ✨ Key Features
 
+- **Type-safe topic patterns** with named parameters and automatic parsing
+- **Zero-cost abstractions** via procedural macros with compile-time validation
+- **Built-in serialization** support for 8+ formats (Bincode, JSON, MessagePack, etc.)
+- **Efficient message routing** with tree-based topic matching and internal caching
+- **Smart defaults** with full configurability when needed
+- **Memory efficient** design with proper resource management
+- **Automatic reconnection** and graceful shutdown
+
+⚠️ **MSRV**: Rust 1.85.1 (driven by default `bincode` serializer; can be lowered with alternative serializers)
+
+## 🚀 Quick Start
+
+Add to your `Cargo.toml`:
 ```toml
 [dependencies]
-mqtt_typed_client = "0.1"
-serde = { version = "1.0", features = ["derive"] }
-bincode = "2.0"
-tokio = { version = "1.0", features = ["full"] }
+mqtt-typed-client = "0.1"
 ```
 
-### Basic Usage
+### Recommended: Type-Safe Approach with Macros
+
+```rust
+use mqtt_typed_client::prelude::*;
+use mqtt_typed_client_macros::mqtt_topic;
+use serde::{Deserialize, Serialize};
+use bincode::{Encode, Decode};
+
+#[derive(Serialize, Deserialize, Encode, Decode, Debug)]
+struct SensorReading {
+    temperature: f64,
+    humidity: f64,
+    timestamp: u64,
+}
+
+// Define typed topic with automatic parameter extraction
+#[mqtt_topic("sensors/{location}/{sensor_type}/data")]
+struct SensorTopic {
+    location: String,
+    sensor_type: String,
+    payload: SensorReading,
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    // Connect to MQTT broker
+    let (client, connection) = MqttClient::<BincodeSerializer>::connect(
+        "mqtt://broker.hivemq.com:1883"
+    ).await?;
+
+    // Type-safe operations with automatic topic parameter handling
+    let topic_client = client.sensor_topic();
+    
+    // Subscribe to all sensors: "sensors/+/+/data"
+    let mut subscriber = topic_client.subscribe().await?;
+    
+    // Publish to specific topic: "sensors/kitchen/temperature/data"
+    let reading = SensorReading { 
+        temperature: 22.5, 
+        humidity: 45.0, 
+        timestamp: 1234567890 
+    };
+    topic_client.publish("kitchen", "temperature", &reading).await?;
+    
+    // Receive with automatic parameter extraction
+    if let Some(Ok(msg)) = subscriber.receive().await {
+        println!("Sensor {} in {} reported: temp={}°C, humidity={}%", 
+            msg.sensor_type, msg.location, 
+            msg.payload.temperature, msg.payload.humidity);
+    }
+    
+    connection.shutdown().await?;
+    Ok(())
+}
+```
+
+## 🆚 What mqtt-typed-client adds over rumqttc
+
+**Publishing:**
+```rust
+// rumqttc - manual topic construction and serialization
+let topic = format!("sensors/{}/temperature", sensor_id);
+let payload = serde_json::to_vec(&data)?;
+client.publish(topic, QoS::AtLeastOnce, false, payload).await?;
+
+// mqtt-typed-client - type-safe, automatic
+topic_client.publish(&sensor_id, &data).await?;
+```
+
+**Subscribing with routing:**
+```rust
+// rumqttc - manual pattern matching and dispatching
+// while let Ok(event) = eventloop.poll().await {
+//     if let Event::Incoming(Packet::Publish(publish)) = event {
+//         if publish.topic.starts_with("sensors/") {
+//             // Manual topic parsing, manual deserialization...
+//         } else if publish.topic.starts_with("alerts/") {
+//             // More manual parsing...
+//         }
+//     }
+// }
+
+// mqtt-typed-client - automatic routing to typed handlers
+let mut sensor_sub = client.sensor_topic().subscribe().await?;
+let mut alert_sub = client.alert_topic().subscribe().await?;
+
+tokio::select! {
+    msg = sensor_sub.receive() => { /* typed sensor data ready */ }
+    msg = alert_sub.receive() => { /* typed alert data ready */ }
+}
+```
+
+📋 **For detailed comparison see:** [docs/COMPARISON_WITH_RUMQTTC.md](docs/COMPARISON_WITH_RUMQTTC.md)
+
+## 📦 Serialization Support
+
+Multiple serialization formats are supported via feature flags:
+
+- `bincode` - Binary serialization (default, most efficient)
+- `json` - JSON serialization (default, human-readable)
+- `messagepack` - MessagePack binary format
+- `cbor` - CBOR binary format
+- `postcard` - Embedded-friendly binary format
+- `ron` - Rusty Object Notation
+- `flexbuffers` - FlatBuffers FlexBuffers
+- `protobuf` - Protocol Buffers (requires generated types)
+
+Enable additional serializers:
+```toml
+[dependencies]
+mqtt-typed-client = { version = "0.1", features = ["messagepack", "cbor"] }
+```
+
+Custom serializers can be implemented by implementing the `MessageSerializer` trait.
+
+## 🎯 Topic Pattern Matching
+
+Supports MQTT wildcard patterns with named parameters:
+
+- `{param}` - Named parameter (equivalent to `+` wildcard)
+- `{param:#}` - Multi-level named parameter (equivalent to `#` wildcard)
+
+```rust
+// Traditional MQTT wildcards
+#[mqtt_topic("home/+/temperature")]     // matches: home/kitchen/temperature
+struct SimplePattern { payload: f64 }
+
+// Named parameters (recommended)
+#[mqtt_topic("home/{room}/temperature")] // matches: home/kitchen/temperature  
+struct NamedPattern { 
+    room: String,        // Automatically extracted: "kitchen"
+    payload: f64 
+}
+
+// Multi-level parameters
+#[mqtt_topic("logs/{service}/{path:#}")]  // matches: logs/api/v1/users/create
+struct LogPattern {
+    service: String,     // "api"
+    path: String,        // "v1/users/create"  
+    payload: Data
+}
+```
+
+## 📚 Examples
+
+See [`crate::examples`] - Complete usage examples with source code
+
+- `000_hello_world.rs` - Basic publish/subscribe with macros
+- `001_ping_pong.rs` - Multi-client communication
+- `002_configuration.rs` - Advanced client configuration
+- `003_hello_world_lwt.rs` - Last Will & Testament
+- `004_hello_world_tls.rs` - TLS/SSL connections
+- `005_hello_world_serializers.rs` - Custom serializers
+- `006_retain_and_clear.rs` - Retained messages
+- `007_custom_patterns.rs` - Custom topic patterns
+- `008_modular_example.rs` - Modular application structure
+
+Run examples:
+```bash
+cargo run --example 000_hello_world
+```
+
+## 🔧 Advanced Usage: Low-Level API
+
+For cases where you need direct control without macros:
 
 ```rust
 use mqtt_typed_client::prelude::*;
@@ -40,323 +208,34 @@ use bincode::{Encode, Decode};
 struct SensorData {
     temperature: f64,
     humidity: f64,
-    timestamp: u64,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Create MQTT client
     let (client, connection) = MqttClient::<BincodeSerializer>::connect(
         "mqtt://broker.hivemq.com:1883"
     ).await?;
 
-    // Create a typed publisher
+    // Direct topic operations
     let publisher = client.get_publisher::<SensorData>("sensors/temperature")?;
-
-    // Create a typed subscriber with wildcard pattern
     let mut subscriber = client.subscribe::<SensorData>("sensors/+").await?;
 
-    // Publish data
-    let data = SensorData {
-        temperature: 23.5,
-        humidity: 45.0,
-        timestamp: 1234567890,
-    };
+    let data = SensorData { temperature: 23.5, humidity: 45.0 };
     publisher.publish(&data).await?;
 
-    // Receive data
     if let Some((topic, result)) = subscriber.receive().await {
         match result {
-            Ok(sensor_data) => {
-                println!("Received from {}: {:?}", topic, sensor_data);
-            }
+            Ok(sensor_data) => println!("Received from {}: {:?}", topic.topic_path(), sensor_data),
             Err(e) => eprintln!("Deserialization error: {:?}", e),
         }
     }
 
-    // Graceful shutdown
     connection.shutdown().await?;
     Ok(())
 }
 ```
 
-## Pattern Matching
-
-The library supports MQTT topic pattern matching with wildcards:
-
-### Single-level Wildcard (`+`)
-
-Matches exactly one topic level:
-
-```rust
-// Subscribe to temperature from any room
-let subscriber = client.subscribe::<f64>("home/+/temperature").await?;
-
-// This will match:
-// home/kitchen/temperature
-// home/bedroom/temperature
-// home/livingroom/temperature
-
-// This will NOT match:
-// home/kitchen/sensor/temperature (too many levels)
-// office/kitchen/temperature (wrong prefix)
-```
-
-### Multi-level Wildcard (`#`)
-
-Matches any number of topic levels (must be last):
-
-```rust
-// Subscribe to all sensors data
-let subscriber = client.subscribe::<SensorData>("sensors/#").await?;
-
-// This will match:
-// sensors/temperature
-// sensors/kitchen/temperature
-// sensors/outdoor/weather/humidity
-// sensors/anything/nested/deeply
-```
-
-### Combined Patterns
-
-```rust
-// Subscribe to any device status in any room
-let subscriber = client.subscribe::<DeviceStatus>("+/devices/+/status").await?;
-
-// Subscribe to all data from living room
-let subscriber = client.subscribe::<serde_json::Value>("home/livingroom/#").await?;
-```
-
-## Custom Serialization
-
-Implement the `MessageSerializer` trait for custom serialization:
-
-### JSON Serializer Example
-
-```rust
-use mqtt_typed_client::MessageSerializer;
-use serde::{Serialize, de::DeserializeOwned};
-
-#[derive(Clone, Default)]
-pub struct JsonSerializer;
-
-impl<T> MessageSerializer<T> for JsonSerializer
-where
-    T: Serialize + DeserializeOwned + 'static,
-{
-    type SerializeError = serde_json::Error;
-    type DeserializeError = serde_json::Error;
-
-    fn serialize(&self, data: &T) -> Result<Vec<u8>, Self::SerializeError> {
-        serde_json::to_vec(data)
-    }
-
-    fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError> {
-        serde_json::from_slice(bytes)
-    }
-}
-
-// Use with your client
-let (client, connection) = MqttClient::<JsonSerializer>::connect("mqtt://broker.example.com").await?;
-```
-
-### MessagePack Serializer Example
-
-```rust
-use mqtt_typed_client::MessageSerializer;
-use serde::{Serialize, de::DeserializeOwned};
-
-#[derive(Clone, Default)]
-pub struct MessagePackSerializer;
-
-impl<T> MessageSerializer<T> for MessagePackSerializer
-where
-    T: Serialize + DeserializeOwned + 'static,
-{
-    type SerializeError = rmp_serde::encode::Error;
-    type DeserializeError = rmp_serde::decode::Error;
-
-    fn serialize(&self, data: &T) -> Result<Vec<u8>, Self::SerializeError> {
-        rmp_serde::to_vec(data)
-    }
-
-    fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError> {
-        rmp_serde::from_slice(bytes)
-    }
-}
-```
-
-## Advanced Configuration
-
-### Publisher Configuration
-
-```rust
-let publisher = client
-    .get_publisher::<SensorData>("sensors/temperature")?
-    .with_qos(QoS::ExactlyOnce)  // Set QoS level
-    .with_retain(true);          // Set retain flag
-
-publisher.publish(&data).await?;
-```
-
-### Subscription Configuration
-
-```rust
-use mqtt_typed_client::routing::SubscriptionConfig;
-
-let config = SubscriptionConfig {
-    qos: QoS::ExactlyOnce,
-};
-
-let subscriber = client
-    .subscribe_with_config::<SensorData>("sensors/+", config)
-    .await?;
-```
-
-### Connection Options
-
-```rust
-// With authentication
-let (client, connection) = MqttClient::<BincodeSerializer>::connect(
-    "mqtt://username:password@broker.example.com:1883"
-).await?;
-
-// With TLS
-let (client, connection) = MqttClient::<BincodeSerializer>::connect(
-    "mqtts://broker.example.com:8883"
-).await?;
-
-// With client ID
-let (client, connection) = MqttClient::<BincodeSerializer>::connect(
-    "mqtt://broker.example.com:1883?client_id=my-unique-client"
-).await?;
-```
-
-## Error Handling
-
-The library provides comprehensive error handling:
-
-```rust
-use mqtt_typed_client::{MqttClientError, TopicRouterError};
-
-match client.subscribe::<SensorData>("invalid/pattern/+/+").await {
-    Ok(subscriber) => {
-        // Handle successful subscription
-    }
-    Err(MqttClientError::TopicPattern(e)) => {
-        eprintln!("Invalid topic pattern: {}", e);
-    }
-    Err(MqttClientError::Connection(e)) => {
-        eprintln!("Connection failed: {}", e);
-    }
-    Err(e) => {
-        eprintln!("Other error: {}", e);
-    }
-}
-```
-
-## Performance Considerations
-
-### Memory Usage
-
-- The library uses `Arc<T>` for sharing messages between multiple subscribers
-- Subscription channels have a default capacity of 500 messages
-- Automatic cleanup of inactive subscriptions
-
-### Backpressure Handling
-
-```rust
-// Slow subscribers are handled gracefully
-// Messages to slow subscribers get a 2-second timeout
-// After timeout, the message is dropped but subscription remains active
-```
-
-### Connection Resilience
-
-- Automatic reconnection with exponential backoff
-- Configurable retry limits and timeouts
-- Graceful handling of network interruptions
-
-## Wildcard Limitations
-
-### Publisher Restrictions
-
-Multi-level wildcards (`#`) **cannot be used with publishers** because they represent 
-variable-length topic segments that cannot be constructed from fixed parameters.
-
-```rust
-// ❌ This will cause a compile error
-#[mqtt_topic("events/{category}/#")]
-struct Event { category: String, payload: String }
-
-// ✅ Solution 1: Explicit subscriber mode
-#[mqtt_topic("events/{category}/#", subscriber)]
-struct EventReceived { category: String, payload: String }
-
-// ✅ Solution 2: Separate structs for different purposes
-#[mqtt_topic("events/{category}", publisher)]
-struct EventToPublish { category: String, payload: String }
-
-#[mqtt_topic("events/{category}/#", subscriber)]  
-struct EventReceived { category: String, payload: String }
-```
-
-### Why This Limitation Exists
-
-```rust
-// How would the publisher generate a topic from this?
-#[mqtt_topic("alerts/{severity}/{details:#}")]
-//                              ^^^^^^^^^^^^
-//                              Could be: "building1/floor2"
-//                              Or:       "building1/floor2/room5/sensor3"
-//                              Or:       "any/number/of/segments"
-```
-
-Publishers need to construct **concrete topic strings**, while `#` represents 
-**variable-length paths** that cannot be determined at compile time.
-
-### Helpful Error Messages
-
-The macro provides clear guidance when you encounter this limitation:
-
-```rust
-#[mqtt_topic("alerts/{severity}/{details:#}")]
-struct Alert { severity: String, details: String, payload: String }
-```
-
-```
-error: Cannot generate publisher methods for patterns with '#' wildcards.
-
- Solutions:
-   • Use subscriber-only mode: #[mqtt_topic("alerts/{severity}/{details:#}", subscriber)]
-   • Create separate structs for different purposes:
-
-     #[mqtt_topic("alerts/{severity}/{details:#}", subscriber)]
-     struct AlertReceived { /* fields */ }
-
-     #[mqtt_topic("alerts/{severity}", publisher)]
-     struct AlertToSend { /* fields */ }
-
- Why: Publishers need concrete topic strings, but '#' represents 
- variable-length paths that cannot be determined at compile time.
-```
-
-## Examples
-
-Check out the `examples/` directory for more comprehensive examples:
-
-- `basic_usage.rs` - Simple publish/subscribe example
-- `patterns.rs` - Wildcard pattern matching examples
-- `custom_serializer.rs` - Custom serialization implementation
-- `error_handling.rs` - Comprehensive error handling
-
-Run examples with:
-
-```bash
-cargo run --example main_example.rs 
-```
-
-## License
+## 📄 License
 
 This project is licensed under either of
 
@@ -365,7 +244,7 @@ This project is licensed under either of
 
 at your option.
 
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -374,3 +253,5 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
