@@ -12,6 +12,7 @@ A **type-safe async MQTT client** built on top of rumqttc
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 [![MSRV](https://img.shields.io/badge/MSRV-1.85.1-blue.svg)](https://blog.rust-lang.org/2025/01/09/Rust-1.85.0.html)
 
+**Like this project? [⭐ Star it on GitHub!](https://github.com/holovskyi/mqtt-typed-client)**
 </div>
 
 ## ✨ Key Features
@@ -105,6 +106,8 @@ async fn main() -> Result<()> {
     Ok(())
 }
 ```
+
+**Like this project? [⭐ Star it on GitHub!](https://github.com/holovskyi/mqtt-typed-client)**
 
 ## 📚 Examples
 
