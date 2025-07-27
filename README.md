@@ -6,6 +6,7 @@ A **type-safe async MQTT client** built on top of rumqttc
 
 **Automatic topic routing and subscription management** with **compile-time guarantees**
 
+[![CI](https://github.com/holovskyi/mqtt-typed-client/workflows/CI/badge.svg)](https://github.com/holovskyi/mqtt-typed-client/actions)
 [![Crates.io](https://img.shields.io/crates/v/mqtt-typed-client.svg)](https://crates.io/crates/mqtt-typed-client)
 [![Documentation](https://docs.rs/mqtt-typed-client/badge.svg)](https://docs.rs/mqtt-typed-client)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
@@ -17,6 +18,8 @@ A **type-safe async MQTT client** built on top of rumqttc
 
 - **Type-safe topic patterns** with named parameters and automatic parsing
 - **Zero-cost abstractions** via procedural macros with compile-time validation
+- **IDE-friendly experience** - full autocomplete for topics, parameters, and generated client methods
+- **Automatic subscription management** with intelligent routing and lifecycle handling
 - **Built-in serialization** support for 8+ formats (Bincode, JSON, MessagePack, etc.)
 - **Efficient message routing** with tree-based topic matching and internal caching
 - **Smart defaults** with full configurability when needed
