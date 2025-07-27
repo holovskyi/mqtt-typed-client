@@ -1,10 +1,10 @@
+use std::env;
 use std::fs;
 use std::path::Path;
 
 use regex::Regex;
 
 const INPUT_PATH: &str = "examples/README.md";
-const OUTPUT_DIR: &str = "docs/generated";
 const OUTPUT_FILENAME: &str = "examples.README.doc.md";
 
 // README.md processing constants
@@ -20,11 +20,13 @@ fn main() {
 }
 
 fn generate_doc_readme() {
-	let output_path = Path::new(OUTPUT_DIR).join(OUTPUT_FILENAME);
+	let out_dir = env::var("OUT_DIR").unwrap();
+	let output_dir = Path::new(&out_dir).join("generated");
+	let output_path = output_dir.join(OUTPUT_FILENAME);
 
 	// Create output directory if it doesn't exist
-	if let Err(e) = fs::create_dir_all(OUTPUT_DIR) {
-		eprintln!("Warning: Failed to create {OUTPUT_DIR} directory: {e}");
+	if let Err(e) = fs::create_dir_all(&output_dir) {
+		eprintln!("Warning: Failed to create {} directory: {e}", output_dir.display());
 		return;
 	}
 
@@ -76,11 +78,13 @@ fn transform_example_links(content: &str) -> String {
 }
 
 fn generate_readme_doc() {
-	let output_path = Path::new(OUTPUT_DIR).join(README_OUTPUT_FILENAME);
+	let out_dir = env::var("OUT_DIR").unwrap();
+	let output_dir = Path::new(&out_dir).join("generated");
+	let output_path = output_dir.join(README_OUTPUT_FILENAME);
 
 	// Create output directory if it doesn't exist
-	if let Err(e) = fs::create_dir_all(OUTPUT_DIR) {
-		eprintln!("Warning: Failed to create {OUTPUT_DIR} directory: {e}");
+	if let Err(e) = fs::create_dir_all(&output_dir) {
+		eprintln!("Warning: Failed to create {} directory: {e}", output_dir.display());
 		return;
 	}
 

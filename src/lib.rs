@@ -1,6 +1,6 @@
 //! # MQTT Typed Client
 //!
-#![doc = include_str!("../docs/generated/README.doc.md")]
+#![doc = include_str!(concat!(env!("OUT_DIR"), "/generated/README.doc.md"))]
 //!
 //! ## API Reference
 //!
@@ -47,7 +47,7 @@ pub mod examples {
 	//! This module contains comprehensive examples demonstrating
 	//! various features and use cases of mqtt-typed-client.
 	//!
-	#![doc = include_str!("../docs/generated/examples.README.doc.md")]
+	#![doc = include_str!(concat!(env!("OUT_DIR"), "/generated/examples.README.doc.md"))]
 
 	pub mod example_000_hello_world {
 		//! # Hello World Example
