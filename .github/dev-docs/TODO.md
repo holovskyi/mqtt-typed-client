@@ -1,5 +1,33 @@
 # Open Tasks
 
+## 📚 Documentation Improvements
+
+### Convert doctests from `ignore` to live tests
+- **Current state**: Most doctests use `ignore` or `no_run` to avoid MQTT dependency
+- **Goal**: Make documentation examples actually compile and run against real MQTT broker
+- **Infrastructure ready**: 
+  - ✅ `dev/docker-compose.yml` provides local MQTT broker
+  - ✅ CI pipeline can spin up services
+  - ✅ Examples already work with real broker
+
+**Implementation plan:**
+1. **Phase 1**: Convert simple API examples (macro usage, type definitions) to compile without network
+2. **Phase 2**: Convert connection examples to `no_run` with full valid context
+3. **Phase 3**: Set up CI to run MQTT broker during doctest phase
+4. **Phase 4**: Convert network examples to live tests with real broker
+
+**Benefits:**
+- 🎯 Documentation guaranteed to be current with API
+- 🛡️ Prevents broken examples from being published  
+- 🚀 Users can copy-paste working code
+- 🔄 Automatic validation during refactoring
+
+**Files to update:**
+- `README.md` - main examples
+- `docs/COMPARISON_WITH_RUMQTTC.md` - comparison snippets  
+- `examples/README.md` - examples documentation
+- `.github/workflows/ci.yml` - add MQTT service for doctests
+
 ## Easy Tasks
 - [ ] Auto-generation of client_id
 - [ ] Add subscriber.topic() and .pattern() methods for `let mut subscriber = topic_client.subscribe().await?;`

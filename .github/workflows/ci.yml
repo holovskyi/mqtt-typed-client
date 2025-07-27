@@ -17,9 +17,9 @@ jobs:
       fail-fast: false
       matrix:
         rust:
-          #- stable
-          #- beta
-          #- nightly
+          - stable
+          - beta
+          - nightly
           - 1.85.1  # MSRV
     
     steps:
