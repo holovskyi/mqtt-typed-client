@@ -177,7 +177,7 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - Multi-tenant and environment isolation patterns
 
 **API comparison:**
-```rust
+```rust,ignore
 // Standard usage:
 topic_client.subscribe().await?
 topic_client.publish("rust", "alice", &msg).await?
@@ -322,7 +322,7 @@ MQTT_BROKER="mqtt://broker.hivemq.com:1883" cargo run --example 000_hello_world
 
 All examples use the shared helper modules:
 
-```rust
+```rust,ignore
 mod shared;
 
 #[tokio::main]

@@ -62,7 +62,7 @@ pub mod examples {
 		//!
 		//! ## Source Code
 		//!
-		//! ```rust
+		//! ```ignore
 		#![doc = include_str!("../examples/000_hello_world.rs")]
 		//! ```
 	}
@@ -80,7 +80,7 @@ pub mod examples {
 		//!
 		//! ## Source Code
 		//!
-		//! ```rust
+		//! ```ignore
 		#![doc = include_str!("../examples/001_ping_pong.rs")]
 		//! ```
 	}
@@ -98,7 +98,7 @@ pub mod examples {
 		//!
 		//! ## Source Code
 		//!
-		//! ```rust
+		//! ```ignore
 		#![doc = include_str!("../examples/002_configuration.rs")]
 		//! ```
 	}
@@ -120,7 +120,7 @@ pub mod examples {
 		//!
 		//! ## Source Code
 		//!
-		//! ```rust
+		//! ```ignore
 		#![doc = include_str!("../examples/003_hello_world_lwt.rs")]
 		//! ```
 	}
@@ -138,7 +138,7 @@ pub mod examples {
 		//!
 		//! ## Source Code
 		//!
-		//! ```rust
+		//! ```ignore
 		#![doc = include_str!("../examples/004_hello_world_tls.rs")]
 		//! ```
 	}
@@ -156,7 +156,7 @@ pub mod examples {
 		//!
 		//! ## Source Code
 		//!
-		//! ```rust
+		//! ```ignore
 		#![doc = include_str!("../examples/005_hello_world_serializers.rs")]
 		//! ```
 	}
@@ -174,7 +174,7 @@ pub mod examples {
 		//!
 		//! ## Source Code
 		//!
-		//! ```rust
+		//! ```ignore
 		#![doc = include_str!("../examples/006_retain_and_clear.rs")]
 		//! ```
 	}
@@ -192,7 +192,7 @@ pub mod examples {
 		//!
 		//! ## Source Code
 		//!
-		//! ```rust
+		//! ```ignore
 		#![doc = include_str!("../examples/007_custom_patterns.rs")]
 		//! ```
 	}
@@ -210,7 +210,7 @@ pub mod examples {
 		//!
 		//! ## Source Code
 		//!
-		//! ```rust
+		//! ```ignore
 		#![doc = include_str!("../examples/008_modular_example.rs")]
 		//! ```
 	}
@@ -228,7 +228,7 @@ pub mod examples {
 		//!
 		//! ## Source Code
 		//!
-		//! ```rust
+		//! ```ignore
 		#![doc = include_str!("../examples/100_all_serializers_demo.rs")]
 		//! ```
 	}

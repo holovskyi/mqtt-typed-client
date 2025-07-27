@@ -33,7 +33,7 @@ Add to your `Cargo.toml`:
 mqtt-typed-client = "0.1.0"
 ```
 
-```rust
+```rust,no_run
 use mqtt_typed_client::prelude::*;
 use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
@@ -150,7 +150,9 @@ Supports MQTT wildcard patterns with named parameters:
 - `{param}` - Named parameter (equivalent to `+` wildcard)
 - `{param:#}` - Multi-level named parameter (equivalent to `#` wildcard)
 
-```rust
+```rust,ignore
+use mqtt_typed_client_macros::mqtt_topic;
+
 // Traditional MQTT wildcards
 #[mqtt_topic("home/+/temperature")]     // matches: home/kitchen/temperature
 struct SimplePattern { payload: f64 }
@@ -167,7 +169,7 @@ struct NamedPattern {
 struct LogPattern {
     service: String,     // "api"
     path: String,        // "v1/users/create"  
-    payload: Data
+    payload: String     // Changed from Data to String
 }
 ```
 
@@ -175,7 +177,7 @@ struct LogPattern {
 
 For cases where you need direct control without macros:
 
-```rust
+```rust,no_run
 use mqtt_typed_client::prelude::*;
 use serde::{Deserialize, Serialize};
 use bincode::{Encode, Decode};
@@ -214,18 +216,20 @@ async fn main() -> Result<()> {
 ## 🆚 What mqtt-typed-client adds over rumqttc
 
 **Publishing:**
-```rust
+```rust,ignore
 // rumqttc - manual topic construction and serialization
+let sensor_id = "sensor001";
+let data = SensorData { temperature: 23.5 };
 let topic = format!("sensors/{}/temperature", sensor_id);
 let payload = serde_json::to_vec(&data)?;
 client.publish(topic, QoS::AtLeastOnce, false, payload).await?;
 
-// mqtt-typed-client - type-safe, automatic
+// mqtt-typed-client - type-safe, automatic  
 topic_client.publish(&sensor_id, &data).await?;
 ```
 
 **Subscribing with routing:**
-```rust
+```rust,ignore
 // rumqttc - manual pattern matching and dispatching
 // while let Ok(event) = eventloop.poll().await {
 //     if let Event::Incoming(Packet::Publish(publish)) = event {

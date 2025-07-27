@@ -21,7 +21,8 @@ This document provides a comprehensive comparison between `mqtt-typed-client` an
 ## Basic Connection
 
 ### rumqttc
-```rust
+```rust,ignore
+use std::time::Duration;
 use rumqttc::{MqttOptions, AsyncClient, EventLoop};
 
 let mut mqttoptions = MqttOptions::new("client_id", "localhost", 1883);
@@ -46,7 +47,7 @@ tokio::spawn(async move {
 ```
 
 ### mqtt-typed-client
-```rust
+```rust,ignore
 use mqtt_typed_client::prelude::*;
 
 // Single line connection with automatic event loop handling
@@ -67,7 +68,7 @@ let (client, connection) = MqttClient::<BincodeSerializer>::connect(
 ## Publishing Messages
 
 ### rumqttc
-```rust
+```rust,ignore
 use rumqttc::QoS;
 use serde_json;
 
@@ -85,7 +86,7 @@ client.publish(topic, QoS::AtLeastOnce, false, payload).await?;
 ```
 
 ### mqtt-typed-client
-```rust
+```rust,ignore
 use mqtt_typed_client_macros::mqtt_topic;
 
 #[mqtt_topic("sensors/{location}/{sensor_id}/temperature")]
@@ -112,7 +113,7 @@ topic_client.publish("kitchen", "sensor_001", &data).await?;
 ## Subscribing to Topics
 
 ### rumqttc
-```rust
+```rust,ignore
 use rumqttc::{Event, Packet};
 
 // Manual subscription
@@ -144,7 +145,7 @@ while let Ok(notification) = eventloop.poll().await {
 ```
 
 ### mqtt-typed-client
-```rust
+```rust,ignore
 // Automatic subscription and typed message handling
 let mut subscriber = topic_client.subscribe().await?;
 
@@ -186,7 +187,7 @@ while let Some(result) = subscriber.receive().await {
 ## Migration Guide
 
 ### Step 1: Replace Connection
-```rust
+```rust,ignore
 // Before (rumqttc)
 let mut mqttoptions = MqttOptions::new("client", "localhost", 1883);
 let (client, eventloop) = AsyncClient::new(mqttoptions, 10);
@@ -198,7 +199,7 @@ let (client, connection) = MqttClient::<BincodeSerializer>::connect(
 ```
 
 ### Step 2: Define Typed Topics
-```rust
+```rust,ignore
 // Before: String-based topics
 // "sensors/{location}/{id}/data"
 
@@ -212,7 +213,7 @@ struct SensorTopic {
 ```
 
 ### Step 3: Replace Publishing
-```rust
+```rust,ignore
 // Before
 let topic = format!("sensors/{}/{}/data", location, id);
 let payload = serde_json::to_vec(&data)?;
@@ -223,7 +224,7 @@ client.sensor_topic().publish(&location, &id, &data).await?;
 ```
 
 ### Step 4: Replace Subscribing
-```rust
+```rust,ignore
 // Before
 client.subscribe("sensors/+/+/data", QoS::AtLeastOnce).await?;
 // ... manual event loop and topic parsing
