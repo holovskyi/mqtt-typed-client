@@ -93,7 +93,7 @@ jobs:
     
     - name: Run integration tests
       run: |
-        cargo test --test integration -- --test-threads=1
+        cargo test --test serializers_integration -- --test-threads=1
         # Run TLS tests if TLS examples exist
         if [ -f "examples/004_hello_world_tls.rs" ]; then
           cargo test --test integration_tls -- --test-threads=1 || echo "TLS tests not yet implemented"
