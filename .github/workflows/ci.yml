@@ -93,10 +93,10 @@ jobs:
     
     - name: Run integration tests
       run: |
-        cargo test --test serializers_integration -- --test-threads=1
+        cargo test --test serializers_integration --all-features -- --test-threads=1
         # Run TLS tests if TLS examples exist
         if [ -f "examples/004_hello_world_tls.rs" ]; then
-          cargo test --test integration_tls -- --test-threads=1 || echo "TLS tests not yet implemented"
+          cargo test --test integration_tls --all-features -- --test-threads=1 || echo "TLS tests not yet implemented"
         fi
       env:
         MQTT_BROKER_URL: mqtt://localhost:1883
@@ -178,7 +178,7 @@ jobs:
     
     - name: Test basic examples
       run: |
-        timeout 30s cargo run --example 000_hello_world || echo "Example completed or timed out"
-        timeout 30s cargo run --example 001_ping_pong || echo "Example completed or timed out"
+        timeout 30s cargo run --example 000_hello_world --all-features || echo "Example completed or timed out"
+        timeout 30s cargo run --example 001_ping_pong --all-features || echo "Example completed or timed out"
       env:
         MQTT_BROKER_URL: mqtt://localhost:1883
