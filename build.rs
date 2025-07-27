@@ -26,7 +26,10 @@ fn generate_doc_readme() {
 
 	// Create output directory if it doesn't exist
 	if let Err(e) = fs::create_dir_all(&output_dir) {
-		eprintln!("Warning: Failed to create {} directory: {e}", output_dir.display());
+		eprintln!(
+			"Warning: Failed to create {} directory: {e}",
+			output_dir.display()
+		);
 		return;
 	}
 
@@ -84,7 +87,10 @@ fn generate_readme_doc() {
 
 	// Create output directory if it doesn't exist
 	if let Err(e) = fs::create_dir_all(&output_dir) {
-		eprintln!("Warning: Failed to create {} directory: {e}", output_dir.display());
+		eprintln!(
+			"Warning: Failed to create {} directory: {e}",
+			output_dir.display()
+		);
 		return;
 	}
 
