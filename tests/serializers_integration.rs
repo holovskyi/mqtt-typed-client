@@ -111,7 +111,8 @@ where
 			match client.subscribe::<TestMessage>(topic.as_str()).await {
 				| Ok(mut subscriber) => {
 					println!(
-						"{name} serializer: Testing full publish/subscribe cycle",
+						"{name} serializer: Testing full publish/subscribe \
+						 cycle",
 					);
 
 					// Small delay to ensure subscription is ready
@@ -142,27 +143,28 @@ where
 								match result {
 									| Ok(received_message) => {
 										assert_eq!(
-										received_message, message,
-										"{name} serializer: Message mismatch",
+											received_message, message,
+											"{name} serializer: Message \
+											 mismatch",
 										);
 										println!(
-										"{name} serializer: Full cycle \
-										successful (serialize + \
-										deserialize)",
+											"{name} serializer: Full cycle \
+											 successful (serialize + \
+											 deserialize)",
 										);
 									}
 									| Err(e) => {
 										panic!(
-										"{name} serializer: Deserialization \
-										failed: {e:?}",
+											"{name} serializer: \
+											 Deserialization failed: {e:?}",
 										);
 									}
 								}
 							}
 							| Ok(None) => {
 								println!(
-									"{name} serializer: ⚠️ No message received \
-									 (broker might be busy)",
+									"{name} serializer: ⚠️ No message \
+									 received (broker might be busy)",
 								);
 							}
 							| Err(_) => {
@@ -174,14 +176,14 @@ where
 						}
 					} else {
 						println!(
-						"{name} serializer: ⚠️ Publish failed (broker might \
-						be busy)",
+							"{name} serializer: ⚠️ Publish failed (broker \
+							 might be busy)",
 						);
 					}
 				}
 				| Err(e) => {
 					println!(
-					"{name} serializer: ⚠️ Subscription failed: {e:?}",
+						"{name} serializer: ⚠️ Subscription failed: {e:?}",
 					);
 				}
 			}
@@ -204,9 +206,7 @@ where
 
 			// Even without broker, we can test that the serializer compiles and can be instantiated
 			let _serializer = S::default();
-			println!(
-				"{name} serializer: Serializer instantiation successful",
-			);
+			println!("{name} serializer: Serializer instantiation successful",);
 		}
 	}
 }
@@ -246,9 +246,7 @@ where S: Default + Clone + Send + Sync + 'static {
 
 			// Even without broker, we can test that the serializer compiles and can be instantiated
 			let _serializer = S::default();
-			println!(
-				"{name} serializer: Serializer instantiation successful",
-			);
+			println!("{name} serializer: Serializer instantiation successful",);
 		}
 	}
 }

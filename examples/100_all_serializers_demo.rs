@@ -132,6 +132,8 @@ where S: Default + Clone + Send + Sync + 'static {
 
 	connection.shutdown().await?;
 
-	println!("{name} (connection successful, messaging requires generated types)");
+	println!(
+		"{name} (connection successful, messaging requires generated types)"
+	);
 	Ok(())
 }
