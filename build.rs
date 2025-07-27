@@ -116,7 +116,7 @@ fn transform_readme_links(content: &str) -> String {
 	// [examples/](examples/) -> [crate::examples]
 	let examples_re = Regex::new(r"\[examples/\]\(examples/\)").unwrap();
 	let transformed_content = examples_re
-		.replace_all(&content, "[`crate::examples`]")
+		.replace_all(content, "[`crate::examples`]")
 		.to_string();
 
 	format!("{header}{transformed_content}")
