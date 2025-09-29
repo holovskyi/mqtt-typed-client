@@ -234,6 +234,43 @@ use syn::{LitStr, parse::Parser, parse_macro_input};
 /// }
 /// ```
 ///
+/// ### Custom Serializers
+///
+/// Specify a custom serializer for specific message types when you need
+/// different serialization formats within the same MQTT session:
+///
+/// ```rust,ignore
+/// # use mqtt_typed_client_macros::mqtt_topic;
+/// # use mqtt_typed_client::{JsonSerializer, MessagePackSerializer};
+/// # use serde::{Serialize, Deserialize};
+///
+/// // Modern messages use default client serializer (e.g., Bincode)
+/// #[mqtt_topic("v2/sensors/{id}/data")]
+/// struct ModernSensor {
+///     id: u32,
+///     payload: SensorData,
+/// }
+///
+/// // Legacy systems require JSON
+/// #[mqtt_topic("legacy/devices/{id}/status", serializer = JsonSerializer)]
+/// struct LegacyDevice {
+///     id: String,
+///     payload: DeviceStatus,
+/// }
+/// ```
+///
+/// **Use cases for custom serializers:**
+/// - Integrating with legacy systems using different formats (JSON, XML)
+/// - Optimizing specific message types (binary formats for high-frequency data)
+/// - Interoperability with external services that expect specific formats
+/// - Mixed protocols in IoT systems (some devices use JSON, others use MessagePack)
+///
+/// **Limitations:**
+/// - TypedClient generation is disabled when using custom serializers
+///   (typed clients require generic serializer parameter, custom serializers are concrete types)
+/// - The custom serializer must implement `MessageSerializer<PayloadType>`
+/// - The serializer must be `Default + Clone + Send + Sync + 'static`
+///
 /// ## Error Handling
 ///
 /// The macro performs compile-time validation and will produce helpful error

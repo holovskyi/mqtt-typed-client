@@ -41,8 +41,13 @@ impl CodeGenerator {
 
 	/// Check if typed client code should be generated
 	pub fn should_generate_typed_client(&self) -> bool {
-		// Disable typed client when custom serializer is specified
-		// because typed client uses generic F but custom serializer needs specific type
+		// Disable typed client when custom serializer is specified because:
+		// - TypedClient (e.g., SensorDataClient<F>) uses generic F from parent MqttClient<F>
+		// - Custom serializer requires concrete type (e.g., JsonSerializer) known at macro expansion
+		// - These approaches conflict: TypedClient expects generic F, but custom serializer is concrete
+		// - Generated code like `client.sensor_data()` would return SensorDataClient<F>, but
+		//   the subscription/publisher methods need JsonSerializer, not generic F
+		// - User can still use direct methods: SensorData::subscribe(&client)
 		if self.macro_args.custom_serializer.is_some() {
 			return false;
 		}
