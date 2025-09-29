@@ -122,6 +122,7 @@ See [examples/](examples/) - Complete usage examples with source code
 - `006_retain_and_clear.rs` - Retained messages
 - `007_custom_patterns.rs` - Custom topic patterns
 - `008_modular_example.rs` - Modular application structure
+- `102_multi_serializer_macro.rs` - Per-topic custom serializers
 
 Run examples:
 ```bash

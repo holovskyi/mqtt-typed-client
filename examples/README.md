@@ -24,6 +24,7 @@ Jump directly to any example:
 - **[007_custom_patterns.rs](007_custom_patterns.rs#example)** - Custom Topic Patterns
 - **[008_modular_example.rs](008_modular_example.rs#example)** - Modular Architecture
 - **[100_all_serializers_demo.rs](100_all_serializers_demo.rs#example)** - Complete Serializer Test Suite
+- **[102_multi_serializer_macro.rs](102_multi_serializer_macro.rs#example)** - Per-Topic Custom Serializers
 
 ## 🚀 Quick Start
 
@@ -241,6 +242,48 @@ modular_example/
 # Requires all serializer features to be enabled
 cargo run --example 100_all_serializers_demo --all-features
 ```
+
+### <a id="102_multi_serializer_macrors---per-topic-custom-serializers"></a>**[102_multi_serializer_macro.rs](102_multi_serializer_macro.rs#example)** - Per-Topic Custom Serializers
+**What it demonstrates:**
+- Using different serializers for different topics in the same MQTT session
+- Custom serializer specification via `#[mqtt_topic]` macro attribute
+- Integration with legacy systems requiring specific formats (JSON)
+- Modern topics using efficient binary formats (Bincode)
+- Shared MQTT connection with multiple serialization strategies
+
+**Key concepts:**
+- `serializer = JsonSerializer` attribute syntax
+- Default serializer from client vs. per-topic overrides
+- `clone_with_serializer()` internal mechanism
+- Mixed serialization formats in one application
+- Type safety with different payload formats
+
+**Use cases:**
+- Legacy system integration (existing systems expect JSON)
+- Performance optimization (binary for high-frequency, JSON for debugging)
+- Protocol interoperability (external services with format requirements)
+- IoT heterogeneous systems (different device capabilities)
+
+**Example patterns:**
+```rust,ignore
+// Modern binary format (default from client)
+#[mqtt_topic("v2/sensors/{id}/data")]
+struct ModernSensor { id: u32, payload: SensorData }
+
+// Legacy JSON format (custom serializer)
+#[mqtt_topic("legacy/devices/{id}/status", serializer = JsonSerializer)]
+struct LegacyDevice { id: String, payload: Status }
+
+// Same client, different formats
+let (client, conn) = MqttClient::<BincodeSerializer>::connect(url).await?;
+let modern_sub = ModernSensor::subscribe(&client).await?;  // Uses Bincode
+let legacy_sub = LegacyDevice::subscribe(&client).await?;  // Uses JSON
+```
+
+**Limitations:**
+- TypedClient generation disabled for custom serializers (technical limitation)
+- Custom serializer must be `Default + Clone + Send + Sync + 'static`
+- Direct methods only: `LegacyDevice::subscribe(&client)` instead of `client.legacy_device()`
 
 ## 🛠️ Configuration
 
