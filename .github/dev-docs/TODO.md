@@ -40,6 +40,8 @@
 ## Hard Tasks
 - [ ] Add subscription acknowledgment. Currently subscribe doesn't analyze subscription results. Need to add event_loop mechanism that gets packet id from Outgoing(Subscribe(1)) for subscription, then waits for Incoming(SubAck(SubAck { pkid: 1, return_codes: [Success(AtLeastOnce)] })) with subscription result and provides this result to user. But there's a problem that currently Outgoing(Subscribe()) only has pkid without specific filters, so we need to fork rumqttc and change Outgoing::Subscribe(u16) => outgoing::Subscribe(Subscribe) in src/lib.rs.
 - [ ] Add publish acknowledgment confirmation. Currently we don't know when the broker has actually confirmed message publication according to QoS level. This also requires forking rumqttc to track packet IDs and match them with corresponding ACK responses.
+- [ ] v5 mqtt implementation
+- [ ] AsyncAPI codegen Spec <-> Rust Code
 
 ## Advanced Features
 - [ ] Protocol compression. Compositional approach - separate serialization and compression. Adaptive mechanism (based on message type and size)
@@ -51,3 +53,6 @@
 ## Issues to Investigate
 - [ ] Does the client see generated types like SensorReadingSubscriptionBuilderExt? Should we shorten the name?
 - [ ] Problem with cryptic error when we declare a structure for payload but forget to add derive for custom serializer to work with the structure. For example, BincodeSerializer needs Encode and Decode. But we get an error where it's hard to determine what exactly is needed
+- [ ] You're using build.rs for generating markdown documentation in your repository, that is not what it's for, and considering the supply chain security implications of build.rs, if you can avoid having one, you should. And you can definitely avoid it when it is just for generating your readme. You can use Make or Just etc.
+
+- [ ] The other thing is with feature flags. You activate the default features of rumqttc, but as of 0.25.0 the default features include a dependency on aws-lc, and it's a PITA to cross-compile for 32-bit targets. So I think your feature flags should be more flexible. Basically your features should at least allow for choosing which TLS implementation to use (or no TLS)

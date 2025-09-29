@@ -277,6 +277,92 @@ where F: Default + Clone + Send + Sync + 'static
 			.await?;
 		Ok(MqttSubscriber::new(subscriber, self.serializer.clone()))
 	}
+
+	/// Clone client with a different serializer type.
+	///
+	/// This creates a new client instance that shares the same underlying
+	/// MQTT connection and subscription manager, but uses a different
+	/// serializer for message encoding/decoding.
+	///
+	/// This is a lightweight operation - the underlying MQTT connection
+	/// (`AsyncClient`) and subscription manager are reference-counted and
+	/// shared between instances.
+	///
+	/// # Type Parameters
+	///
+	/// * `S` - The new serializer type, must implement `Default`
+	///
+	/// # Example
+	///
+	/// ```rust
+	/// use mqtt_typed_client::{MqttClient, BincodeSerializer, JsonSerializer};
+	///
+	/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+	/// // Connect with default Bincode serializer
+	/// let (client, connection) = MqttClient::<BincodeSerializer>::connect("mqtt://localhost").await?;
+	///
+	/// // Use JSON serializer for legacy topics
+	/// let json_client = client.clone_with_serializer::<JsonSerializer>();
+	/// let legacy_sub = json_client.subscribe::<LegacyData>("legacy/sensors/+").await?;
+	///
+	/// // Original client with Bincode still usable
+	/// let modern_sub = client.subscribe::<ModernData>("v2/sensors/+").await?;
+	/// # Ok(())
+	/// # }
+	/// ```
+	pub fn clone_with_serializer<S>(&self) -> MqttClient<S>
+	where S: Default + Clone + Send + Sync + 'static {
+		self.clone_with_custom_serializer(S::default())
+	}
+
+	/// Clone client with a custom-configured serializer instance.
+	///
+	/// Use this method when you need non-default serializer configuration,
+	/// such as custom encoding settings for Bincode or other serializers
+	/// that support configuration.
+	///
+	/// This is a lightweight operation - the underlying MQTT connection
+	/// and subscription manager are shared between instances.
+	///
+	/// # Arguments
+	///
+	/// * `serializer` - A configured serializer instance
+	///
+	/// # Example
+	///
+	/// ```rust
+	/// use mqtt_typed_client::{MqttClient, BincodeSerializer};
+	///
+	/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+	/// let (client, connection) = MqttClient::<BincodeSerializer>::connect("mqtt://localhost").await?;
+	///
+	/// // Create custom Bincode configuration
+	/// let custom_config = bincode::config::standard()
+	///     .with_little_endian()
+	///     .with_fixed_int_encoding();
+	/// let custom_bincode = BincodeSerializer::with_config(custom_config);
+	///
+	/// // Use custom-configured serializer
+	/// let custom_client = client.clone_with_custom_serializer(custom_bincode);
+	/// let publisher = custom_client.get_publisher::<Data>("topic/with/custom/encoding")?;
+	/// # Ok(())
+	/// # }
+	/// ```
+	pub fn clone_with_custom_serializer<S>(
+		&self,
+		serializer: S,
+	) -> MqttClient<S>
+	where
+		S: Clone + Send + Sync + 'static,
+	{
+		MqttClient {
+			client: self.client.clone(),
+			subscription_manager_handler: self
+				.subscription_manager_handler
+				.clone(),
+			serializer,
+		}
+	}
 }
 
 fn validate_mqtt_topic(topic_str: &str) -> Result<(), TopicError> {
