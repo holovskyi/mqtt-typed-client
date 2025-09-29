@@ -340,8 +340,9 @@ fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 	let mut generate_subscriber = true;
 	let mut generate_publisher = true;
 	let mut explicit_modes = Vec::new();
+	let mut custom_serializer: Option<syn::Type> = None;
 
-	// Parse optional mode flags
+	// Parse optional mode flags and serializer
 	for arg in args.iter().skip(1) {
 		match arg {
 			| syn::Expr::Path(expr_path)
@@ -354,11 +355,44 @@ fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 			{
 				explicit_modes.push("publisher");
 			}
+			| syn::Expr::Assign(assign) => {
+				// Handle "serializer = Type" syntax
+				if let syn::Expr::Path(left_path) = &*assign.left {
+					if left_path.path.is_ident("serializer") {
+						if let syn::Expr::Path(right_path) = &*assign.right {
+							// Convert path to Type
+							let serializer_type =
+								syn::Type::Path(syn::TypePath {
+									qself: None,
+									path: right_path.path.clone(),
+								});
+							custom_serializer = Some(serializer_type);
+						} else {
+							return Err(syn::Error::new_spanned(
+								&assign.right,
+								"Serializer must be a type identifier (e.g., \
+								 JsonSerializer)",
+							));
+						}
+					} else {
+						return Err(syn::Error::new_spanned(
+							&assign.left,
+							"Unknown attribute parameter. Only 'serializer' \
+							 is supported",
+						));
+					}
+				} else {
+					return Err(syn::Error::new_spanned(
+						&assign.left,
+						"Invalid attribute syntax",
+					));
+				}
+			}
 			| _ => {
 				return Err(syn::Error::new_spanned(
 					arg,
-					"Invalid argument. Only 'subscriber' and 'publisher' \
-					 flags are allowed",
+					"Invalid argument. Supported: 'subscriber', 'publisher', \
+					 or 'serializer = Type'",
 				));
 			}
 		}
@@ -413,6 +447,7 @@ fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 		generate_publisher,
 		generate_typed_client: true, // Enable by default
 		generate_last_will: generate_publisher, // Enable if publisher is requested
+		custom_serializer,
 	};
 
 	Ok(macro_args)
@@ -460,6 +495,7 @@ struct MacroArgs {
 	generate_publisher: bool,
 	generate_typed_client: bool,
 	generate_last_will: bool,
+	custom_serializer: Option<syn::Type>,
 }
 
 #[cfg(test)]
@@ -479,6 +515,7 @@ mod test_helpers {
 			generate_publisher: true,
 			generate_typed_client: true,
 			generate_last_will: true,
+			custom_serializer: None,
 		}
 	}
 }

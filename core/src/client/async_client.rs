@@ -277,7 +277,11 @@ where F: Default + Clone + Send + Sync + 'static
 			.await?;
 		Ok(MqttSubscriber::new(subscriber, self.serializer.clone()))
 	}
+}
 
+// Separate impl block for serializer transformation methods
+// These don't require F to have Default/Send/Sync bounds
+impl<F> MqttClient<F> {
 	/// Clone client with a different serializer type.
 	///
 	/// This creates a new client instance that shares the same underlying

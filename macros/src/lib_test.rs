@@ -199,6 +199,7 @@ fn test_generate_mqtt_code_integration() {
 			generate_publisher: test_case.publisher,
 			generate_typed_client: true,
 			generate_last_will: test_case.publisher,
+			custom_serializer: None,
 		};
 
 		let result = generate_mqtt_code(macro_args, &test_struct);
@@ -279,6 +280,7 @@ fn test_complex_patterns() {
 			generate_publisher: true,
 			generate_typed_client: true,
 			generate_last_will: true,
+			custom_serializer: None,
 		};
 
 		let result = generate_mqtt_code(macro_args, &test_struct);
@@ -370,6 +372,7 @@ fn test_macro_args_validation() {
 			generate_publisher: test_case.publisher,
 			generate_typed_client: true,
 			generate_last_will: test_case.publisher,
+			custom_serializer: None,
 		};
 
 		// Test configuration validity
@@ -493,6 +496,7 @@ fn test_real_world_scenarios() {
 			generate_publisher: scenario.modes.1,
 			generate_typed_client: true,
 			generate_last_will: scenario.modes.1,
+			custom_serializer: None,
 		};
 
 		let result = generate_mqtt_code(macro_args, &test_struct);
