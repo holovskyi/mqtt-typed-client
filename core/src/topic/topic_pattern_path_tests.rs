@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use arcstr::ArcStr;
 
 use super::{TopicPatternError, TopicPatternPath};
-use crate::routing::subscription_manager::CacheStrategy;
+use crate::topic::CacheStrategy;
 
 fn create_pattern(pattern: &str) -> TopicPatternPath {
 	TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)

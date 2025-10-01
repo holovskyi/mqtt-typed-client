@@ -96,7 +96,7 @@ mod codegen_typed_client;
 mod lib_test;
 mod naming;
 
-use mqtt_typed_client_core::routing::subscription_manager::CacheStrategy;
+use mqtt_typed_client_core::topic::CacheStrategy;
 use mqtt_typed_client_core::topic::topic_pattern_path::TopicPatternPath;
 use proc_macro::TokenStream;
 use syn::{LitStr, parse::Parser, parse_macro_input};

@@ -298,8 +298,16 @@ impl<F> MqttClient<F> {
 	///
 	/// # Example
 	///
-	/// ```rust
-	/// use mqtt_typed_client::{MqttClient, BincodeSerializer, JsonSerializer};
+	/// ```rust,no_run
+	/// use mqtt_typed_client_core::{MqttClient, BincodeSerializer, JsonSerializer};
+	/// use serde::{Deserialize, Serialize};
+	/// use bincode::{Encode, Decode};
+	///
+	/// #[derive(Serialize, Deserialize, Encode, Decode)]
+	/// struct LegacyData { value: f64 }
+	///
+	/// #[derive(Serialize, Deserialize, Encode, Decode)]
+	/// struct ModernData { value: f64 }
 	///
 	/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 	/// // Connect with default Bincode serializer
@@ -334,16 +342,20 @@ impl<F> MqttClient<F> {
 	///
 	/// # Example
 	///
-	/// ```rust
-	/// use mqtt_typed_client::{MqttClient, BincodeSerializer};
+	/// ```rust,no_run
+	/// use mqtt_typed_client_core::{MqttClient, BincodeSerializer};
+	/// use serde::{Deserialize, Serialize};
+	/// use bincode::{Encode, Decode};
+	///
+	/// #[derive(Serialize, Deserialize, Encode, Decode)]
+	/// struct Data { value: f64 }
 	///
 	/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 	/// let (client, connection) = MqttClient::<BincodeSerializer>::connect("mqtt://localhost").await?;
 	///
 	/// // Create custom Bincode configuration
 	/// let custom_config = bincode::config::standard()
-	///     .with_little_endian()
-	///     .with_fixed_int_encoding();
+	///     .with_little_endian();
 	/// let custom_bincode = BincodeSerializer::with_config(custom_config);
 	///
 	/// // Use custom-configured serializer

@@ -1,6 +1,6 @@
 //! Tests for code generation logic
 
-use mqtt_typed_client_core::routing::subscription_manager::CacheStrategy;
+use mqtt_typed_client_core::topic::CacheStrategy;
 use quote::quote;
 use syn::parse_quote;
 

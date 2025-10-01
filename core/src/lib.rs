@@ -148,7 +148,7 @@ pub use message_serializer::ProtobufSerializer;
 pub use message_serializer::RonSerializer;
 // === Advanced API ===
 // Advanced subscription configuration
-pub use routing::{CacheStrategy, SubscriptionConfig};
+pub use routing::SubscriptionConfig;
 // Re-export rumqttc types for advanced configuration
 pub use rumqttc::MqttOptions;
 // Essential external types
@@ -158,6 +158,7 @@ pub use structured::{
 	FromMqttMessage, MessageConversionError, MqttTopicSubscriber,
 	extract_topic_parameter,
 };
+pub use topic::CacheStrategy;
 // Topic pattern types (for manual pattern handling)
 pub use topic::{TopicError, TopicPatternError, TopicPatternPath};
 

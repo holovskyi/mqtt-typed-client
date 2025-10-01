@@ -4,7 +4,7 @@ use arcstr::ArcStr;
 
 use super::topic_matcher::TopicMatcherNode;
 use super::topic_pattern_path::TopicPatternPath;
-use crate::routing::subscription_manager::CacheStrategy;
+use crate::topic::CacheStrategy;
 use crate::topic::topic_match::TopicPath;
 
 /// A subscription identifier.

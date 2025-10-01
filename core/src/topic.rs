@@ -4,6 +4,7 @@
 //! including parsing, matching, and routing messages based on topic patterns.
 
 // Submodules
+pub mod cache_strategy;
 pub mod error;
 pub mod topic_match;
 pub mod topic_matcher;
@@ -21,6 +22,7 @@ mod topic_pattern_item_tests;
 mod topic_pattern_path_tests;
 
 // Re-export commonly used types for convenience
+pub use cache_strategy::CacheStrategy;
 pub use error::{
 	MatcherResult, PatternResult, RouterResult, TopicError, TopicResult,
 };

@@ -10,8 +10,8 @@ use lru::LruCache;
 use smallvec::SmallVec;
 use thiserror::Error;
 
+use super::cache_strategy::CacheStrategy;
 use super::topic_pattern_item::{TopicPatternError, TopicPatternItem};
-use crate::routing::subscription_manager::CacheStrategy;
 use crate::topic::topic_match::{TopicMatch, TopicMatchError, TopicPath};
 
 /// Error types for formatting topics with parameters

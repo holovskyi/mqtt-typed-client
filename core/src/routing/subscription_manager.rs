@@ -31,35 +31,6 @@ pub type MessageType<T> = (Arc<TopicMatch>, Arc<T>);
 
 type TopicRouterType<T> = TopicRouter<Sender<MessageType<T>>>;
 
-#[derive(Debug, Clone, Copy)]
-pub enum CacheStrategy {
-	/// Use LRU cache with a fixed size
-	Lru(NonZeroUsize),
-	/// No caching, always create new TopicPath instances
-	NoCache,
-}
-
-impl CacheStrategy {
-	/// Create a new cache strategy with the specified capacity.
-	/// Returns `NoCache` if capacity is 0,
-	/// otherwise returns `Lru` with the given capacity.
-	pub fn new(capacity: usize) -> Self {
-		if capacity == 0 {
-			Self::NoCache
-		} else {
-			Self::Lru(
-				NonZeroUsize::new(capacity).expect("Capacity must be > 0"),
-			)
-		}
-	}
-}
-
-impl Default for CacheStrategy {
-	fn default() -> Self {
-		Self::NoCache
-	}
-}
-
 #[derive(Debug, Clone)]
 pub struct SubscriptionConfig {
 	pub qos: rumqttc::QoS,
