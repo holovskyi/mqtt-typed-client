@@ -98,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 					println!("✓ Received modern sensor {}: value={}, timestamp={}",
 						msg.sensor_id, msg.payload.value, msg.payload.timestamp);
 				}
-				Err(e) => println!("✗ Failed to deserialize modern data: {:?}", e),
+				Err(e) => println!("✗ Failed to deserialize modern data: {e:?}"),
 			}
 		}
 		Some(result) = legacy_sub.receive() => {
@@ -107,7 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 					println!("✓ Received legacy device {}: message='{}', count={}",
 						msg.device_id, msg.payload.message, msg.payload.count);
 				}
-				Err(e) => println!("✗ Failed to deserialize legacy data: {:?}", e),
+				Err(e) => println!("✗ Failed to deserialize legacy data: {e:?}"),
 			}
 		}
 	}
@@ -120,7 +120,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 					println!("✓ Received modern sensor {}: value={}, timestamp={}",
 						msg.sensor_id, msg.payload.value, msg.payload.timestamp);
 				}
-				Err(e) => println!("✗ Failed to deserialize modern data: {:?}", e),
+				Err(e) => println!("✗ Failed to deserialize modern data: {e:?}"),
 			}
 		}
 		Some(result) = legacy_sub.receive() => {
@@ -129,7 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 					println!("✓ Received legacy device {}: message='{}', count={}",
 						msg.device_id, msg.payload.message, msg.payload.count);
 				}
-				Err(e) => println!("✗ Failed to deserialize legacy data: {:?}", e),
+				Err(e) => println!("✗ Failed to deserialize legacy data: {e:?}"),
 			}
 		}
 	}

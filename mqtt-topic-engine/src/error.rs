@@ -6,10 +6,10 @@
 
 use thiserror::Error;
 
-use super::topic_matcher::TopicMatcherError;
-use super::topic_pattern_item::TopicPatternError;
-use super::topic_pattern_path::TopicFormatError;
-use super::topic_router::TopicRouterError;
+use crate::topic_matcher::TopicMatcherError;
+use crate::topic_pattern_item::TopicPatternError;
+use crate::topic_pattern_path::TopicFormatError;
+use crate::topic_router::TopicRouterError;
 
 /// Comprehensive error type for all topic-related operations
 ///

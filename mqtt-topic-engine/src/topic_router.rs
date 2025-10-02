@@ -7,10 +7,10 @@ use arcstr::ArcStr;
 use rumqttc::QoS;
 use thiserror::Error;
 
-use super::topic_matcher::{TopicMatcherError, TopicMatcherNode};
-use super::topic_pattern_item::TopicPatternError;
-use super::topic_pattern_path::TopicPatternPath;
-use crate::topic::topic_match::TopicPath;
+use crate::topic_match::TopicPath;
+use crate::topic_matcher::{TopicMatcherError, TopicMatcherNode};
+use crate::topic_pattern_item::TopicPatternError;
+use crate::topic_pattern_path::TopicPatternPath;
 
 /// Errors that can occur during topic routing operations
 #[derive(Error, Debug, Clone, PartialEq, Eq)]

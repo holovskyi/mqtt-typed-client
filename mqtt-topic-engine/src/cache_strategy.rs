@@ -20,7 +20,7 @@ pub enum CacheStrategy {
 	/// # Example
 	/// ```
 	/// use std::num::NonZeroUsize;
-	/// use mqtt_typed_client_core::topic::CacheStrategy;
+	/// use mqtt_topic_engine::CacheStrategy;
 	///
 	/// let cache = CacheStrategy::Lru(NonZeroUsize::new(100).unwrap());
 	/// ```
@@ -45,7 +45,7 @@ impl CacheStrategy {
 	///
 	/// # Examples
 	/// ```
-	/// use mqtt_typed_client_core::topic::CacheStrategy;
+	/// use mqtt_topic_engine::CacheStrategy;;
 	///
 	/// // Create LRU cache with 100 entries
 	/// let cache = CacheStrategy::new(100);
@@ -69,7 +69,7 @@ impl CacheStrategy {
 	/// # Examples
 	/// ```
 	/// use std::num::NonZeroUsize;
-	/// use mqtt_typed_client_core::topic::CacheStrategy;
+	/// use mqtt_topic_engine::CacheStrategy;
 	///
 	/// let cache = CacheStrategy::new(100);
 	/// assert_eq!(cache.capacity(), Some(NonZeroUsize::new(100).unwrap()));

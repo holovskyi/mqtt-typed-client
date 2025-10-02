@@ -5,9 +5,9 @@ use std::collections::{HashMap, HashSet};
 use arcstr::Substr;
 use thiserror::Error;
 
-use super::topic_pattern_item::TopicPatternItem;
-use super::topic_pattern_path::TopicPatternPath;
-use crate::topic::topic_match::TopicPath;
+use crate::topic_match::TopicPath;
+use crate::topic_pattern_item::TopicPatternItem;
+use crate::topic_pattern_path::TopicPatternPath;
 
 /// Errors that can occur during topic matching operations
 #[derive(Error, Debug, Clone, PartialEq, Eq)]

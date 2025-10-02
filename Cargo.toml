@@ -1,5 +1,5 @@
 [workspace]
-members = ["core", "macros"]
+members = ["core", "macros", "mqtt-topic-engine"]
 resolver = "2"
 
 [package]

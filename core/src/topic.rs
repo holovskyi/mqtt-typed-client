@@ -1,34 +1,51 @@
-//! Topic handling module
+//! Topic handling module - re-exported from mqtt-topic-engine
 //!
 //! This module provides components for working with MQTT topic patterns,
 //! including parsing, matching, and routing messages based on topic patterns.
 
-// Submodules
-pub mod cache_strategy;
-pub mod error;
-pub mod topic_match;
-pub mod topic_matcher;
-pub mod topic_pattern_item;
-/// Topic pattern parsing and matching
-pub mod topic_pattern_path;
-pub mod topic_router;
+// Re-export everything from mqtt-topic-engine
+pub use mqtt_topic_engine::{
+	// Main types
+	CacheStrategy,
+	MatcherResult,
+	PatternResult,
+	RouterResult,
 
-#[cfg(test)]
-mod topic_matcher_tests;
-#[cfg(test)]
-mod topic_pattern_item_tests;
+	SubscriptionId,
 
-#[cfg(test)]
-mod topic_pattern_path_tests;
+	// Error types
+	TopicError,
+	TopicFormatError,
+	// Matching types
+	TopicMatch,
+	TopicMatcherError,
+	TopicPath,
 
-// Re-export commonly used types for convenience
-pub use cache_strategy::CacheStrategy;
-pub use error::{
-	MatcherResult, PatternResult, RouterResult, TopicError, TopicResult,
+	TopicPatternError,
+	TopicPatternItem,
+	TopicPatternPath,
+	// Result type aliases
+	TopicResult,
+	TopicRouter,
+	TopicRouterError,
+
+	// Error utilities
+	limits,
+	validation,
 };
-// Re-export constants and validation utilities
-pub use error::{limits, validation};
-pub use topic_matcher::TopicMatcherError;
-pub use topic_pattern_item::{TopicPatternError, TopicPatternItem};
-pub use topic_pattern_path::TopicPatternPath;
-pub use topic_router::{SubscriptionId, TopicRouter, TopicRouterError};
+
+// Create module aliases for backward compatibility with internal imports
+// like `use crate::topic::topic_match::TopicMatch;`
+/// Topic matching types
+///
+/// Re-exported from mqtt-topic-engine for backward compatibility.
+pub mod topic_match {
+	pub use mqtt_topic_engine::{TopicMatch, TopicPath};
+}
+
+/// Topic pattern path types
+///
+/// Re-exported from mqtt-topic-engine for backward compatibility.
+pub mod topic_pattern_path {
+	pub use mqtt_topic_engine::{TopicFormatError, TopicPatternPath};
+}

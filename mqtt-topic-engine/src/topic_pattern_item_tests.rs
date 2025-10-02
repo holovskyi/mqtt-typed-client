@@ -2,7 +2,7 @@
 
 use arcstr::Substr;
 
-use super::{TopicPatternError, TopicPatternItem};
+use crate::{TopicPatternError, TopicPatternItem};
 
 #[test]
 fn test_literal_string_item() {

@@ -16,7 +16,8 @@ pub struct TopicPath {
 }
 
 impl TopicPath {
-	pub fn new(path: ArcStr) -> Self {
+	pub fn new(path: impl Into<ArcStr>) -> Self {
+		let path = path.into();
 		let segments: Vec<Substr> =
 			path.split('/').map(|s| path.substr_from(s)).collect();
 		Self { path, segments }

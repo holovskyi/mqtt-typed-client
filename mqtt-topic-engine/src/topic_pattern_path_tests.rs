@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use arcstr::ArcStr;
 
-use super::{TopicPatternError, TopicPatternPath};
-use crate::topic::CacheStrategy;
+use crate::CacheStrategy;
+use crate::{TopicPatternError, TopicPatternPath};
 
 fn create_pattern(pattern: &str) -> TopicPatternPath {
 	TopicPatternPath::new_from_string(pattern, CacheStrategy::NoCache)
@@ -46,7 +46,7 @@ mod with_parameters_tests {
 	use arcstr::Substr;
 
 	use super::*;
-	use crate::topic::TopicPatternItem;
+	use crate::TopicPatternItem;
 
 	#[test]
 	fn test_single_parameter_substitution() {
