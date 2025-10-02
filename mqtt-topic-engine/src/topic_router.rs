@@ -4,9 +4,9 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 
 use arcstr::ArcStr;
-use rumqttc::QoS;
 use thiserror::Error;
 
+use crate::qos::QoS;
 use crate::topic_match::TopicPath;
 use crate::topic_matcher::{TopicMatcherError, TopicMatcherNode};
 use crate::topic_pattern_item::TopicPatternError;
@@ -101,9 +101,10 @@ impl<T> TopicRouter<T> {
 	pub fn add_subscription(
 		&mut self,
 		topic: TopicPatternPath,
-		qos: QoS,
+		qos: impl Into<QoS>,
 		subscription: T,
 	) -> (bool, SubscriptionId) {
+		let qos = qos.into();
 		let subscription_table =
 			self.topic_matcher.get_or_create_subscription_table(&topic);
 		let needs_subscribe = subscription_table

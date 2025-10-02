@@ -283,7 +283,11 @@ where T: Send + Sync + 'static
 		let mut failed_topics = Vec::new();
 
 		for (mqtt_topic, qos) in subscriptions {
-			match self.client.subscribe(mqtt_topic.as_str(), qos).await {
+			match self
+				.client
+				.subscribe(mqtt_topic.as_str(), qos.to_rumqttc())
+				.await
+			{
 				| Ok(_) => {
 					debug!(topic = %mqtt_topic, qos = ?qos, "Successfully resubscribed");
 				}

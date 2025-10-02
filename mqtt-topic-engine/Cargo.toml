@@ -17,7 +17,11 @@ arcstr = "1.2"
 smallvec = "1.15"
 lru = "0.15"
 thiserror = "2.0"
-rumqttc = "0.24"
+rumqttc = { version = "0.24", optional = true }
 tracing = "0.1"
+
+[features]
+default = []
+rumqttc = ["dep:rumqttc"]
 
 [dev-dependencies]
