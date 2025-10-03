@@ -16,12 +16,13 @@ Zero-dependency (by default) topic pattern parser, matcher, and router for MQTT 
 
 - **Pattern Parsing** - Parse MQTT topic patterns with support for wildcards (`+`, `#`) and named parameters
 - **Fast Matching** - Efficient tree-based topic matching algorithm with O(n) complexity
-- **Optional Caching** - LRU cache for topic match results to boost performance
-- **Message Routing** - Route incoming messages to multiple subscribers based on topic patterns
+- **Optional Caching** - LRU cache for topic match results to boost performance (optional `lru-cache` feature)
+- **Message Routing** - Route incoming messages to multiple subscribers based on topic patterns (optional `router` feature)
 - **Named Parameters** - Extract topic segments as named parameters (`{sensor_id}`, `{path:#}`)
+- **Modular Design** - Enable only the features you need for minimal binary size
 - **Well Tested** - Comprehensive test suite with 100+ tests covering edge cases
 - **Lightweight** - Minimal dependencies, optimized for embedded and performance-critical applications
-- **MQTT Client Agnostic** - Works with any MQTT client library (rumqttc, paho-mqtt, etc.)
+- **MQTT Client Agnostic** - Works with any MQTT client library (rumqttc, paho-mqtt, ntex-mqtt, etc.)
 
 ## Installation
 
@@ -31,6 +32,39 @@ Add to your `Cargo.toml`:
 [dependencies]
 mqtt-topic-engine = "0.1.0"
 ```
+
+### Feature Flags
+
+The library is highly modular with optional features:
+
+```toml
+# Default: all features enabled
+mqtt-topic-engine = "0.1.0"
+
+# Minimal: only pattern matching and validation
+mqtt-topic-engine = { version = "0.1.0", default-features = false }
+
+# Pattern matching + routing (without LRU cache)
+mqtt-topic-engine = { version = "0.1.0", default-features = false, features = ["router"] }
+
+# Pattern matching + LRU cache (without routing)
+mqtt-topic-engine = { version = "0.1.0", default-features = false, features = ["lru-cache"] }
+
+# With specific MQTT client integration
+mqtt-topic-engine = { version = "0.1.0", features = ["rumqttc"] }
+mqtt-topic-engine = { version = "0.1.0", features = ["paho-mqtt"] }
+mqtt-topic-engine = { version = "0.1.0", features = ["ntex-mqtt"] }
+```
+
+**Available features:**
+
+| Feature | Description | Default |
+|---------|-------------|----------|
+| `router` | Topic routing with `TopicRouter` and `TopicMatcher` | ✅ |
+| `lru-cache` | LRU caching for pattern matching results | ✅ |
+| `rumqttc` | Integration with rumqttc MQTT client (QoS conversion) | ❌ |
+| `paho-mqtt` | Integration with paho-mqtt client (QoS conversion) | ❌ |
+| `ntex-mqtt` | Integration with ntex-mqtt client (QoS conversion) | ❌ |
 
 ## Quick Start
 
@@ -485,9 +519,12 @@ use std::num::NonZeroUsize;
 let no_cache = CacheStrategy::NoCache;
 
 // LRU cache with 100 entries (balance memory/performance)
+// Note: requires 'lru-cache' feature
+#[cfg(feature = "lru-cache")]
 let lru_100 = CacheStrategy::Lru(NonZeroUsize::new(100).unwrap());
 
 // LRU cache with 10000 entries (high performance, more memory)
+#[cfg(feature = "lru-cache")]
 let lru_10k = CacheStrategy::Lru(NonZeroUsize::new(10000).unwrap());
 ```
 
@@ -497,6 +534,38 @@ let lru_10k = CacheStrategy::Lru(NonZeroUsize::new(10000).unwrap());
 - ✅ Complex patterns with multiple wildcards
 - ❌ Unique topics (no cache benefit)
 - ❌ Memory-constrained environments
+
+### Minimal Configuration for Embedded Systems
+
+For resource-constrained environments, use only the core pattern matching without routing or caching:
+
+```toml
+[dependencies]
+mqtt-topic-engine = { version = "0.1.0", default-features = false }
+```
+
+```rust
+use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
+
+// Minimal footprint: only pattern validation and matching
+let pattern = TopicPatternPath::new_from_string(
+    "sensors/{location}/data",
+    CacheStrategy::NoCache  // No LRU dependency
+)?;
+
+let topic = TopicPath::new("sensors/kitchen/data");
+let topic_match = pattern.try_match(topic)?;
+
+if let Some(location) = topic_match.get_named_param("location") {
+    // Process message for specific location
+}
+```
+
+**Benefits of minimal configuration:**
+- ✅ Smallest binary size (~10KB additional code)
+- ✅ No heap allocations for routing or caching
+- ✅ Suitable for microcontrollers and embedded systems
+- ✅ Still provides full pattern matching and parameter extraction
 
 ## Performance
 
@@ -520,7 +589,7 @@ Topic engine is designed for high-performance applications:
 
 ### MQTT Client Support
 
-The library includes its own QoS type and provides optional integration with popular MQTT clients:
+The library includes its own QoS type and provides optional integration with popular MQTT clients through seamless QoS type conversions:
 
 **Supported MQTT clients:**
 - **rumqttc** - Enable with `features = ["rumqttc"]`
@@ -543,6 +612,38 @@ mqtt-topic-engine = "0.1.0"
 ```
 
 The core matching and routing logic is already client-agnostic and works with any MQTT client library.
+
+### QoS Type Conversions
+
+When MQTT client integration features are enabled, the library provides automatic QoS type conversions:
+
+```rust
+use mqtt_topic_engine::QoS;
+
+// From client-specific QoS to mqtt-topic-engine QoS
+#[cfg(feature = "rumqttc")]
+let qos: QoS = rumqttc::QoS::AtLeastOnce.into();
+
+#[cfg(feature = "paho-mqtt")]
+let qos: QoS = paho_mqtt::QoS::AtLeastOnce.into();
+
+#[cfg(feature = "ntex-mqtt")]
+let qos: QoS = ntex_mqtt::QoS::AtLeastOnce.into();
+
+// To client-specific QoS from mqtt-topic-engine QoS
+let engine_qos = QoS::AtLeastOnce;
+
+#[cfg(feature = "rumqttc")]
+let rumqttc_qos: rumqttc::QoS = engine_qos.to_rumqttc();
+
+#[cfg(feature = "paho-mqtt")]
+let paho_qos: i32 = engine_qos.to_paho_mqtt();
+
+#[cfg(feature = "ntex-mqtt")]
+let ntex_qos: ntex_mqtt::QoS = engine_qos.to_ntex_mqtt();
+```
+
+This enables seamless integration with any supported MQTT client without manual QoS type conversions.
 
 ## API Documentation
 

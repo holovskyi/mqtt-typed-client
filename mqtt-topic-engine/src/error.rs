@@ -6,9 +6,11 @@
 
 use thiserror::Error;
 
+#[cfg(feature = "router")]
 use crate::topic_matcher::TopicMatcherError;
 use crate::topic_pattern_item::TopicPatternError;
 use crate::topic_pattern_path::TopicFormatError;
+#[cfg(feature = "router")]
 use crate::topic_router::TopicRouterError;
 
 /// Comprehensive error type for all topic-related operations
@@ -27,10 +29,12 @@ pub enum TopicError {
 	Format(#[from] TopicFormatError),
 
 	/// Topic matching operation error
+	#[cfg(feature = "router")]
 	#[error("Topic matcher error: {0}")]
 	Matcher(#[from] TopicMatcherError),
 
 	/// Topic routing operation error
+	#[cfg(feature = "router")]
 	#[error("Topic router error: {0}")]
 	Router(#[from] TopicRouterError),
 }
@@ -42,9 +46,11 @@ pub type TopicResult<T> = Result<T, TopicError>;
 pub type PatternResult<T> = Result<T, TopicPatternError>;
 
 /// Convenient Result type for matcher operations
+#[cfg(feature = "router")]
 pub type MatcherResult<T> = Result<T, TopicMatcherError>;
 
 /// Convenient Result type for router operations
+#[cfg(feature = "router")]
 pub type RouterResult<T> = Result<T, TopicRouterError>;
 
 /// Topic processing limits and constants
@@ -61,10 +67,13 @@ pub mod limits {
 
 /// Validation utilities for topic operations
 pub mod validation {
+	#[cfg(feature = "router")]
+	use super::TopicMatcherError;
+	use super::TopicPatternError;
 	use super::limits::*;
-	use super::{TopicMatcherError, TopicPatternError};
 
 	/// Validates topic path for basic constraints
+	#[cfg(feature = "router")]
 	pub fn validate_topic_path(path: &str) -> Result<(), TopicMatcherError> {
 		if path.is_empty() {
 			return Err(TopicMatcherError::EmptyTopicPath);

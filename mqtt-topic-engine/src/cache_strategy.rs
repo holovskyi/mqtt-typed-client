@@ -17,13 +17,16 @@ pub enum CacheStrategy {
 	/// the least recently used entry is evicted. Provides good performance
 	/// for workloads with repeated topic patterns.
 	///
+	/// **Note:** This variant is only available with the `lru-cache` feature enabled.
+	///
 	/// # Example
-	/// ```
+	/// ```ignore
 	/// use std::num::NonZeroUsize;
 	/// use mqtt_topic_engine::CacheStrategy;
 	///
 	/// let cache = CacheStrategy::Lru(NonZeroUsize::new(100).unwrap());
 	/// ```
+	#[cfg(feature = "lru-cache")]
 	Lru(NonZeroUsize),
 
 	/// No caching - always create new TopicPath instances
@@ -38,29 +41,40 @@ pub enum CacheStrategy {
 impl CacheStrategy {
 	/// Create a new cache strategy with the specified capacity
 	///
-	/// Returns `NoCache` if capacity is 0, otherwise returns `Lru` with the given capacity.
+	/// Returns `NoCache` if capacity is 0, otherwise returns `Lru` with the given capacity
+	/// (if `lru-cache` feature is enabled).
 	///
 	/// # Arguments
 	/// * `capacity` - Maximum number of entries to cache (0 means no caching)
 	///
 	/// # Examples
 	/// ```
-	/// use mqtt_topic_engine::CacheStrategy;;
-	///
-	/// // Create LRU cache with 100 entries
-	/// let cache = CacheStrategy::new(100);
+	/// use mqtt_topic_engine::CacheStrategy;
 	///
 	/// // Create no-cache strategy
 	/// let no_cache = CacheStrategy::new(0);
 	/// assert_eq!(no_cache, CacheStrategy::NoCache);
 	/// ```
+	///
+	/// With `lru-cache` feature:
+	/// ```ignore
+	/// // Create LRU cache with 100 entries
+	/// let cache = CacheStrategy::new(100);
+	/// ```
 	pub fn new(capacity: usize) -> Self {
 		if capacity == 0 {
 			Self::NoCache
 		} else {
-			Self::Lru(
-				NonZeroUsize::new(capacity).expect("Capacity must be > 0"),
-			)
+			#[cfg(feature = "lru-cache")]
+			{
+				Self::Lru(
+					NonZeroUsize::new(capacity).expect("Capacity must be > 0"),
+				)
+			}
+			#[cfg(not(feature = "lru-cache"))]
+			{
+				Self::NoCache
+			}
 		}
 	}
 
@@ -68,17 +82,23 @@ impl CacheStrategy {
 	///
 	/// # Examples
 	/// ```
+	/// use mqtt_topic_engine::CacheStrategy;
+	///
+	/// let no_cache = CacheStrategy::NoCache;
+	/// assert_eq!(no_cache.capacity(), None);
+	/// ```
+	///
+	/// With `lru-cache` feature:
+	/// ```ignore
 	/// use std::num::NonZeroUsize;
 	/// use mqtt_topic_engine::CacheStrategy;
 	///
 	/// let cache = CacheStrategy::new(100);
 	/// assert_eq!(cache.capacity(), Some(NonZeroUsize::new(100).unwrap()));
-	///
-	/// let no_cache = CacheStrategy::NoCache;
-	/// assert_eq!(no_cache.capacity(), None);
 	/// ```
 	pub fn capacity(&self) -> Option<NonZeroUsize> {
 		match self {
+			#[cfg(feature = "lru-cache")]
 			| Self::Lru(size) => Some(*size),
 			| Self::NoCache => None,
 		}
@@ -99,10 +119,20 @@ mod tests {
 	use super::*;
 
 	#[test]
+	#[cfg(feature = "lru-cache")]
 	fn test_new_with_capacity() {
 		let cache = CacheStrategy::new(100);
 		assert!(matches!(cache, CacheStrategy::Lru(_)));
 		assert_eq!(cache.capacity(), NonZeroUsize::new(100));
+	}
+
+	#[test]
+	#[cfg(not(feature = "lru-cache"))]
+	fn test_new_with_capacity_no_lru() {
+		// Without lru-cache feature, new(100) should return NoCache
+		let cache = CacheStrategy::new(100);
+		assert_eq!(cache, CacheStrategy::NoCache);
+		assert_eq!(cache.capacity(), None);
 	}
 
 	#[test]
@@ -119,10 +149,17 @@ mod tests {
 	}
 
 	#[test]
+	#[cfg(feature = "lru-cache")]
 	fn test_capacity() {
 		let lru = CacheStrategy::Lru(NonZeroUsize::new(50).unwrap());
 		assert_eq!(lru.capacity(), NonZeroUsize::new(50));
 
+		let no_cache = CacheStrategy::NoCache;
+		assert_eq!(no_cache.capacity(), None);
+	}
+
+	#[test]
+	fn test_capacity_no_cache() {
 		let no_cache = CacheStrategy::NoCache;
 		assert_eq!(no_cache.capacity(), None);
 	}

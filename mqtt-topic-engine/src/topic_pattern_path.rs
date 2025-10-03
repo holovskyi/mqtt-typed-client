@@ -3,9 +3,11 @@ use std::convert::TryFrom;
 use std::fmt::{self, Display, Write};
 use std::slice::Iter;
 use std::sync::Arc;
+#[cfg(feature = "lru-cache")]
 use std::sync::Mutex;
 
 use arcstr::ArcStr;
+#[cfg(feature = "lru-cache")]
 use lru::LruCache;
 use smallvec::SmallVec;
 use thiserror::Error;
@@ -59,6 +61,9 @@ pub struct TopicPatternPath {
 	/// 2. Although used in single-threaded actor context, `RefCell` is not `Send`
 	/// 3. No contention occurs since access is serialized within the actor's event loop
 	/// 4. `Mutex` provides the same interior mutability as `RefCell` but with `Send + Sync`
+	///
+	/// **Note:** This field is only available with the `lru-cache` feature enabled.
+	#[cfg(feature = "lru-cache")]
 	match_cache: Option<Mutex<LruCache<ArcStr, Arc<TopicMatch>>>>,
 
 	parameter_bindings: Option<SmallVec<[(ArcStr, ArcStr); 4]>>,
@@ -70,6 +75,7 @@ impl Clone for TopicPatternPath {
 			template_pattern: self.template_pattern.clone(),
 			mqtt_topic_subscription: self.mqtt_topic_subscription.clone(),
 			segments: self.segments.clone(),
+			#[cfg(feature = "lru-cache")]
 			match_cache: self.match_cache.as_ref().map(|cache| {
 				let cache_guard = cache.lock().unwrap();
 				let capacity = cache_guard.cap();
@@ -123,6 +129,7 @@ impl TopicPatternPath {
 			}
 		}
 
+		#[cfg(feature = "lru-cache")]
 		let match_cache = match cache_strategy {
 			| CacheStrategy::Lru(cache_size) => {
 				Some(Mutex::new(LruCache::new(cache_size)))
@@ -130,12 +137,16 @@ impl TopicPatternPath {
 			| CacheStrategy::NoCache => None,
 		};
 
+		#[cfg(not(feature = "lru-cache"))]
+		let _ = cache_strategy; // Suppress unused warning
+
 		Ok(Self {
 			template_pattern: topic_pattern,
 			mqtt_topic_subscription: ArcStr::from(
 				Self::to_mqtt_subscription_pattern(&segments),
 			),
 			segments,
+			#[cfg(feature = "lru-cache")]
 			match_cache,
 			parameter_bindings: None,
 		})
@@ -143,12 +154,19 @@ impl TopicPatternPath {
 
 	/// Get the cache strategy of this topic pattern.
 	pub fn cache_strategy(&self) -> CacheStrategy {
-		match &self.match_cache {
-			| Some(cache_mutex) => {
-				let cache_guard = cache_mutex.lock().unwrap();
-				CacheStrategy::Lru(cache_guard.cap())
+		#[cfg(feature = "lru-cache")]
+		{
+			match &self.match_cache {
+				| Some(cache_mutex) => {
+					let cache_guard = cache_mutex.lock().unwrap();
+					CacheStrategy::Lru(cache_guard.cap())
+				}
+				| None => CacheStrategy::NoCache,
 			}
-			| None => CacheStrategy::NoCache,
+		}
+		#[cfg(not(feature = "lru-cache"))]
+		{
+			CacheStrategy::NoCache
 		}
 	}
 
@@ -169,7 +187,7 @@ impl TopicPatternPath {
 			.map(|(_, value)| value)
 	}
 
-	#[cfg(test)]
+	#[cfg(all(test, feature = "router"))]
 	/// Creates a topic pattern from segments directly, useful for testing.
 	pub(crate) fn new_from_segments(
 		segments: &[TopicPatternItem],
@@ -181,6 +199,7 @@ impl TopicPatternPath {
 			),
 			template_pattern: topic_pattern.clone(),
 			segments: segments.to_vec(),
+			#[cfg(feature = "lru-cache")]
 			match_cache: None,
 			parameter_bindings: None,
 		};
@@ -342,7 +361,7 @@ impl TopicPatternPath {
 		mqtt_topic
 	}
 
-	#[cfg(test)]
+	#[cfg(all(test, feature = "router"))]
 	fn to_template_pattern(segments: &[TopicPatternItem]) -> String {
 		// Convert to named wildcards: sensors/{sensor_id}/data
 		if segments.is_empty() {
@@ -431,28 +450,39 @@ impl TopicPatternPath {
 		&self,
 		topic: Arc<TopicPath>,
 	) -> Result<Arc<TopicMatch>, TopicMatchError> {
-		match &self.match_cache {
-			| Some(cache_mutex) => {
-				{
-					let mut match_cache = cache_mutex.lock().unwrap();
-					if let Some(cached_match) = match_cache.get(&topic.path) {
-						return Ok(cached_match.clone());
+		#[cfg(feature = "lru-cache")]
+		{
+			match &self.match_cache {
+				| Some(cache_mutex) => {
+					{
+						let mut match_cache = cache_mutex.lock().unwrap();
+						if let Some(cached_match) = match_cache.get(&topic.path)
+						{
+							return Ok(cached_match.clone());
+						}
 					}
-				}
 
-				let topic_match = self.try_match_internal(topic.clone())?;
-				let topic_match_arc = Arc::new(topic_match);
-				{
-					let mut match_cache = cache_mutex.lock().unwrap();
-					match_cache
-						.put(topic.path.clone(), Arc::clone(&topic_match_arc));
+					let topic_match = self.try_match_internal(topic.clone())?;
+					let topic_match_arc = Arc::new(topic_match);
+					{
+						let mut match_cache = cache_mutex.lock().unwrap();
+						match_cache.put(
+							topic.path.clone(),
+							Arc::clone(&topic_match_arc),
+						);
+					}
+					Ok(topic_match_arc)
 				}
-				Ok(topic_match_arc)
+				| None => {
+					let topic_match = self.try_match_internal(topic)?;
+					Ok(Arc::new(topic_match))
+				}
 			}
-			| None => {
-				let topic_match = self.try_match_internal(topic)?;
-				Ok(Arc::new(topic_match))
-			}
+		}
+		#[cfg(not(feature = "lru-cache"))]
+		{
+			let topic_match = self.try_match_internal(topic)?;
+			Ok(Arc::new(topic_match))
 		}
 	}
 

@@ -235,6 +235,7 @@ mod with_parameters_tests {
 	}
 
 	#[test]
+	#[cfg(feature = "lru-cache")]
 	fn test_cache_strategy_preservation() {
 		let pattern = TopicPatternPath::new_from_string(
 			"sensors/{id}/data",
