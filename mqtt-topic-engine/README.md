@@ -520,20 +520,23 @@ Topic engine is designed for high-performance applications:
 
 ### MQTT Client Support
 
-> **⚠️ Note on QoS and Dependencies:**  
-> Currently this library includes `rumqttc` as a direct dependency for QoS types.
-> In version 0.2.0, we will introduce our own QoS enum with optional feature flags
-> for different MQTT clients, making the library **truly zero-dependency by default**.
-> This change will provide better flexibility and allow integration with any MQTT client.
-> See our roadmap for details.
+The library includes its own QoS type and provides optional integration with popular MQTT clients:
 
-**Current integration:**
-- **rumqttc** - Direct support (dependency included)
+**Supported MQTT clients:**
+- **rumqttc** - Enable with `features = ["rumqttc"]`
+- **paho-mqtt** - Enable with `features = ["paho-mqtt"]`
+- **Zero-dependency** - Works standalone without any MQTT client (default)
 
-**Planned integrations (v0.2.0+):**
-- **paho-mqtt** - Via feature flag
-- **mosquitto** - Via feature flag  
-- Custom clients - Via standalone QoS type
+```toml
+# With rumqttc integration
+mqtt-topic-engine = { version = "0.1.0", features = ["rumqttc"] }
+
+# With paho-mqtt integration
+mqtt-topic-engine = { version = "0.1.0", features = ["paho-mqtt"] }
+
+# Zero-dependency (no features)
+mqtt-topic-engine = "0.1.0"
+```
 
 The core matching and routing logic is already client-agnostic and works with any MQTT client library.
 

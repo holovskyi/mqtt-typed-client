@@ -2,6 +2,10 @@
 //!
 //! Defines the three standard MQTT QoS levels independent of any specific
 //! MQTT client implementation.
+//!
+//! This module provides conversions to/from popular MQTT client libraries:
+//! - `rumqttc` - Enable with feature `rumqttc`
+//! - `paho-mqtt` - Enable with feature `paho-mqtt`
 
 use std::fmt;
 
@@ -38,6 +42,22 @@ impl QoS {
 			| QoS::ExactlyOnce => rumqttc::QoS::ExactlyOnce,
 		}
 	}
+
+	/// Convert to paho-mqtt QoS type
+	///
+	/// # Example
+	/// ```ignore
+	/// let qos = QoS::AtLeastOnce;
+	/// let paho_qos = qos.to_paho_mqtt();
+	/// ```
+	#[cfg(feature = "paho-mqtt")]
+	pub fn to_paho_mqtt(self) -> paho_mqtt::QoS {
+		match self {
+			| QoS::AtMostOnce => paho_mqtt::QoS::AtMostOnce,
+			| QoS::AtLeastOnce => paho_mqtt::QoS::AtLeastOnce,
+			| QoS::ExactlyOnce => paho_mqtt::QoS::ExactlyOnce,
+		}
+	}
 }
 
 #[cfg(feature = "rumqttc")]
@@ -47,6 +67,17 @@ impl From<rumqttc::QoS> for QoS {
 			| rumqttc::QoS::AtMostOnce => QoS::AtMostOnce,
 			| rumqttc::QoS::AtLeastOnce => QoS::AtLeastOnce,
 			| rumqttc::QoS::ExactlyOnce => QoS::ExactlyOnce,
+		}
+	}
+}
+
+#[cfg(feature = "paho-mqtt")]
+impl From<paho_mqtt::QoS> for QoS {
+	fn from(qos: paho_mqtt::QoS) -> Self {
+		match qos {
+			| paho_mqtt::QoS::AtMostOnce => QoS::AtMostOnce,
+			| paho_mqtt::QoS::AtLeastOnce => QoS::AtLeastOnce,
+			| paho_mqtt::QoS::ExactlyOnce => QoS::ExactlyOnce,
 		}
 	}
 }
