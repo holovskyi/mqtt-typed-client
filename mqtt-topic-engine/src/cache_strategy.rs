@@ -73,6 +73,13 @@ impl CacheStrategy {
 			}
 			#[cfg(not(feature = "lru-cache"))]
 			{
+				tracing::warn!(
+					capacity,
+					"LRU cache requested with capacity {}, but 'lru-cache' \
+					 feature is disabled. Falling back to NoCache. Enable \
+					 'lru-cache' feature in Cargo.toml to use caching.",
+					capacity
+				);
 				Self::NoCache
 			}
 		}

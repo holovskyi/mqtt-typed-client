@@ -138,7 +138,19 @@ impl TopicPatternPath {
 		};
 
 		#[cfg(not(feature = "lru-cache"))]
-		let _ = cache_strategy; // Suppress unused warning
+		{
+			if let Some(capacity) = cache_strategy.capacity() {
+				tracing::warn!(
+					capacity = capacity.get(),
+					pattern = %topic_pattern,
+					"LRU cache strategy provided for topic pattern '{}' with capacity {}, \
+					but 'lru-cache' feature is disabled. Caching will not be used. \
+					Enable 'lru-cache' feature in Cargo.toml to use caching.",
+					topic_pattern,
+					capacity.get()
+				);
+			}
+		}
 
 		Ok(Self {
 			template_pattern: topic_pattern,
