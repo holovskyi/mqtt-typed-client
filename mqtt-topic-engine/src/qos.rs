@@ -6,6 +6,7 @@
 //! This module provides conversions to/from popular MQTT client libraries:
 //! - `rumqttc` - Enable with feature `rumqttc`
 //! - `paho-mqtt` - Enable with feature `paho-mqtt`
+//! - `ntex-mqtt` - Enable with feature `ntex-mqtt`
 
 use std::fmt;
 
@@ -58,6 +59,22 @@ impl QoS {
 			| QoS::ExactlyOnce => paho_mqtt::QoS::ExactlyOnce,
 		}
 	}
+
+	/// Convert to ntex-mqtt QoS type
+	///
+	/// # Example
+	/// ```ignore
+	/// let qos = QoS::AtLeastOnce;
+	/// let ntex_qos = qos.to_ntex_mqtt();
+	/// ```
+	#[cfg(feature = "ntex-mqtt")]
+	pub fn to_ntex_mqtt(self) -> ntex_mqtt::QoS {
+		match self {
+			| QoS::AtMostOnce => ntex_mqtt::QoS::AtMostOnce,
+			| QoS::AtLeastOnce => ntex_mqtt::QoS::AtLeastOnce,
+			| QoS::ExactlyOnce => ntex_mqtt::QoS::ExactlyOnce,
+		}
+	}
 }
 
 #[cfg(feature = "rumqttc")]
@@ -78,6 +95,17 @@ impl From<paho_mqtt::QoS> for QoS {
 			| paho_mqtt::QoS::AtMostOnce => QoS::AtMostOnce,
 			| paho_mqtt::QoS::AtLeastOnce => QoS::AtLeastOnce,
 			| paho_mqtt::QoS::ExactlyOnce => QoS::ExactlyOnce,
+		}
+	}
+}
+
+#[cfg(feature = "ntex-mqtt")]
+impl From<ntex_mqtt::QoS> for QoS {
+	fn from(qos: ntex_mqtt::QoS) -> Self {
+		match qos {
+			| ntex_mqtt::QoS::AtMostOnce => QoS::AtMostOnce,
+			| ntex_mqtt::QoS::AtLeastOnce => QoS::AtLeastOnce,
+			| ntex_mqtt::QoS::ExactlyOnce => QoS::ExactlyOnce,
 		}
 	}
 }

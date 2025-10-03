@@ -525,6 +525,7 @@ The library includes its own QoS type and provides optional integration with pop
 **Supported MQTT clients:**
 - **rumqttc** - Enable with `features = ["rumqttc"]`
 - **paho-mqtt** - Enable with `features = ["paho-mqtt"]`
+- **ntex-mqtt** - Enable with `features = ["ntex-mqtt"]`
 - **Zero-dependency** - Works standalone without any MQTT client (default)
 
 ```toml
@@ -533,6 +534,9 @@ mqtt-topic-engine = { version = "0.1.0", features = ["rumqttc"] }
 
 # With paho-mqtt integration
 mqtt-topic-engine = { version = "0.1.0", features = ["paho-mqtt"] }
+
+# With ntex-mqtt integration
+mqtt-topic-engine = { version = "0.1.0", features = ["ntex-mqtt"] }
 
 # Zero-dependency (no features)
 mqtt-topic-engine = "0.1.0"

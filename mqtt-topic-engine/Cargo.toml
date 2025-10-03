@@ -19,11 +19,13 @@ lru = "0.15"
 thiserror = "2.0"
 rumqttc = { version = "0.24", optional = true, default-features = false }
 paho-mqtt = { version = "0.13", optional = true, default-features = false }
+ntex-mqtt = { version = "5", optional = true, default-features = false }
 tracing = "0.1"
 
 [features]
 default = []
 rumqttc = ["dep:rumqttc"]
 paho-mqtt = ["dep:paho-mqtt"]
+ntex-mqtt = ["dep:ntex-mqtt"]
 
 [dev-dependencies]
