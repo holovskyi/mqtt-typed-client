@@ -17,7 +17,7 @@ arcstr = "1.2"
 smallvec = "1.15"
 lru = { version = "0.15", optional = true }
 thiserror = "2.0"
-rumqttc = { version = "0.24", optional = true, default-features = false }
+rumqttc = { version = "0.25", optional = true, default-features = false }
 paho-mqtt = { version = "0.13", optional = true, default-features = false }
 ntex-mqtt = { version = "5", optional = true, default-features = false }
 tracing = "0.1"

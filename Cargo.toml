@@ -22,7 +22,7 @@ mqtt-typed-client-macros = { path = "./macros", version = "0.1.0", optional = tr
 
 mqtt-typed-client-doc-macros = { path = "./doc-macros", version = "0.1.0" }
 
-rumqttc = { version = "0.24", default-features = false }
+rumqttc = { version = "0.25", default-features = false }
 
 [features]
 default = ["macros", "bincode", "json", "rumqttc-url", "rumqttc-use-rustls"]
@@ -47,7 +47,7 @@ rumqttc-proxy = ["rumqttc/proxy"]
 bincode = "2.0.1"
 dotenv = "0.15.0"
 rand = "0.9.1"
-rumqttc = { version = "0.24.0", default-features = false, features = ["url", "use-rustls"] }
+rumqttc = { version = "0.25.0", default-features = false, features = ["url", "use-rustls"] }
 rustls-pemfile = "2.1.0"
 serde = "1.0.219"
 tokio = { version = "1.0", features = ["full"] }
