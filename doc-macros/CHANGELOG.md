@@ -11,7 +11,7 @@ for direct use).
 
 ## [Unreleased]
 
-## [0.1.0] - TBD
+## [0.1.0] - 2026-06-23
 
 First release. Extracted from the `mqtt-typed-client` build script.
 

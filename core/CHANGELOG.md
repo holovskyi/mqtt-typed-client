@@ -11,7 +11,7 @@ For the full, user-facing changelog see the
 
 ## [Unreleased]
 
-## [0.2.0] - TBD
+## [0.2.0] - 2026-06-23
 
 ### Added
 - Multi-serializer support: `MqttClient::clone_with_serializer::<S>()` and

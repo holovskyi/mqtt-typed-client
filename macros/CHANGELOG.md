@@ -12,7 +12,7 @@ user-facing changelog see the
 
 ## [Unreleased]
 
-## [0.2.0] - TBD
+## [0.2.0] - 2026-06-23
 
 ### Added
 - Per-topic serializer override via the `mqtt_topic` attribute:
