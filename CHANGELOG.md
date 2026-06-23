@@ -17,7 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Granular TLS / transport feature flags forwarding to `rumqttc`:
   `rumqttc-url`, `rumqttc-websocket`, `rumqttc-use-rustls`, `rumqttc-use-native-tls`,
   `rumqttc-proxy`. This lets you pick a TLS backend (rustls / native-tls) or build
-  without TLS, avoiding the `aws-lc` cross-compilation pain.
+  without TLS.
+- `rumqttc-use-rustls-no-provider` feature — use rustls without bundling a crypto
+  provider (e.g. `aws-lc-rs`), so you can bring your own (such as `ring`) and avoid
+  the `aws-lc` cross-compilation pain on 32-bit / embedded targets.
 - New standalone crate `mqtt-topic-engine` — the topic pattern matching and routing
   engine, usable without the MQTT client.
 - New internal crate `mqtt-typed-client-doc-macros` (replaces the previous `build.rs`).
@@ -31,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Public types remain available through `mqtt_typed_client_core::topic::*`.
 - Documentation link transformation moved from `build.rs` to the `doc-macros`
   proc-macro (supply-chain hardening — no more build script).
+- Upgraded `rumqttc` from 0.24 to 0.25.1. The public API surface used by this
+  crate is unchanged; with default features (`rumqttc-use-rustls`) rustls now
+  pulls `aws-lc-rs` as its crypto provider — use `rumqttc-use-rustls-no-provider`
+  to opt out (see above).
 
 ### Removed
 - **BREAKING:** the incidentally-public matcher internals `TopicMatcherNode<T>`

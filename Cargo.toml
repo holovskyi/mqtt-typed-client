@@ -22,7 +22,7 @@ mqtt-typed-client-macros = { path = "./macros", version = "0.2.0", optional = tr
 
 mqtt-typed-client-doc-macros = { path = "./doc-macros", version = "0.1.0" }
 
-rumqttc = { version = "0.24", default-features = false }
+rumqttc = { version = "0.25.1", default-features = false }
 
 [features]
 default = ["macros", "bincode", "json", "rumqttc-url", "rumqttc-use-rustls"]
@@ -39,6 +39,9 @@ flexbuffers = ["mqtt-typed-client-core/flexbuffers"]
 rumqttc-url = ["rumqttc/url"]
 rumqttc-websocket = ["rumqttc/websocket"]
 rumqttc-use-rustls = ["rumqttc/use-rustls"]
+# rustls without bundling a crypto provider (e.g. aws-lc-rs). Use this to bring
+# your own provider (such as ring) and avoid the aws-lc cross-compilation pain.
+rumqttc-use-rustls-no-provider = ["rumqttc/use-rustls-no-provider"]
 rumqttc-use-native-tls = ["rumqttc/use-native-tls"]
 rumqttc-proxy = ["rumqttc/proxy"]
 
@@ -47,7 +50,7 @@ rumqttc-proxy = ["rumqttc/proxy"]
 bincode = "2.0.1"
 dotenv = "0.15.0"
 rand = "0.9.1"
-rumqttc = { version = "0.24.0", default-features = false, features = ["url", "use-rustls"] }
+rumqttc = { version = "0.25.1", default-features = false, features = ["url", "use-rustls"] }
 rustls-pemfile = "2.1.0"
 serde = "1.0.219"
 tokio = { version = "1.0", features = ["full"] }
