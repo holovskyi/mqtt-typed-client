@@ -2,6 +2,11 @@
 members = ["core", "macros", "mqtt-topic-engine", "doc-macros"]
 resolver = "2"
 
+# Shared dependency versions for all workspace members. Members opt in with
+# `rumqttc = { workspace = true, features = [...] }` and add their own features.
+[workspace.dependencies]
+rumqttc = { version = "0.25.1", default-features = false }
+
 [package]
 name = "mqtt-typed-client"
 version = "0.2.0"
@@ -22,7 +27,7 @@ mqtt-typed-client-macros = { path = "./macros", version = "0.2.0", optional = tr
 
 mqtt-typed-client-doc-macros = { path = "./doc-macros", version = "0.1.0" }
 
-rumqttc = { version = "0.25.1", default-features = false }
+rumqttc = { workspace = true }
 
 [features]
 default = ["macros", "bincode", "json", "rumqttc-url", "rumqttc-use-rustls"]
@@ -50,7 +55,7 @@ rumqttc-proxy = ["rumqttc/proxy"]
 bincode = "2.0.1"
 dotenv = "0.15.0"
 rand = "0.9.1"
-rumqttc = { version = "0.25.1", default-features = false, features = ["url", "use-rustls"] }
+rumqttc = { workspace = true, features = ["url", "use-rustls"] }
 rustls-pemfile = "2.1.0"
 serde = "1.0.219"
 tokio = { version = "1.0", features = ["full"] }
@@ -59,6 +64,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"]
 uuid = { version = "1.17.0", features = ["v4"] }
 rmp-serde = "1.3"
 chrono = { version = "0.4.41", features = ["serde"] }
+
+[[example]]
+name = "004_hello_world_tls"
+required-features = ["rumqttc-use-rustls"]
 
 [[example]]
 name = "100_all_serializers_demo"

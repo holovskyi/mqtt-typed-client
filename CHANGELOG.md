@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `rumqttc-use-rustls-no-provider` feature — use rustls without bundling a crypto
   provider (e.g. `aws-lc-rs`), so you can bring your own (such as `ring`) and avoid
   the `aws-lc` cross-compilation pain on 32-bit / embedded targets.
+- Re-exports so custom transports need no direct `rumqttc` dependency:
+  `Transport` (always available, also in `prelude`), and — under a rustls feature —
+  `tokio_rustls` and `rustls` (version-matched to the transport), for building a
+  `ClientConfig` for `Transport::tls_with_config(...)`.
 - New standalone crate `mqtt-topic-engine` — the topic pattern matching and routing
   engine, usable without the MQTT client.
 - New internal crate `mqtt-typed-client-doc-macros` (replaces the previous `build.rs`).

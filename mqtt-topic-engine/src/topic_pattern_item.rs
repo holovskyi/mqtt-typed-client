@@ -99,7 +99,7 @@ impl TopicPatternItem {
 	}
 
 	/// Returns pattern representation with named parameters in braces.
-	pub fn as_wildcard(&self) -> Cow<str> {
+	pub fn as_wildcard(&self) -> Cow<'_, str> {
 		match self {
 			| TopicPatternItem::Plus(None) => Cow::Borrowed("+"),
 			| TopicPatternItem::Hash(None) => Cow::Borrowed("#"),

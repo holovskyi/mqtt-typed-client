@@ -153,6 +153,10 @@ pub use routing::SubscriptionConfig;
 pub use rumqttc::MqttOptions;
 // Essential external types
 pub use rumqttc::QoS;
+// Transport selector for custom connections (TCP / TLS / WebSocket). Always
+// available; the TLS/WebSocket variants require the corresponding `rumqttc-*`
+// feature on the `mqtt-typed-client` crate.
+pub use rumqttc::Transport;
 // Structured subscribers (macro support)
 pub use structured::{
 	FromMqttMessage, MessageConversionError, MqttTopicSubscriber,

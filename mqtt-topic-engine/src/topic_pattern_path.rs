@@ -292,7 +292,7 @@ impl TopicPatternPath {
 	}
 
 	/// Returns iterator over pattern segments.
-	pub fn iter(&self) -> Iter<TopicPatternItem> {
+	pub fn iter(&self) -> Iter<'_, TopicPatternItem> {
 		self.segments.iter()
 	}
 

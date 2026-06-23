@@ -80,12 +80,11 @@
   (зараз взаємовиключність не enforced).
 - [ ] Підтримати generic-серіалізатор `MySerializer<Foo>` у парсері (`macros/src/lib.rs` — зараз
   лише `Expr::Path`) АБО уточнити обмеження в error-меседжі.
-- [ ] **mqtt-topic-engine standalone-готовність** (публікується окремо):
+- [ ] **mqtt-topic-engine standalone-готовність** (✅ РІШЕННЯ: публікуємо окремо, У СКОУПІ 0.2.0):
   - [ ] Документувати pub-модулі `topic_router` / `topic_matcher` (зняти `#![allow(missing_docs)]`).
   - [ ] LICENSE: прибрати у README посилання `../LICENSE-MIT` (не рендериться на crates.io) — власні копії.
   - [ ] Прибрати/задіяти мертвий `get_max_qos_for_topic`; рішення по TODO QoS-downgrade (`topic_router.rs`).
-  - [ ] `CHANGELOG.md` для engine.
-- [ ] Рішення щодо публічності внутрішнього `doc-macros` (зараз публікується публічно).
+  - [ ] `CHANGELOG.md` для engine (стартує з 0.1.0).
 - [ ] Винести `rumqttc` у `[workspace.dependencies]` (хардкод у кількох місцях).
 
 ---
@@ -121,3 +120,9 @@
   високопріоритетному блоці "Міграція rumqttc" вище.
 - **Без власної TLS-абстракції**: коментатор просив гнучкі флаги, не обгортку. Достатньо
   passthrough-флагів + re-export `Transport`/TLS-типів для зручності.
+- **Публікація крейтів**: `mqtt-topic-engine` — публікуємо окремо (standalone-цінність для спільноти).
+  `doc-macros` — **лишаємо назавжди** (варіант A): авто-конвертація GitHub→docs.rs посилань потрібна,
+  тож зайвий internal-крейт у реєстрі — прийнятна ціна. Варіант C (викинути) відхилено.
+- **Версіонування — НЕЗАЛЕЖНЕ (не lockstep)**: клієнтські крейти (root/core/macros) = 0.2.0;
+  standalone `mqtt-topic-engine` і internal `doc-macros` = 0.1.0 (їхній перший реліз; версія
+  відображає власний API крейта, а не клієнта).

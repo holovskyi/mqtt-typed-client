@@ -14,10 +14,14 @@ mod shared;
 use std::{fs, io::BufReader};
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientConfig};
+// TLS types are re-exported from the crate itself — no direct `rumqttc`
+// dependency needed, and the rustls version is guaranteed to match the
+// transport.
+use mqtt_typed_client::rustls::{ClientConfig, RootCertStore};
+use mqtt_typed_client::{
+	BincodeSerializer, MqttClient, MqttClientConfig, Transport,
+};
 use mqtt_typed_client_macros::mqtt_topic;
-use rumqttc::Transport;
-use rumqttc::tokio_rustls::rustls::{ClientConfig, RootCertStore};
 
 /// Message payload - automatically serialized/deserialized with bincode
 #[derive(Encode, Decode, Debug)]

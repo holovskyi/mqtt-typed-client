@@ -17,6 +17,23 @@
 pub use mqtt_typed_client_core::*;
 #[cfg(feature = "macros")]
 pub use mqtt_typed_client_macros::*;
+// Re-export rumqttc's bundled rustls stack so you can build a `ClientConfig`
+// for `Transport::tls_with_config(...)` without depending on `rumqttc` or
+// `rustls` directly — and with a version guaranteed to match the transport.
+// Available under either rustls feature: both `rumqttc-use-rustls` and
+// `rumqttc-use-rustls-no-provider` enable rumqttc's rustls stack (and thus its
+// `tokio_rustls` re-export). Note: PEM parsing still needs your own crate
+// (e.g. `rustls-pemfile`).
+#[cfg(any(
+	feature = "rumqttc-use-rustls",
+	feature = "rumqttc-use-rustls-no-provider"
+))]
+pub use rumqttc::tokio_rustls;
+#[cfg(any(
+	feature = "rumqttc-use-rustls",
+	feature = "rumqttc-use-rustls-no-provider"
+))]
+pub use rumqttc::tokio_rustls::rustls;
 
 pub mod prelude {
 	//! Convenient imports for common use cases
@@ -26,7 +43,7 @@ pub mod prelude {
 		BincodeSerializer, ClientSettings, MessageSerializer, MqttClient,
 		MqttClientConfig, MqttClientError, MqttConnection, MqttOptions,
 		MqttPublisher, MqttSubscriber, QoS, Result, SubscriptionBuilder,
-		TypedLastWill,
+		Transport, TypedLastWill,
 	};
 	#[cfg(feature = "macros")]
 	pub use mqtt_typed_client_macros::*;
@@ -273,6 +290,9 @@ mod tests {
 
 	#[cfg(feature = "macros")]
 	#[test]
+	// `HAS_MACROS` is a compile-time constant; asserting it documents that the
+	// `macros` feature wires the flag correctly.
+	#[allow(clippy::assertions_on_constants)]
 	fn test_macros_feature_enabled() {
 		assert!(info::HAS_MACROS);
 		assert!(info::version_string().contains("with macros"));
@@ -280,6 +300,7 @@ mod tests {
 
 	#[cfg(not(feature = "macros"))]
 	#[test]
+	#[allow(clippy::assertions_on_constants)]
 	fn test_macros_feature_disabled() {
 		assert!(!info::HAS_MACROS);
 		assert!(info::version_string().contains("core only"));

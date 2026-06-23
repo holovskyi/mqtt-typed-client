@@ -3,7 +3,6 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use thiserror::Error;
-use tracing::error;
 
 use crate::{
 	MessageSerializer, MqttSubscriber, topic::topic_match::TopicMatch,
