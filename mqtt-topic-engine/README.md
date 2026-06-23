@@ -70,8 +70,10 @@ mqtt-topic-engine = { version = "0.1.0", features = ["ntex-mqtt"] }
 
 ### Basic Pattern Matching
 
-```rust
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
+use std::sync::Arc;
 
 // Parse a topic pattern
 let pattern = TopicPatternPath::new_from_string(
@@ -80,16 +82,20 @@ let pattern = TopicPatternPath::new_from_string(
 )?;
 
 // Check if a topic matches - just pass a string!
-let topic = TopicPath::new("sensors/kitchen/temperature");
+let topic = Arc::new(TopicPath::new("sensors/kitchen/temperature"));
 let topic_match = pattern.try_match(topic)?;
 
 println!("Topic matched: {}", topic_match.topic_path());
+# Ok(())
+# }
 ```
 
 ### Named Parameters
 
-```rust
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
+use std::sync::Arc;
 
 // Pattern with named parameters
 let pattern = TopicPatternPath::new_from_string(
@@ -97,7 +103,7 @@ let pattern = TopicPatternPath::new_from_string(
     CacheStrategy::NoCache
 )?;
 
-let topic = TopicPath::new("devices/kitchen/sensor001/status");
+let topic = Arc::new(TopicPath::new("devices/kitchen/sensor001/status"));
 let topic_match = pattern.try_match(topic)?;
 
 // Extract parameters by name
@@ -106,12 +112,16 @@ let device_id = topic_match.get_named_param("device_id").unwrap();
 
 println!("Location: {}, Device: {}", location, device_id);
 // Output: Location: kitchen, Device: sensor001
+# Ok(())
+# }
 ```
 
 ### Multi-Level Wildcards
 
-```rust
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
+use std::sync::Arc;
 
 // Match all subtopics under logs/
 let pattern = TopicPatternPath::new_from_string(
@@ -119,7 +129,7 @@ let pattern = TopicPatternPath::new_from_string(
     CacheStrategy::NoCache
 )?;
 
-let topic = TopicPath::new("logs/api/v1/users/create");
+let topic = Arc::new(TopicPath::new("logs/api/v1/users/create"));
 let topic_match = pattern.try_match(topic)?;
 
 let service = topic_match.get_named_param("service").unwrap();
@@ -127,6 +137,8 @@ let details = topic_match.get_named_param("details").unwrap();
 
 println!("Service: {}, Path: {}", service, details);
 // Output: Service: api, Path: v1/users/create
+# Ok(())
+# }
 ```
 
 ## Core Concepts
@@ -147,9 +159,9 @@ MQTT topic engine supports standard MQTT wildcards plus named parameters:
 
 Route messages to multiple subscribers based on patterns:
 
-```rust
-use mqtt_topic_engine::{TopicRouter, TopicPatternPath, TopicPath, CacheStrategy};
-use rumqttc::QoS;
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+use mqtt_topic_engine::{TopicRouter, TopicPatternPath, TopicPath, CacheStrategy, QoS};
 
 let mut router = TopicRouter::new();
 
@@ -172,17 +184,21 @@ let (needs_subscribe, sub_id2) = router.add_subscription(
 let topic = TopicPath::new("sensors/kitchen/temperature");
 let subscribers = router.get_subscribers(&topic);
 
-for (sub_id, (pattern, qos), handler) in subscribers {
+for (sub_id, (pattern, _qos), handler) in subscribers {
     println!("Matched subscriber: {:?} with pattern: {}", sub_id, pattern.topic_pattern());
     // Forward message to handler
 }
+# let _ = (needs_subscribe, sub_id1, sub_id2);
+# Ok(())
+# }
 ```
 
 ### Parameter Binding
 
 Bind specific values to parameters for filtered subscriptions:
 
-```rust
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 use mqtt_topic_engine::{TopicPatternPath, CacheStrategy};
 
 let pattern = TopicPatternPath::new_from_string(
@@ -197,6 +213,8 @@ let filtered = pattern
 
 println!("{}", filtered.mqtt_pattern());
 // Output: sensors/kitchen/temperature/+/data
+# Ok(())
+# }
 ```
 
 This is useful for:
@@ -208,24 +226,29 @@ This is useful for:
 
 ### LRU Caching for Performance
 
-```rust
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
 use std::num::NonZeroUsize;
+use std::sync::Arc;
 
 // Create pattern with LRU cache of 1000 entries
 let cache_size = NonZeroUsize::new(1000).unwrap();
 let pattern = TopicPatternPath::new_from_string(
     "sensors/{location}/{device}/data",
     CacheStrategy::Lru(cache_size)
-)?;  
+)?;
 
 // First match - computed and cached
-let topic1 = TopicPath::new("sensors/kitchen/temp001/data");
+let topic1 = Arc::new(TopicPath::new("sensors/kitchen/temp001/data"));
 let match1 = pattern.try_match(topic1)?;
 
 // Second match to same topic - retrieved from cache (faster!)
-let topic2 = TopicPath::new("sensors/kitchen/temp001/data");
+let topic2 = Arc::new(TopicPath::new("sensors/kitchen/temp001/data"));
 let match2 = pattern.try_match(topic2)?;
+# let _ = (match1, match2);
+# Ok(())
+# }
 ```
 
 ### Topic Pattern Validation
@@ -253,7 +276,8 @@ assert!(matches!(
 
 ### Building Topics for Publishing
 
-```rust
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 use mqtt_topic_engine::{TopicPatternPath, CacheStrategy};
 
 let pattern = TopicPatternPath::new_from_string(
@@ -268,13 +292,15 @@ println!("{}", topic);
 
 // Type-safe: compile error if wrong number of parameters
 // let invalid = pattern.format_topic(&[&"sensor"])?; // Runtime error!
+# Ok(())
+# }
 ```
 
 ### Managing Subscriptions
 
-```rust
-use mqtt_topic_engine::{TopicRouter, TopicPatternPath, CacheStrategy};
-use rumqttc::QoS;
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+use mqtt_topic_engine::{TopicRouter, TopicPatternPath, CacheStrategy, QoS};
 
 let mut router = TopicRouter::new();
 
@@ -298,12 +324,46 @@ if needs_mqtt_unsubscribe {
     // Unsubscribe from MQTT broker
     println!("Should unsubscribe from broker: {}", pattern.mqtt_pattern());
 }
+# Ok(())
+# }
+```
+
+### QoS Aggregation
+
+A `TopicRouter` is more than a `pattern -> handler` map: it tracks the **maximum
+QoS** requested across all subscribers of the same pattern and tells you, via the
+`needs_subscribe` flag, exactly when a broker action is required. You only need to
+(re)subscribe on the broker when a pattern is new or when its aggregated QoS rises —
+adding another subscriber at the same or a lower QoS needs no wire traffic at all.
+
+```rust
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+use mqtt_topic_engine::{TopicRouter, TopicPatternPath, CacheStrategy, QoS};
+
+let mut router = TopicRouter::new();
+let pattern = || TopicPatternPath::new_from_string("sensors/+/data", CacheStrategy::NoCache);
+
+// First subscriber on this pattern -> a broker subscription is needed.
+let (needs_subscribe, _id1) = router.add_subscription(pattern()?, QoS::AtMostOnce, "h1");
+assert!(needs_subscribe);
+
+// Same pattern, but a HIGHER QoS -> must resubscribe at the higher level.
+let (needs_subscribe, _id2) = router.add_subscription(pattern()?, QoS::AtLeastOnce, "h2");
+assert!(needs_subscribe);
+
+// Same pattern, equal-or-lower QoS -> aggregated max is unchanged, no broker action.
+let (needs_subscribe, _id3) = router.add_subscription(pattern()?, QoS::AtMostOnce, "h3");
+assert!(!needs_subscribe);
+# Ok(())
+# }
 ```
 
 ### Wildcard Patterns
 
 ```rust
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
+use std::sync::Arc;
 
 // Anonymous wildcards (standard MQTT)
 let pattern1 = TopicPatternPath::new_from_string("home/+/temperature", CacheStrategy::NoCache)?;
@@ -311,7 +371,7 @@ let pattern1 = TopicPatternPath::new_from_string("home/+/temperature", CacheStra
 // Named wildcards (extracts parameter)
 let pattern2 = TopicPatternPath::new_from_string("home/{room}/temperature", CacheStrategy::NoCache)?;
 
-let topic = TopicPath::new("home/kitchen/temperature");
+let topic = Arc::new(TopicPath::new("home/kitchen/temperature"));
 
 // Both match the same topics
 let match1 = pattern1.try_match(topic.clone())?;
@@ -321,13 +381,16 @@ let match2 = pattern2.try_match(topic)?;
 assert!(match2.get_named_param("room").is_some());
 println!("Room: {}", match2.get_named_param("room").unwrap());
 // Output: Room: kitchen
+# let _ = match1;
+# Ok(())
+# }
 ```
 
 ### Complex Routing Scenarios
 
-```rust
-use mqtt_topic_engine::{TopicRouter, TopicPatternPath, TopicPath, CacheStrategy};
-use rumqttc::QoS;
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+use mqtt_topic_engine::{TopicRouter, TopicPatternPath, TopicPath, CacheStrategy, QoS};
 
 let mut router = TopicRouter::<String>::new();
 
@@ -352,6 +415,7 @@ let subscribers = router.get_subscribers(&topic);
 println!("Message 'home/kitchen/temperature' matches {} subscribers:", subscribers.len());
 for (sub_id, (pattern, _qos), handler) in subscribers {
     println!("  - {} (pattern: {})", handler, pattern.topic_pattern());
+    let _ = sub_id;
 }
 
 /* Output:
@@ -362,13 +426,49 @@ Message 'home/kitchen/temperature' matches 5 subscribers:
   - all_home_handler (pattern: home/#)
   - all_kitchen_subtopics_handler (pattern: +/kitchen/#)
 */
+# Ok(())
+# }
+```
+
+### Reconnection: Resubscribe After Broker Restart
+
+When the broker connection drops, you must replay your subscriptions. The router
+gives you the **deduplicated** set of patterns, each already collapsed to the
+**maximum QoS** among its subscribers, so you resubscribe each distinct topic
+exactly once at the correct level:
+
+```rust
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+use mqtt_topic_engine::{TopicRouter, TopicPatternPath, CacheStrategy, QoS};
+
+let mut router = TopicRouter::new();
+let pattern = |s| TopicPatternPath::new_from_string(s, CacheStrategy::NoCache);
+
+// Two subscribers share one pattern at different QoS; another pattern is distinct.
+router.add_subscription(pattern("sensors/+/data")?, QoS::AtMostOnce, "h1");
+router.add_subscription(pattern("sensors/+/data")?, QoS::ExactlyOnce, "h2");
+router.add_subscription(pattern("alerts/#")?, QoS::AtLeastOnce, "h3");
+
+// On reconnect, replay exactly the distinct broker subscriptions, each at the
+// maximum QoS aggregated across its subscribers - no duplicates.
+let to_resubscribe = router.get_topics_for_resubscribe();
+assert_eq!(to_resubscribe.len(), 2);
+assert_eq!(to_resubscribe.get("sensors/+/data").copied(), Some(QoS::ExactlyOnce));
+assert_eq!(to_resubscribe.get("alerts/#").copied(), Some(QoS::AtLeastOnce));
+
+for (topic_pattern, qos) in &to_resubscribe {
+    // client.subscribe(topic_pattern.as_ref(), (*qos).to_rumqttc()).await?;
+    let _ = (topic_pattern, qos);
+}
+# Ok(())
+# }
 ```
 
 ### Integration with MQTT Clients
 
 #### With rumqttc
 
-```rust
+```rust,ignore
 use mqtt_topic_engine::{TopicRouter, TopicPatternPath, TopicPath, CacheStrategy};
 use rumqttc::{AsyncClient, MqttOptions, QoS, Event, Packet};
 
@@ -424,7 +524,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### IoT Device Management
 
-```rust
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 use mqtt_topic_engine::{TopicPatternPath, CacheStrategy};
 
 // Subscribe to all sensors in a specific location
@@ -439,12 +540,16 @@ let filtered = pattern
 
 println!("{}", filtered.mqtt_pattern());
 // Output: iot/headquarters/3/sensors/+/+/telemetry
+# Ok(())
+# }
 ```
 
 ### Log Aggregation
 
-```rust
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
+use std::sync::Arc;
 
 // Route logs by service and severity
 let pattern = TopicPatternPath::new_from_string(
@@ -452,7 +557,7 @@ let pattern = TopicPatternPath::new_from_string(
     CacheStrategy::NoCache
 )?;
 
-let topic = TopicPath::new("logs/api/error/auth/invalid-token");
+let topic = Arc::new(TopicPath::new("logs/api/error/auth/invalid-token"));
 let topic_match = pattern.try_match(topic)?;
 
 let service = topic_match.get_named_param("service").unwrap();
@@ -462,22 +567,30 @@ let details = topic_match.get_named_param("details").unwrap();
 if severity == "error" {
     println!("ERROR in {}: {}", service, details);
 }
+# Ok(())
+# }
 ```
 
 ### Multi-Tenant Applications
 
-```rust
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+use mqtt_topic_engine::{TopicPatternPath, CacheStrategy};
+
 // Each tenant gets isolated topic space
 let pattern = TopicPatternPath::new_from_string(
     "tenant/{tenant_id}/devices/{device_id}/events",
     CacheStrategy::NoCache
 )?;
 
-// Tenant A only sees their devices
-let tenant_a_pattern = pattern.bind_parameter("tenant_id", "tenant-a")?;
+// Tenant A only sees their devices (clone: bind_parameter consumes the pattern)
+let tenant_a_pattern = pattern.clone().bind_parameter("tenant_id", "tenant-a")?;
 
 // Tenant B only sees their devices
 let tenant_b_pattern = pattern.bind_parameter("tenant_id", "tenant-b")?;
+# let _ = (tenant_a_pattern, tenant_b_pattern);
+# Ok(())
+# }
 ```
 
 ### Working with ArcStr
@@ -485,8 +598,9 @@ let tenant_b_pattern = pattern.bind_parameter("tenant_id", "tenant-b")?;
 Under the hood, `mqtt-topic-engine` uses `ArcStr` for efficient string handling with cheap cloning.
 You can pass regular `&str` or `String` values, and they will be converted automatically:
 
-```rust
-use mqtt_topic_engine::{TopicPath, TopicPatternPath, CacheStrategy};
+```rust,no_run
+# fn main() {
+use mqtt_topic_engine::TopicPath;
 use arcstr::ArcStr;
 
 // All of these work - the API accepts impl Into<ArcStr>:
@@ -499,6 +613,8 @@ let topic_string = ArcStr::from("sensors/temperature");
 let topic_a = TopicPath::new(topic_string.clone());  // Cheap clone (reference counted)
 let topic_b = TopicPath::new(topic_string.clone());  // Another cheap clone
 let topic_c = TopicPath::new(topic_string);          // Move (also cheap)
+# let _ = (topic1, topic2, topic3, topic_a, topic_b, topic_c);
+# }
 ```
 
 **When to use `ArcStr` directly:**
@@ -511,7 +627,8 @@ let topic_c = TopicPath::new(topic_string);          // Move (also cheap)
 
 ### Cache Strategies
 
-```rust
+```rust,no_run
+# fn main() {
 use mqtt_topic_engine::CacheStrategy;
 use std::num::NonZeroUsize;
 
@@ -519,13 +636,13 @@ use std::num::NonZeroUsize;
 let no_cache = CacheStrategy::NoCache;
 
 // LRU cache with 100 entries (balance memory/performance)
-// Note: requires 'lru-cache' feature
-#[cfg(feature = "lru-cache")]
+// Note: requires the 'lru-cache' feature (enabled by default)
 let lru_100 = CacheStrategy::Lru(NonZeroUsize::new(100).unwrap());
 
 // LRU cache with 10000 entries (high performance, more memory)
-#[cfg(feature = "lru-cache")]
 let lru_10k = CacheStrategy::Lru(NonZeroUsize::new(10000).unwrap());
+# let _ = (no_cache, lru_100, lru_10k);
+# }
 ```
 
 **When to use caching:**
@@ -544,8 +661,10 @@ For resource-constrained environments, use only the core pattern matching withou
 mqtt-topic-engine = { version = "0.1.0", default-features = false }
 ```
 
-```rust
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
+use std::sync::Arc;
 
 // Minimal footprint: only pattern validation and matching
 let pattern = TopicPatternPath::new_from_string(
@@ -553,12 +672,15 @@ let pattern = TopicPatternPath::new_from_string(
     CacheStrategy::NoCache  // No LRU dependency
 )?;
 
-let topic = TopicPath::new("sensors/kitchen/data");
+let topic = Arc::new(TopicPath::new("sensors/kitchen/data"));
 let topic_match = pattern.try_match(topic)?;
 
 if let Some(location) = topic_match.get_named_param("location") {
     // Process message for specific location
+#   let _ = location;
 }
+# Ok(())
+# }
 ```
 
 **Benefits of minimal configuration:**
@@ -617,7 +739,7 @@ The core matching and routing logic is already client-agnostic and works with an
 
 When MQTT client integration features are enabled, the library provides automatic QoS type conversions:
 
-```rust
+```rust,ignore
 use mqtt_topic_engine::QoS;
 
 // From client-specific QoS to mqtt-topic-engine QoS
@@ -637,7 +759,7 @@ let engine_qos = QoS::AtLeastOnce;
 let rumqttc_qos: rumqttc::QoS = engine_qos.to_rumqttc();
 
 #[cfg(feature = "paho-mqtt")]
-let paho_qos: i32 = engine_qos.to_paho_mqtt();
+let paho_qos: paho_mqtt::QoS = engine_qos.to_paho_mqtt();
 
 #[cfg(feature = "ntex-mqtt")]
 let ntex_qos: ntex_mqtt::QoS = engine_qos.to_ntex_mqtt();
@@ -657,8 +779,8 @@ Contributions are welcome! This library is part of the [mqtt-typed-client](https
 
 This project is licensed under either of
 
- * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+ * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
 

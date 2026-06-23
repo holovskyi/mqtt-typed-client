@@ -1,8 +1,7 @@
-//! MQTT Topic Pattern Matching and Routing Engine
+//! # MQTT Topic Engine
 //!
-//! This library provides efficient topic pattern matching, routing, and subscription
-//! management for MQTT-based applications.
-
+#![doc = mqtt_typed_client_doc_macros::include_md_transformed!("README.md", transform = "readme")]
+//!
 #![warn(missing_docs)]
 
 // Public modules

@@ -90,6 +90,14 @@
     `#[allow(dead_code)]`, не впливає на docs.rs/clippy). Підсилено перехресні коментарі
     `get_max_qos_for_topic` ↔ TODO в `unsubscribe`.
   - [x] `CHANGELOG.md` для engine (стартує з 0.1.0).
+  - [x] README engine підключено як крейт-док через `include_md_transformed!`; усі ```rust-блоки
+    розмічено як doctests (no_run/run/ignore), приклади приведено до реального API (`try_match`
+    бере `Arc<TopicPath>`!), додано 2 приклади (QoS-агрегація, resubscribe-on-reconnect).
+    21 doctest зелені. Залежність `doc-macros` (non-optional, path+version) — за рішенням варіант A.
+  - [ ] ТЕХ-БОРГ docs.rs (НЕ блокер релізу, на потім): (1) відносні лінки `[LICENSE-MIT](LICENSE-MIT)`
+    у README → 404 на docs.rs (зробити абсолютними або прибрати); (2) `[package.metadata.docs.rs]`:
+    НЕ ставити `all-features=true` (увімкне paho → docs.rs-білд шукатиме нативну C-lib і впаде);
+    радше `features=["rumqttc"]` (+ntex, обидва pure-Rust), щоб показати QoS-конверсії без нативу.
 - [x] Винести `rumqttc` у `[workspace.dependencies]` — члени на `workspace = true`. (коміт 995680b)
 
 ---

@@ -24,6 +24,11 @@ routing engine extracted from [`mqtt-typed-client`](https://crates.io/crates/mqt
 - QoS type with conversions to/from `rumqttc`, `paho-mqtt`, and `ntex-mqtt` QoS
   types behind the respective `rumqttc` / `paho-mqtt` / `ntex-mqtt` features.
 
+### Documentation
+- The crate-level docs now render the README, and the README's Rust examples are
+  compiled as doctests (so they cannot silently drift from the API). Added
+  worked examples for router QoS aggregation and resubscribe-after-reconnect.
+
 ### Features
 - `default = ["router", "lru-cache"]`.
 - `router` — subscription routing (`TopicRouter` and friends).
