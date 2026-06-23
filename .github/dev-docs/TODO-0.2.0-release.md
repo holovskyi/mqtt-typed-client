@@ -68,8 +68,17 @@
 - [ ] **`cargo package --list`** для root, core, macros, engine — переконатися що `README.md`,
   `examples/README.md` (потрібен для `include_md_transformed!`), LICENSE-файли потрапляють у пакет.
   Інакше docs.rs впаде.
-- [ ] **CI: підняти EMQX-брокер** під час інтеграційних тестів (`dev/docker-compose.yml`), щоб
-  живі тести реально виконувались, а не деградували.
+- [x] **CI: живі тести реально виконуються, а не деградують.** CI вже піднімав EMQX, але тести
+  тихо деградували (false-green). Додано env-гейт `MQTT_REQUIRE_BROKER` (panic у Err-гілці, лише в
+  job `integration-test`; локально — м'яка деградація) + читання `MQTT_BROKER_URL`. У ci.yml: wait-loop
+  на TCP 1883 (бо `emqx ping` ≠ listener готовий), enforcement + обидва інтеграційні тести
+  (`serializers_integration` + `serializer_macro_integration`), прибрано мертвий `integration_tls`;
+  job `test` більше не дублює інтеграційні тести (`--lib`/`--doc`) і покриває engine без paho;
+  examples job читає `MQTT_BROKER` (не `MQTT_BROKER_URL`). Перевірено локально: гейт падає на мертвому
+  брокері, проходить на живому; усі test-job команди зелені.
+  - ТЕХ-БОРГ (не блокер): (1) `examples` job маскує помилки `|| echo` — впалий приклад дасть
+    false-green навіть із брокером (треба enforcement-гейт як у тестах); (2) feature `paho-mqtt`
+    engine не має compile-coverage у CI (свідомо — нативний C-лінк відсутній).
 
 ---
 

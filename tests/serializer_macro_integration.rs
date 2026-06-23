@@ -33,16 +33,25 @@ struct DeviceStatusTopic {
 
 #[tokio::test]
 async fn test_macro_per_topic_serializer_round_trip() {
-	let url = "mqtt://localhost:1883?client_id=test_macro_serializer";
+	let base = std::env::var("MQTT_BROKER_URL")
+		.unwrap_or_else(|_| "mqtt://localhost:1883".to_string());
+	let url = format!("{base}?client_id=test_macro_serializer");
 
 	let (client, connection) =
-		match MqttClient::<BincodeSerializer>::connect(url).await {
+		match MqttClient::<BincodeSerializer>::connect(&url).await {
 			| Ok(pair) => pair,
 			| Err(e) => {
-				// No broker — OK in CI. The macro path already compiled, which
-				// is itself meaningful coverage.
+				// When MQTT_REQUIRE_BROKER is set (CI with a live broker), a
+				// failed connection is a real failure, not a graceful skip.
+				assert!(
+					std::env::var("MQTT_REQUIRE_BROKER").is_err(),
+					"MQTT_REQUIRE_BROKER is set but connecting to the broker \
+					 failed: {e:?}"
+				);
+				// No broker — OK locally. The macro path already compiled,
+				// which is itself meaningful coverage.
 				println!(
-					"Connection failed (expected in CI without broker): {e:?}"
+					"Connection failed (expected without a broker): {e:?}"
 				);
 				return;
 			}

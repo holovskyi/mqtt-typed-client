@@ -50,12 +50,25 @@ jobs:
     
     - name: Build
       run: cargo build --verbose --all-features
-    
-    - name: Run tests
-      run: cargo test --verbose --all-features
-    
-    - name: Run doctests
-      run: cargo test --doc --all-features
+
+    # Unit + doctests only. Integration tests (tests/) run in the
+    # integration-test job, which has a live broker and enforces it.
+    # (cargo rejects mixing --lib and --doc in one invocation.)
+    - name: Run workspace unit tests (default features, incl. engine)
+      run: cargo test --workspace --lib
+
+    - name: Run root unit tests and doctests (all features)
+      run: |
+        cargo test --all-features --lib
+        cargo test --all-features --doc
+
+    # Engine coverage. paho-mqtt is deliberately excluded — it links a native C
+    # library not present in CI; rumqttc/ntex-mqtt are pure Rust.
+    - name: Run engine doctests and interop features (no paho)
+      run: |
+        cargo test -p mqtt-topic-engine --doc
+        cargo test -p mqtt-topic-engine --features rumqttc,ntex-mqtt --lib
+        cargo test -p mqtt-topic-engine --no-default-features --lib
 
   integration-test:
     name: Integration Tests
@@ -91,16 +104,27 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     
+    # `emqx ping` (service healthcheck) reports the node is up before the MQTT
+    # listener actually accepts connections, so wait for the TCP port directly.
+    - name: Wait for broker
+      run: |
+        for i in $(seq 1 30); do
+          if (exec 3<>/dev/tcp/localhost/1883) 2>/dev/null; then
+            echo "broker accepting connections on 1883"; exit 0
+          fi
+          echo "waiting for broker ($i)"; sleep 2
+        done
+        echo "broker did not become ready in time"; exit 1
+
+    # MQTT_REQUIRE_BROKER turns the tests' graceful no-broker degradation into a
+    # hard failure, so a missing/broken broker can no longer pass silently.
     - name: Run integration tests
       run: |
         cargo test --test serializers_integration --all-features -- --test-threads=1
-        # Run TLS tests if TLS examples exist
-        if [ -f "examples/004_hello_world_tls.rs" ]; then
-          cargo test --test integration_tls --all-features -- --test-threads=1 || echo "TLS tests not yet implemented"
-        fi
+        cargo test --test serializer_macro_integration --features macros,bincode,json -- --test-threads=1
       env:
+        MQTT_REQUIRE_BROKER: "1"
         MQTT_BROKER_URL: mqtt://localhost:1883
-        MQTTS_BROKER_URL: mqtts://localhost:8883
 
   docs:
     name: Documentation
@@ -176,9 +200,20 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     
+    - name: Wait for broker
+      run: |
+        for i in $(seq 1 30); do
+          if (exec 3<>/dev/tcp/localhost/1883) 2>/dev/null; then
+            echo "broker accepting connections on 1883"; exit 0
+          fi
+          echo "waiting for broker ($i)"; sleep 2
+        done
+        echo "broker did not become ready in time"; exit 1
+
     - name: Test basic examples
       run: |
         timeout 30s cargo run --example 000_hello_world --all-features || echo "Example completed or timed out"
         timeout 30s cargo run --example 001_ping_pong --all-features || echo "Example completed or timed out"
       env:
-        MQTT_BROKER_URL: mqtt://localhost:1883
+        # examples/shared/config.rs reads MQTT_BROKER (not MQTT_BROKER_URL)
+        MQTT_BROKER: mqtt://localhost:1883

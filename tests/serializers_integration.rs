@@ -82,6 +82,20 @@ mod serializer_tests {
 	}
 }
 
+/// Broker URL from `MQTT_BROKER_URL` (default `mqtt://localhost:1883`), with a
+/// per-test `client_id` query appended.
+fn broker_url(client_id_suffix: &str) -> String {
+	let base = std::env::var("MQTT_BROKER_URL")
+		.unwrap_or_else(|_| "mqtt://localhost:1883".to_string());
+	format!("{base}?client_id=test_{client_id_suffix}")
+}
+
+/// When `MQTT_REQUIRE_BROKER` is set (CI with a live broker), a failed connection
+/// must fail the test instead of silently degrading to a no-op.
+fn broker_required() -> bool {
+	std::env::var("MQTT_REQUIRE_BROKER").is_ok()
+}
+
 /// Test serializers with full integration (connection + optional publish/subscribe if broker available)
 async fn test_serializer_integration<S>(name: &str)
 where
@@ -89,10 +103,7 @@ where
 	<S as MessageSerializer<TestMessage>>::SerializeError: std::fmt::Debug,
 	<S as MessageSerializer<TestMessage>>::DeserializeError: std::fmt::Debug,
 {
-	let url = format!(
-		"mqtt://localhost:1883?client_id=test_{}_integration",
-		name.to_lowercase()
-	);
+	let url = broker_url(&format!("{}_integration", name.to_lowercase()));
 
 	match MqttClient::<S>::connect(&url).await {
 		| Ok((client, connection)) => {
@@ -125,63 +136,92 @@ where
 						id: 123,
 					};
 
-					if let Ok(_pub_result) =
-						publisher.unwrap().publish(&message).await
-					{
-						println!(
-							"{name} serializer: Message published successfully",
-						);
+					match publisher.unwrap().publish(&message).await {
+						| Ok(_pub_result) => {
+							println!(
+								"{name} serializer: Message published \
+								 successfully",
+							);
 
-						// Try to receive with timeout
-						let timeout = tokio::time::Duration::from_millis(1000);
-						let receive_result =
-							tokio::time::timeout(timeout, subscriber.receive())
-								.await;
+							// Try to receive with timeout
+							let timeout =
+								tokio::time::Duration::from_millis(1000);
+							let receive_result = tokio::time::timeout(
+								timeout,
+								subscriber.receive(),
+							)
+							.await;
 
-						match receive_result {
-							| Ok(Some((_topic_match, result))) => {
-								match result {
-									| Ok(received_message) => {
-										assert_eq!(
-											received_message, message,
-											"{name} serializer: Message \
-											 mismatch",
-										);
-										println!(
-											"{name} serializer: Full cycle \
-											 successful (serialize + \
-											 deserialize)",
-										);
-									}
-									| Err(e) => {
-										panic!(
-											"{name} serializer: \
-											 Deserialization failed: {e:?}",
-										);
+							match receive_result {
+								| Ok(Some((_topic_match, result))) => {
+									match result {
+										| Ok(received_message) => {
+											assert_eq!(
+												received_message, message,
+												"{name} serializer: Message \
+												 mismatch",
+											);
+											println!(
+												"{name} serializer: Full \
+												 cycle successful (serialize \
+												 + deserialize)",
+											);
+										}
+										| Err(e) => {
+											panic!(
+												"{name} serializer: \
+												 Deserialization failed: {e:?}",
+											);
+										}
 									}
 								}
-							}
-							| Ok(None) => {
-								println!(
-									"{name} serializer: ⚠️ No message \
-									 received (broker might be busy)",
-								);
-							}
-							| Err(_) => {
-								println!(
-									"{name} serializer: ⚠️ Receive timeout \
-									 (broker might be slow)",
-								);
+								| Ok(None) => {
+									// When a broker is required (CI), the full
+									// round-trip must complete - a closed stream
+									// is a real failure, not a "busy" skip.
+									assert!(
+										!broker_required(),
+										"{name} serializer: broker required \
+										 but the subscriber stream closed \
+										 before a message arrived",
+									);
+									println!(
+										"{name} serializer: ⚠️ No message \
+										 received (broker might be busy)",
+									);
+								}
+								| Err(_) => {
+									assert!(
+										!broker_required(),
+										"{name} serializer: broker required \
+										 but the round-trip timed out",
+									);
+									println!(
+										"{name} serializer: ⚠️ Receive \
+										 timeout (broker might be slow)",
+									);
+								}
 							}
 						}
-					} else {
-						println!(
-							"{name} serializer: ⚠️ Publish failed (broker \
-							 might be busy)",
-						);
+						| Err(e) => {
+							assert!(
+								!broker_required(),
+								"{name} serializer: broker required but \
+								 publish failed: {e:?}",
+							);
+							println!(
+								"{name} serializer: ⚠️ Publish failed (broker \
+								 might be busy): {e:?}",
+							);
+						}
 					}
 				}
 				| Err(e) => {
+					assert!(
+						!broker_required(),
+						"{name} serializer: broker required but subscribe \
+						 failed: {e:?}",
+					);
 					println!(
 						"{name} serializer: ⚠️ Subscription failed: {e:?}",
 					);
@@ -198,9 +238,14 @@ where
 			println!("{name} serializer: Integration test completed");
 		}
 		| Err(e) => {
-			// Connection failed - this is OK in CI/test environments without MQTT broker
+			assert!(
+				!broker_required(),
+				"{name} serializer: MQTT_REQUIRE_BROKER is set but connecting \
+				 to the broker failed: {e:?}",
+			);
+			// Connection failed - OK locally without a broker.
 			println!(
-				"{name} serializer: Connection failed (expected in CI without \
+				"{name} serializer: Connection failed (expected without a \
 				 broker): {e:?}",
 			);
 
@@ -214,10 +259,10 @@ where
 /// Test connection-only for serializers that require generated types
 async fn test_connection_only<S>(name: &str)
 where S: Default + Clone + Send + Sync + 'static {
-	let url = format!(
-		"mqtt://localhost:1883?client_id=test_{}_connection",
-		name.to_lowercase().replace(" ", "_")
-	);
+	let url = broker_url(&format!(
+		"{}_connection",
+		name.to_lowercase().replace(' ', "_")
+	));
 
 	match MqttClient::<S>::connect(&url).await {
 		| Ok((client, connection)) => {
@@ -238,9 +283,14 @@ where S: Default + Clone + Send + Sync + 'static {
 			);
 		}
 		| Err(e) => {
-			// Connection failed - this is OK in CI/test environments without MQTT broker
+			assert!(
+				!broker_required(),
+				"{name} serializer: MQTT_REQUIRE_BROKER is set but connecting \
+				 to the broker failed: {e:?}",
+			);
+			// Connection failed - OK locally without a broker.
 			println!(
-				"{name} serializer: Connection failed (expected in CI without \
+				"{name} serializer: Connection failed (expected without a \
 				 broker): {e:?}",
 			);
 
