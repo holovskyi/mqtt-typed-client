@@ -165,15 +165,20 @@
 
 ---
 
-## ✅ Фінальний чеклист перед `cargo publish`
-- [ ] `cargo build --workspace --all-targets` без warning.
-- [ ] `cargo test --workspace` зелене (з піднятим брокером — і живі тести).
-- [ ] `cargo clippy --workspace --all-targets` чисто.
-- [ ] CHANGELOG: підставити дату релізу замість `TBD`.
-- [ ] Узгодженість версій (root/core/macros = 0.2.0; engine/doc-macros = 0.1.0).
-- [ ] `cargo publish --dry-run` для кожного крейта в правильному порядку
-  (engine/doc-macros → core → macros → root).
-- [ ] Git tag `v0.2.0`.
+## ✅ Фінальний чеклист перед `cargo publish` (Сесія C — Кроки 0-2 ЗРОБЛЕНО)
+- [x] `cargo build --locked --all-features` без warning.
+- [x] `cargo test --locked` зелене (workspace-lib 86, all-features lib+doc, engine 86+21, root 3+27ign — 0 failed).
+- [x] `cargo clippy --locked --all-targets --all-features -D warnings` чисто; `cargo doc -D warnings` чисто.
+- [x] CHANGELOG: дату релізу `2026-06-23` виставлено у всіх 5 файлах (коміт ccc0122).
+- [x] Узгодженість версій (root/core/macros = 0.2.0; engine/doc-macros = 0.1.0); path-deps звірені.
+- [x] Нові імена `mqtt-topic-engine`, `mqtt-typed-client-doc-macros` — ВІЛЬНІ на crates.io.
+- [x] Tarball root НЕ містить `dev/`/`key.pem`/`.github/` (перевірено).
+- [x] Per-crate build + `package --list` усіх 5 (10/20/26/16/33 файлів); повний dry-run листа doc-macros ✅.
+- [x] `core` dev-dep на macros → `version="0.2.0"` (W1).
+- [ ] **Крок 3 (КОРИСТУВАЧ): `cargo publish --locked` по порядку** doc-macros → engine → core → macros → root
+  (dry-run перед кожним; пауза на індекс; СТОП на помилці). Потребує `cargo login`.
+- [ ] **Крок 4: Git tag `v0.2.0`** (`git tag -a v0.2.0 -m "Release 0.2.0"` → `git push origin v0.2.0`) ПІСЛЯ публікації.
+- [ ] Перевірити docs.rs (engine без paho) + сторінки crates.io.
 
 ---
 
