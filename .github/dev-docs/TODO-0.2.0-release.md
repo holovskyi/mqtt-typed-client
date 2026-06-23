@@ -145,15 +145,23 @@
 
 ---
 
-## 📚 Документація (фінал — робиться ОСТАННЬОЮ, після стабілізації API/флагів)
-- [ ] **README: секція "Per-topic serializer override"** — синтаксис `#[mqtt_topic("...", serializer = JsonSerializer)]`,
-  коли вживати, обмеження (вимикається TypedClient; підтримуються лише не-generic типи).
-- [ ] **README: секція "TLS / transport features"** — це прямо те, що просив коментатор.
-  Матриця: `rumqttc-use-rustls` (+ aws-lc) / `rumqttc-use-rustls-no-provider` (свій provider, напр. ring) /
-  `rumqttc-use-native-tls` / no-TLS (default-features = false) / `rumqttc-websocket` / `rumqttc-proxy`.
-  Як вимкнути TLS повністю, як уникнути aws-lc на 32-біт через no-provider. Приклад вибору backend.
-- [ ] **Оновити версію в усіх доках** `0.1.0 → 0.2.0` (README install-snippet, COMPARISON, examples/README).
-- [ ] Фіналізувати CHANGELOG (дата релізу замість TBD).
+## 📚 Документація (Сесія B — здебільшого зроблено; реліз-дата CHANGELOG → Сесія C)
+- [x] **README: секція "Per-topic serializer override"** (root) — синтаксис, коли вживати, обмеження
+  (вимикається TypedClient; лише не-generic типи + type-alias-обхід). Блок `ignore`. (Сесія B)
+- [x] **README: секція "TLS and Transport"** (root, Reddit-ask) — матриця фіч (`rumqttc-use-rustls` +aws-lc /
+  `rumqttc-use-rustls-no-provider` / `rumqttc-use-native-tls` / `rumqttc-websocket` / `rumqttc-proxy`) +
+  re-export `mqtt_typed_client::{rustls,tokio_rustls}` + `no_run`-приклад (БЕЗ `rustls_pemfile` — це dev-dep,
+  у доктесті недоступний) + лінк на приклад 004. (Сесія B)
+- [x] **De-emoji READMEs** (Сесія B): root — знято емодзі з усіх 12 заголовків + інлайнові + дубль-CTA
+  "Star it"; engine — feature-таблиця ✅/❌→`Yes/No`, pro/con-булети ✅/❌→чистий формат. core/macros —
+  емодзі не було (і вони НЕ доктести — не підключені через include_md). Бейджі shields.io лишено.
+- [x] **"Alternatives"** (Сесія B): root — rumqttc/paho-mqtt/ntex-mqtt (чесне позиціювання, без таблиці);
+  engine — реальний `mqtt_topic_tree` (єдиний standalone-аналог, знайдено на crates.io) + matching у клієнтах.
+- [x] **TOC** (Сесія B): rustdoc дає чисті kebab-case якорі = GitHub-схема (перевірено в `target/doc`) →
+  TOC працює і на docs.rs, і на GitHub. Додано до engine README (780+ рядків); root пропущено
+  (коротший, є rustdoc-sidebar + GitHub auto-TOC).
+- [x] **Версія в install-сніпетах → 0.2.0** (Сесія B): root README (2 місця) + `src/lib.rs:328` doc-блок.
+  Engine лишається 0.1.0 (незалежне версіонування). **CHANGELOG-дата + наскрізна перевірка → Сесія C.**
 
 ---
 

@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🦀 MQTT Typed Client
+# MQTT Typed Client
 
 A **type-safe async MQTT client** built on top of rumqttc
 
@@ -12,10 +12,9 @@ A **type-safe async MQTT client** built on top of rumqttc
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/holovskyi/mqtt-typed-client/blob/main/LICENSE-MIT)
 [![MSRV](https://img.shields.io/badge/MSRV-1.85.1-blue.svg)](https://blog.rust-lang.org/2025/01/09/Rust-1.85.0.html)
 
-**Like this project? [⭐ Star it on GitHub!](https://github.com/holovskyi/mqtt-typed-client)**
 </div>
 
-## ✨ Key Features
+## Key Features
 
 - **Type-safe topic patterns** with named parameters and automatic parsing
 - **Zero-cost abstractions** via procedural macros with compile-time validation
@@ -27,14 +26,14 @@ A **type-safe async MQTT client** built on top of rumqttc
 - **Memory efficient** design with proper resource management
 - **Automatic reconnection** and graceful shutdown
 
-⚠️ **MSRV**: Rust 1.85.1 (driven by default `bincode` serializer; can be lowered with alternative serializers)
+**MSRV**: Rust 1.85.1 (driven by default `bincode` serializer; can be lowered with alternative serializers)
 
-## 🚀 Quick Start
+## Quick Start
 
 Add to your `Cargo.toml`:
 ```toml
 [dependencies]
-mqtt-typed-client = "0.1.0"
+mqtt-typed-client = "0.2.0"
 ```
 
 ```rust,no_run
@@ -107,9 +106,7 @@ async fn main() -> Result<()> {
 }
 ```
 
-**Like this project? [⭐ Star it on GitHub!](https://github.com/holovskyi/mqtt-typed-client)**
-
-## 📚 Examples
+## Examples
 
 See [examples/](examples/) - Complete usage examples with source code
 
@@ -129,7 +126,7 @@ Run examples:
 cargo run --example 000_hello_world
 ```
 
-## 📦 Serialization Support
+## Serialization Support
 
 Multiple serialization formats are supported via feature flags:
 
@@ -145,12 +142,36 @@ Multiple serialization formats are supported via feature flags:
 Enable additional serializers:
 ```toml
 [dependencies]
-mqtt-typed-client = { version = "0.1.0", features = ["messagepack", "cbor"] }
+mqtt-typed-client = { version = "0.2.0", features = ["messagepack", "cbor"] }
 ```
 
 Custom serializers can be implemented by implementing the `MessageSerializer` trait.
 
-## 🎯 Topic Pattern Matching
+## Per-Topic Serializer Override
+
+By default every topic uses the client's serializer. You can override it for a
+specific topic type — handy for legacy formats or gradual migrations:
+
+```rust,ignore
+use mqtt_typed_client_macros::mqtt_topic;
+
+// This topic always uses JSON, regardless of the client's default serializer.
+#[mqtt_topic("legacy/devices/{id}/status", serializer = JsonSerializer)]
+struct LegacyStatus {
+    id: u32,
+    payload: DeviceStatus,
+}
+```
+
+Limitations:
+
+- Using a custom serializer disables the generated `TypedClient` extension for
+  that topic (typed clients require a generic serializer parameter, while a
+  custom serializer is a concrete type).
+- Only a simple type path is accepted. For a generic serializer, declare a type
+  alias first: `type MySer = MySerializer<Foo>;` then use `serializer = MySer`.
+
+## Topic Pattern Matching
 
 Supports MQTT wildcard patterns with named parameters:
 
@@ -180,7 +201,39 @@ struct LogPattern {
 }
 ```
 
-## 🔧 Advanced Usage: Low-Level API
+## TLS and Transport
+
+Transport security and extras are opt-in via feature flags (all forwarded to rumqttc):
+
+| Feature | Effect |
+| --- | --- |
+| `rumqttc-use-rustls` *(default)* | TLS via rustls with the aws-lc-rs provider |
+| `rumqttc-use-rustls-no-provider` | rustls without a bundled crypto provider — bring your own (e.g. ring) and avoid the aws-lc build |
+| `rumqttc-use-native-tls` | TLS via the platform's native-tls |
+| `rumqttc-websocket` | MQTT over WebSocket |
+| `rumqttc-proxy` | Connect through an HTTP/HTTPS proxy |
+
+For custom TLS setups you can build the rustls config yourself. The crate
+re-exports rumqttc's `rustls` and `tokio_rustls` (version-matched, so you don't
+add a separate `rustls` dependency that could drift out of sync):
+
+```rust,no_run
+use mqtt_typed_client::rustls::{ClientConfig, RootCertStore};
+
+# fn build_tls_config() -> ClientConfig {
+let mut root_store = RootCertStore::empty();
+// Add your trusted roots to `root_store` here (e.g. parsed from a PEM file).
+
+ClientConfig::builder()
+    .with_root_certificates(root_store)
+    .with_no_client_auth()
+# }
+```
+
+See [`examples/004_hello_world_tls.rs`](examples/004_hello_world_tls.rs) for a complete TLS example,
+including loading a CA certificate from a PEM file.
+
+## Advanced Usage: Low-Level API
 
 For cases where you need direct control without macros:
 
@@ -220,7 +273,7 @@ async fn main() -> Result<()> {
 }
 ```
 
-## 🆚 What mqtt-typed-client adds over rumqttc
+## What mqtt-typed-client adds over rumqttc
 
 **Publishing:**
 ```rust,ignore
@@ -258,9 +311,22 @@ tokio::select! {
 }
 ```
 
-📋 **For detailed comparison see:** [docs/COMPARISON_WITH_RUMQTTC.md](docs/COMPARISON_WITH_RUMQTTC.md)
+**For a detailed comparison see:** [docs/COMPARISON_WITH_RUMQTTC.md](docs/COMPARISON_WITH_RUMQTTC.md)
 
-## 📄 License
+## Alternatives
+
+- **[rumqttc](https://github.com/bytebeamio/rumqtt)** — the async MQTT client this
+  crate builds on. Use it directly when you want full manual control over topics,
+  serialization, and the event loop.
+- **[paho-mqtt](https://crates.io/crates/paho-mqtt)** — Rust bindings to the Eclipse
+  Paho C client; a fit when you need that mature C library or its feature set.
+- **[ntex-mqtt](https://crates.io/crates/ntex-mqtt)** — MQTT client and server built on
+  the ntex framework; worth a look if you're already in that ecosystem or need a broker.
+
+Reach for `mqtt-typed-client` when you want typed topic routing and automatic
+(de)serialization on top of rumqttc, without hand-writing the dispatch layer.
+
+## License
 
 This project is licensed under either of
 
@@ -269,7 +335,7 @@ This project is licensed under either of
 
 at your option.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -281,11 +347,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
-## 📖 API Reference
+## API Reference
 
 For detailed API documentation, visit [docs.rs/mqtt-typed-client](https://docs.rs/mqtt-typed-client).
 
-## 🔗 See Also
+## See Also
 
 - [rumqttc](https://github.com/bytebeamio/rumqtt) - The underlying MQTT client library
 - [MQTT Protocol Specification](https://mqtt.org/) - Official MQTT documentation

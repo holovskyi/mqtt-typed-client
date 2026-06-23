@@ -12,6 +12,19 @@ Zero-dependency (by default) topic pattern parser, matcher, and router for MQTT 
 
 </div>
 
+## Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Core Concepts](#core-concepts)
+- [Advanced Examples](#advanced-examples)
+- [Use Cases](#use-cases)
+- [Configuration](#configuration)
+- [Performance](#performance)
+- [Integration](#integration)
+- [Alternatives](#alternatives)
+
 ## Features
 
 - **Pattern Parsing** - Parse MQTT topic patterns with support for wildcards (`+`, `#`) and named parameters
@@ -60,11 +73,11 @@ mqtt-topic-engine = { version = "0.1.0", features = ["ntex-mqtt"] }
 
 | Feature | Description | Default |
 |---------|-------------|----------|
-| `router` | Topic routing with `TopicRouter` and `TopicMatcher` | ✅ |
-| `lru-cache` | LRU caching for pattern matching results | ✅ |
-| `rumqttc` | Integration with rumqttc MQTT client (QoS conversion) | ❌ |
-| `paho-mqtt` | Integration with paho-mqtt client (QoS conversion) | ❌ |
-| `ntex-mqtt` | Integration with ntex-mqtt client (QoS conversion) | ❌ |
+| `router` | Topic routing with `TopicRouter` and `TopicMatcher` | Yes |
+| `lru-cache` | LRU caching for pattern matching results | Yes |
+| `rumqttc` | Integration with rumqttc MQTT client (QoS conversion) | No |
+| `paho-mqtt` | Integration with paho-mqtt client (QoS conversion) | No |
+| `ntex-mqtt` | Integration with ntex-mqtt client (QoS conversion) | No |
 
 ## Quick Start
 
@@ -609,10 +622,12 @@ let topic_c = TopicPath::new(topic_string);          // Move (also cheap)
 ```
 
 **When to use `ArcStr` directly:**
-- ✅ Storing topic strings for reuse (cheap cloning via reference counting)
-- ✅ High-frequency topic creation from the same string values
-- ✅ Sharing topic strings across threads (ArcStr is Send + Sync)
-- ❌ Simple one-off topic matching (just use `&str` - it's simpler)
+
+- Storing topic strings for reuse (cheap cloning via reference counting)
+- High-frequency topic creation from the same string values
+- Sharing topic strings across threads (`ArcStr` is `Send + Sync`)
+
+Not needed for simple one-off topic matching — just use `&str`, it's simpler.
 
 ## Configuration
 
@@ -637,11 +652,12 @@ let lru_10k = CacheStrategy::Lru(NonZeroUsize::new(10000).unwrap());
 ```
 
 **When to use caching:**
-- ✅ Repeated matches to same topics (e.g., sensor data every second)
-- ✅ High message throughput
-- ✅ Complex patterns with multiple wildcards
-- ❌ Unique topics (no cache benefit)
-- ❌ Memory-constrained environments
+
+- Repeated matches to the same topics (e.g., sensor data every second)
+- High message throughput
+- Complex patterns with multiple wildcards
+
+Skip caching for unique (non-repeating) topics — no cache benefit — and in memory-constrained environments.
 
 ### Minimal Configuration for Embedded Systems
 
@@ -673,10 +689,11 @@ if let Some(location) = topic_match.get_named_param("location") {
 ```
 
 **Benefits of minimal configuration:**
-- ✅ Smallest binary size (~10KB additional code)
-- ✅ No heap allocations for routing or caching
-- ✅ Suitable for microcontrollers and embedded systems
-- ✅ Still provides full pattern matching and parameter extraction
+
+- Smallest binary size (~10KB additional code)
+- No heap allocations for routing or caching
+- Suitable for microcontrollers and embedded systems
+- Still provides full pattern matching and parameter extraction
 
 ## Performance
 
@@ -759,6 +776,22 @@ This enables seamless integration with any supported MQTT client without manual 
 ## API Documentation
 
 For detailed API documentation, visit [docs.rs/mqtt-topic-engine](https://docs.rs/mqtt-topic-engine).
+
+## Alternatives
+
+Standalone MQTT topic-matching crates are rare — matching is usually embedded
+inside a full client or broker rather than offered as a reusable building block:
+
+- **[`mqtt_topic_tree`](https://crates.io/crates/mqtt_topic_tree)** — a lightweight
+  topic tree for MQTT routing, and the closest standalone equivalent. This engine
+  adds named-parameter extraction, pluggable LRU caching, a typed `QoS` with
+  conversions to/from popular clients, and a zero-dependency embedded mode.
+- The matching built into full clients and brokers (e.g. **rumqttc**, **ntex-mqtt**) —
+  reach for those when you don't need a reusable, client-agnostic matcher.
+
+Choose `mqtt-topic-engine` when you want MQTT wildcard matching with parameter
+extraction as a small, client-agnostic component — usable with rumqttc, paho-mqtt,
+ntex-mqtt, or no MQTT client at all.
 
 ## Contributing
 

@@ -325,6 +325,6 @@ pub mod _macro_docs {}
          the 'macros' feature:"]
 #[doc = "```toml"]
 #[doc = "[dependencies]"]
-#[doc = "mqtt-typed-client = { version = \"0.1\", features = [\"macros\"] }"]
+#[doc = "mqtt-typed-client = { version = \"0.2\", features = [\"macros\"] }"]
 #[doc = "```"]
 pub mod _core_only_docs {}
