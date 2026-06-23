@@ -7,6 +7,17 @@
 //! - `rumqttc` - Enable with feature `rumqttc`
 //! - `paho-mqtt` - Enable with feature `paho-mqtt`
 //! - `ntex-mqtt` - Enable with feature `ntex-mqtt`
+//!
+//! These features only add **type conversions** between [`QoS`] and the client's
+//! own QoS type — they pull in the client crate purely for its types and do not
+//! drive any connection. How that client itself is built stays under your
+//! control: this crate depends on each with `default-features = false`, so it
+//! never forces a native toolchain on you. In particular `paho-mqtt` links a
+//! C library — its default `bundled` feature builds it from source (needs CMake)
+//! while otherwise it expects a system-installed Paho C library. Since you would
+//! only enable the `paho-mqtt` feature when you already use `paho-mqtt` as your
+//! client, Cargo's (additive) feature unification applies your own build choice
+//! there, and everything links as expected.
 
 use std::fmt;
 
