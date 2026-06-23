@@ -156,16 +156,20 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
+
+    # Prebuilt binaries — avoids compiling cargo-audit/cargo-deny from source
+    # (the old `cargo install` step was ~3 min of the job). Neither tool builds
+    # the project, so a target/ cache would not help here.
+    - name: Install audit tools (prebuilt)
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-audit,cargo-deny
+
     - name: Security audit
-      run: |
-        cargo install cargo-audit
-        cargo audit
-    
+      run: cargo audit
+
     - name: Check licenses
-      run: |
-        cargo install cargo-deny
-        cargo deny check licenses
+      run: cargo deny check licenses
 
   examples:
     name: Examples
