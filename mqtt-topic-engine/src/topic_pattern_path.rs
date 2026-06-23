@@ -463,7 +463,13 @@ impl TopicPatternPath {
 		Ok(self)
 	}
 
-	/// Matches topic path against this pattern, extracting parameters.
+	/// Matches a topic against this pattern, extracting parameters.
+	///
+	/// Takes an `Arc<TopicPath>` so the topic can be shared cheaply: when
+	/// matching ONE topic against MANY patterns (the hot path), build the
+	/// `Arc<TopicPath>` once and pass `Arc::clone(&topic)` to each pattern to
+	/// avoid re-parsing and re-allocating per match. For a single one-off match
+	/// from a string, [`try_match_str`](Self::try_match_str) is more convenient.
 	pub fn try_match(
 		&self,
 		topic: Arc<TopicPath>,
@@ -502,6 +508,19 @@ impl TopicPatternPath {
 			let topic_match = self.try_match_internal(topic)?;
 			Ok(Arc::new(topic_match))
 		}
+	}
+
+	/// Convenience wrapper around [`try_match`](Self::try_match) for one-off
+	/// matches: it builds the [`TopicPath`] and wraps it in an `Arc` for you.
+	///
+	/// Prefer [`try_match`](Self::try_match) on the hot path (one topic, many
+	/// patterns): calling this in a loop re-parses and re-allocates the topic
+	/// every time.
+	pub fn try_match_str(
+		&self,
+		topic: impl Into<ArcStr>,
+	) -> Result<Arc<TopicMatch>, TopicMatchError> {
+		self.try_match(Arc::new(TopicPath::new(topic)))
 	}
 
 	#[allow(clippy::missing_docs_in_private_items)]

@@ -72,8 +72,7 @@ mqtt-topic-engine = { version = "0.1.0", features = ["ntex-mqtt"] }
 
 ```rust,no_run
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
-use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
-use std::sync::Arc;
+use mqtt_topic_engine::{TopicPatternPath, CacheStrategy};
 
 // Parse a topic pattern
 let pattern = TopicPatternPath::new_from_string(
@@ -82,8 +81,7 @@ let pattern = TopicPatternPath::new_from_string(
 )?;
 
 // Check if a topic matches - just pass a string!
-let topic = Arc::new(TopicPath::new("sensors/kitchen/temperature"));
-let topic_match = pattern.try_match(topic)?;
+let topic_match = pattern.try_match_str("sensors/kitchen/temperature")?;
 
 println!("Topic matched: {}", topic_match.topic_path());
 # Ok(())
@@ -94,8 +92,7 @@ println!("Topic matched: {}", topic_match.topic_path());
 
 ```rust,no_run
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
-use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
-use std::sync::Arc;
+use mqtt_topic_engine::{TopicPatternPath, CacheStrategy};
 
 // Pattern with named parameters
 let pattern = TopicPatternPath::new_from_string(
@@ -103,8 +100,7 @@ let pattern = TopicPatternPath::new_from_string(
     CacheStrategy::NoCache
 )?;
 
-let topic = Arc::new(TopicPath::new("devices/kitchen/sensor001/status"));
-let topic_match = pattern.try_match(topic)?;
+let topic_match = pattern.try_match_str("devices/kitchen/sensor001/status")?;
 
 // Extract parameters by name
 let location = topic_match.get_named_param("location").unwrap();
@@ -120,8 +116,7 @@ println!("Location: {}, Device: {}", location, device_id);
 
 ```rust,no_run
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
-use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
-use std::sync::Arc;
+use mqtt_topic_engine::{TopicPatternPath, CacheStrategy};
 
 // Match all subtopics under logs/
 let pattern = TopicPatternPath::new_from_string(
@@ -129,8 +124,7 @@ let pattern = TopicPatternPath::new_from_string(
     CacheStrategy::NoCache
 )?;
 
-let topic = Arc::new(TopicPath::new("logs/api/v1/users/create"));
-let topic_match = pattern.try_match(topic)?;
+let topic_match = pattern.try_match_str("logs/api/v1/users/create")?;
 
 let service = topic_match.get_named_param("service").unwrap();
 let details = topic_match.get_named_param("details").unwrap();
@@ -228,9 +222,8 @@ This is useful for:
 
 ```rust,no_run
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
-use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
+use mqtt_topic_engine::{TopicPatternPath, CacheStrategy};
 use std::num::NonZeroUsize;
-use std::sync::Arc;
 
 // Create pattern with LRU cache of 1000 entries
 let cache_size = NonZeroUsize::new(1000).unwrap();
@@ -240,12 +233,10 @@ let pattern = TopicPatternPath::new_from_string(
 )?;
 
 // First match - computed and cached
-let topic1 = Arc::new(TopicPath::new("sensors/kitchen/temp001/data"));
-let match1 = pattern.try_match(topic1)?;
+let match1 = pattern.try_match_str("sensors/kitchen/temp001/data")?;
 
 // Second match to same topic - retrieved from cache (faster!)
-let topic2 = Arc::new(TopicPath::new("sensors/kitchen/temp001/data"));
-let match2 = pattern.try_match(topic2)?;
+let match2 = pattern.try_match_str("sensors/kitchen/temp001/data")?;
 # let _ = (match1, match2);
 # Ok(())
 # }
@@ -371,6 +362,8 @@ let pattern1 = TopicPatternPath::new_from_string("home/+/temperature", CacheStra
 // Named wildcards (extracts parameter)
 let pattern2 = TopicPatternPath::new_from_string("home/{room}/temperature", CacheStrategy::NoCache)?;
 
+// Matching one topic against several patterns: build the Arc<TopicPath> once
+// and share it via cheap Arc::clone (no re-parsing per pattern).
 let topic = Arc::new(TopicPath::new("home/kitchen/temperature"));
 
 // Both match the same topics
@@ -548,8 +541,7 @@ println!("{}", filtered.mqtt_pattern());
 
 ```rust,no_run
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
-use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
-use std::sync::Arc;
+use mqtt_topic_engine::{TopicPatternPath, CacheStrategy};
 
 // Route logs by service and severity
 let pattern = TopicPatternPath::new_from_string(
@@ -557,8 +549,7 @@ let pattern = TopicPatternPath::new_from_string(
     CacheStrategy::NoCache
 )?;
 
-let topic = Arc::new(TopicPath::new("logs/api/error/auth/invalid-token"));
-let topic_match = pattern.try_match(topic)?;
+let topic_match = pattern.try_match_str("logs/api/error/auth/invalid-token")?;
 
 let service = topic_match.get_named_param("service").unwrap();
 let severity = topic_match.get_named_param("severity").unwrap();
@@ -663,8 +654,7 @@ mqtt-topic-engine = { version = "0.1.0", default-features = false }
 
 ```rust,no_run
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
-use mqtt_topic_engine::{TopicPatternPath, TopicPath, CacheStrategy};
-use std::sync::Arc;
+use mqtt_topic_engine::{TopicPatternPath, CacheStrategy};
 
 // Minimal footprint: only pattern validation and matching
 let pattern = TopicPatternPath::new_from_string(
@@ -672,8 +662,7 @@ let pattern = TopicPatternPath::new_from_string(
     CacheStrategy::NoCache  // No LRU dependency
 )?;
 
-let topic = Arc::new(TopicPath::new("sensors/kitchen/data"));
-let topic_match = pattern.try_match(topic)?;
+let topic_match = pattern.try_match_str("sensors/kitchen/data")?;
 
 if let Some(location) = topic_match.get_named_param("location") {
     // Process message for specific location

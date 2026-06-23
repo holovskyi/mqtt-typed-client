@@ -23,6 +23,9 @@ routing engine extracted from [`mqtt-typed-client`](https://crates.io/crates/mqt
   and the underlying `TopicMatcherNode` trie, tracking effective broker QoS.
 - QoS type with conversions to/from `rumqttc`, `paho-mqtt`, and `ntex-mqtt` QoS
   types behind the respective `rumqttc` / `paho-mqtt` / `ntex-mqtt` features.
+- `TopicPatternPath::try_match_str` — convenience wrapper that matches a topic
+  given as a string (builds and shares the `TopicPath` for you); `try_match`
+  remains for the hot path where one `Arc<TopicPath>` is reused across patterns.
 
 ### Documentation
 - The crate-level docs now render the README, and the README's Rust examples are
