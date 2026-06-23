@@ -53,6 +53,4 @@
 ## Issues to Investigate
 - [ ] Does the client see generated types like SensorReadingSubscriptionBuilderExt? Should we shorten the name?
 - [ ] Problem with cryptic error when we declare a structure for payload but forget to add derive for custom serializer to work with the structure. For example, BincodeSerializer needs Encode and Decode. But we get an error where it's hard to determine what exactly is needed
-- [ ] You're using build.rs for generating markdown documentation in your repository, that is not what it's for, and considering the supply chain security implications of build.rs, if you can avoid having one, you should. And you can definitely avoid it when it is just for generating your readme. You can use Make or Just etc.
-
 - [ ] The other thing is with feature flags. You activate the default features of rumqttc, but as of 0.25.0 the default features include a dependency on aws-lc, and it's a PITA to cross-compile for 32-bit targets. So I think your feature flags should be more flexible. Basically your features should at least allow for choosing which TLS implementation to use (or no TLS)

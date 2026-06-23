@@ -13,3 +13,4 @@
 - [x] Update topic for subscription. With same wildcards and param names
 - [x] Update topic for publisher
 
+- [x] You're using build.rs for generating markdown documentation in your repository, that is not what it's for, and considering the supply chain security implications of build.rs, if you can avoid having one, you should. And you can definitely avoid it when it is just for generating your readme. You can use Make or Just etc.

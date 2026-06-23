@@ -1,6 +1,6 @@
 [package]
 name = "mqtt-typed-client-core"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.85.1"
 description = "Type-safe async MQTT client core with automatic topic routing"

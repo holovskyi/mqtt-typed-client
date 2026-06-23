@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - TBD
+
+### Added
+- Per-topic serializer override via the `mqtt_topic` macro attribute:
+  `#[mqtt_topic("...", serializer = JsonSerializer)]`.
+- `MqttClient::clone_with_serializer::<S>()` and `clone_with_custom_serializer(serializer)`.
+- `CacheStrategy::capacity()` convenience method.
+- Granular TLS / transport feature flags forwarding to `rumqttc`:
+  `rumqttc-url`, `rumqttc-websocket`, `rumqttc-use-rustls`, `rumqttc-use-native-tls`,
+  `rumqttc-proxy`. This lets you pick a TLS backend (rustls / native-tls) or build
+  without TLS, avoiding the `aws-lc` cross-compilation pain.
+- New standalone crate `mqtt-topic-engine` — the topic pattern matching and routing
+  engine, usable without the MQTT client.
+- New internal crate `mqtt-typed-client-doc-macros` (replaces the previous `build.rs`).
+
+### Changed
+- **BREAKING (default features):** the default feature set now includes
+  `rumqttc-url` and `rumqttc-use-rustls`, and `rumqttc` is pulled with
+  `default-features = false`. If you relied on `rumqttc`'s default TLS being
+  enabled implicitly, enable the corresponding `rumqttc-*` feature explicitly.
+- The topic engine was extracted from `core` into the `mqtt-topic-engine` crate.
+  Public types remain available through `mqtt_typed_client_core::topic::*`.
+- Documentation link transformation moved from `build.rs` to the `doc-macros`
+  proc-macro (supply-chain hardening — no more build script).
+
+### Removed
+- **BREAKING:** the incidentally-public matcher internals `TopicMatcherNode<T>`
+  and the `Len` trait are no longer part of the public API. They were never
+  intended as a stable surface.
+
+### Migration
+- Recommended import path stays the curated root re-exports, e.g.
+  `mqtt_typed_client_core::{CacheStrategy, TopicError, TopicPatternPath, ...}`.
+- v0.1.0 submodule paths are preserved via backward-compat re-exports:
+  `topic::error::*`, `topic::topic_router::*`, `topic::topic_pattern_item::*`,
+  `topic::topic_matcher::TopicMatcherError`, `topic::topic_match::*`,
+  `topic::topic_pattern_path::*`. `CacheStrategy` moved from
+  `routing::subscription_manager` to `topic` (root re-export unchanged).
+- `TopicMatchError` is now also available flat as `topic::TopicMatchError`.
+
 ## [0.1.0] - 2025-07-27
 
 ### Added
@@ -27,5 +67,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Subscription builder pattern for flexible configuration
 - Typed client extensions for ergonomic API
 
-[Unreleased]: https://github.com/holovskyi/mqtt-typed-client/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/holovskyi/mqtt-typed-client/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/holovskyi/mqtt-typed-client/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/holovskyi/mqtt-typed-client/releases/tag/v0.1.0
