@@ -74,8 +74,13 @@ fn create_test_struct(fields: proc_macro2::TokenStream) -> syn::DeriveInput {
 	}
 }
 
-/// Helper to create MacroArgs with generation configuration
-fn create_macro_args(pattern: &str, config: GenerationConfig) -> MacroArgs {
+/// Helper to create MacroArgs with generation configuration and optional
+/// custom serializer.
+fn create_macro_args_inner(
+	pattern: &str,
+	config: GenerationConfig,
+	custom_serializer: Option<syn::Type>,
+) -> MacroArgs {
 	let topic_pattern = create_topic_pattern(pattern);
 	let (generate_subscriber, generate_publisher) = match config {
 		| GenerationConfig::Both => (true, true),
@@ -89,8 +94,13 @@ fn create_macro_args(pattern: &str, config: GenerationConfig) -> MacroArgs {
 		generate_publisher,
 		generate_typed_client: true, // Enable by default
 		generate_last_will: generate_publisher,
-		custom_serializer: None,
+		custom_serializer,
 	}
+}
+
+/// Helper to create MacroArgs with generation configuration
+fn create_macro_args(pattern: &str, config: GenerationConfig) -> MacroArgs {
+	create_macro_args_inner(pattern, config, None)
 }
 
 /// Helper to analyze and create a code generator
@@ -101,6 +111,23 @@ fn create_generator(
 ) -> (CodeGenerator, syn::DeriveInput) {
 	let test_struct = create_test_struct(struct_fields);
 	let macro_args = create_macro_args(pattern, config);
+	let context =
+		StructAnalysisContext::analyze(&test_struct, &macro_args.pattern)
+			.expect("Analysis should succeed");
+	let generator = CodeGenerator::new(context, macro_args);
+
+	(generator, test_struct)
+}
+
+/// Helper to analyze and create a code generator with a custom serializer
+fn create_generator_with_serializer(
+	struct_fields: proc_macro2::TokenStream,
+	pattern: &str,
+	config: GenerationConfig,
+	serializer: syn::Type,
+) -> (CodeGenerator, syn::DeriveInput) {
+	let test_struct = create_test_struct(struct_fields);
+	let macro_args = create_macro_args_inner(pattern, config, Some(serializer));
 	let context =
 		StructAnalysisContext::analyze(&test_struct, &macro_args.pattern)
 			.expect("Analysis should succeed");
@@ -273,6 +300,50 @@ fn test_generator_configuration_modes() {
 			"Test '{name}': publisher generation mismatch"
 		);
 	}
+}
+
+#[test]
+fn test_custom_serializer_generation() {
+	let serializer: syn::Type = parse_quote!(JsonSerializer);
+	let (generator, test_struct) = create_generator_with_serializer(
+		quote! {
+			sensor_id: u32,
+			payload: SensorData,
+		},
+		"sensors/{sensor_id}/data",
+		GenerationConfig::Both,
+		serializer,
+	);
+
+	let code = generator
+		.generate_complete_implementation(&test_struct)
+		.expect("Should generate code with custom serializer")
+		.to_string();
+
+	let checks = vec![
+		// Custom serializer wiring: the only place `clone_with_serializer`
+		// appears is the custom-serializer branch.
+		CodeCheck::Method("subscribe"),
+		CodeCheck::Method("publish"),
+		CodeCheck::Method("get_publisher"),
+		CodeCheck::Method("subscription"),
+		// The concrete serializer type must appear in generated signatures.
+		CodeCheck::PayloadType("JsonSerializer"),
+		// TypedClient is disabled for custom serializers (concrete type vs
+		// generic F). The typed-client struct/trait must NOT be generated.
+		// (`TestStructSubscriptionBuilderExt` IS expected — it is not a typed
+		// client, so we do not assert against it.)
+		CodeCheck::NotPresent("TestStructClient"),
+		CodeCheck::NotPresent("TestStructExt"),
+	];
+	verify_generated_code(&code, checks, "custom_serializer_generation");
+
+	// `clone_with_serializer` is unique to the custom-serializer branch.
+	assert!(
+		code.contains("clone_with_serializer"),
+		"custom_serializer_generation: expected `clone_with_serializer` in \
+		 generated code\nGenerated code: {code}"
+	);
 }
 
 #[test]

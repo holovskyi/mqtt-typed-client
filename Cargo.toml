@@ -68,4 +68,8 @@ required-features = ["bincode", "json", "messagepack", "cbor", "postcard", "ron"
 name = "serializers_integration"
 required-features = ["bincode", "json", "messagepack", "cbor", "postcard", "ron", "flexbuffers", "protobuf"]
 
+[[test]]
+name = "serializer_macro_integration"
+required-features = ["macros", "bincode", "json"]
+
 

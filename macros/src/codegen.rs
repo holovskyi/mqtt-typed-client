@@ -146,62 +146,44 @@ impl CodeGenerator {
 
 	/// Generate default pattern and subscription builder methods
 	fn generate_builder_methods(&self) -> proc_macro2::TokenStream {
-		if let Some(serializer_type) = &self.macro_args.custom_serializer {
-			// With custom serializer
-			quote! {
-				/// Get default topic pattern for this message type
-				pub fn default_pattern() -> &'static ::mqtt_typed_client_core::TopicPatternPath {
-					use std::sync::OnceLock;
-					static PATTERN: OnceLock<::mqtt_typed_client_core::TopicPatternPath> = OnceLock::new();
-					PATTERN.get_or_init(|| {
-						::mqtt_typed_client_core::TopicPatternPath::new_from_string(
-							Self::TOPIC_PATTERN,
-							::mqtt_typed_client_core::CacheStrategy::NoCache
-						).expect("Built-in pattern must be valid")
-					})
-				}
+		// `default_pattern()` is identical regardless of serializer; only the
+		// `subscription` builder differs: a concrete serializer type with extra
+		// bounds vs the parent client's generic `F`.
+		let (serializer_ty, client_expr, extra_bounds) =
+			if let Some(s) = &self.macro_args.custom_serializer {
+				(
+					quote! { #s },
+					quote! { client.clone_with_serializer::<#s>() },
+					quote! { , #s: Default + Clone + Send + Sync + 'static },
+				)
+			} else {
+				(quote! { F }, quote! { client.clone() }, quote! {})
+			};
 
-				/// Create subscription builder with custom serializer
-				pub fn subscription<F>(
-					client: &::mqtt_typed_client_core::MqttClient<F>,
-				) -> ::mqtt_typed_client_core::SubscriptionBuilder<Self, #serializer_type>
-				where
-					F: Clone,
-					#serializer_type: Default + Clone + Send + Sync + 'static,
-				{
-					::mqtt_typed_client_core::SubscriptionBuilder::new(
-						client.clone_with_serializer::<#serializer_type>(),
-						Self::default_pattern().clone()
-					)
-				}
+		quote! {
+			/// Get default topic pattern for this message type
+			pub fn default_pattern() -> &'static ::mqtt_typed_client_core::TopicPatternPath {
+				use std::sync::OnceLock;
+				static PATTERN: OnceLock<::mqtt_typed_client_core::TopicPatternPath> = OnceLock::new();
+				PATTERN.get_or_init(|| {
+					::mqtt_typed_client_core::TopicPatternPath::new_from_string(
+						Self::TOPIC_PATTERN,
+						::mqtt_typed_client_core::CacheStrategy::NoCache
+					).expect("Built-in pattern must be valid")
+				})
 			}
-		} else {
-			// Without custom serializer (existing behavior)
-			quote! {
-				/// Get default topic pattern for this message type
-				pub fn default_pattern() -> &'static ::mqtt_typed_client_core::TopicPatternPath {
-					use std::sync::OnceLock;
-					static PATTERN: OnceLock<::mqtt_typed_client_core::TopicPatternPath> = OnceLock::new();
-					PATTERN.get_or_init(|| {
-						::mqtt_typed_client_core::TopicPatternPath::new_from_string(
-							Self::TOPIC_PATTERN,
-							::mqtt_typed_client_core::CacheStrategy::NoCache
-						).expect("Built-in pattern must be valid")
-					})
-				}
 
-				/// Create subscription builder with default configuration
-				pub fn subscription<F>(
-					client: &::mqtt_typed_client_core::MqttClient<F>,
-				) -> ::mqtt_typed_client_core::SubscriptionBuilder<Self, F>
-				where
-					F: Clone
-				{
-					::mqtt_typed_client_core::SubscriptionBuilder::new(
-						client.clone(),
-						Self::default_pattern().clone()
-					)
-				}
+			/// Create subscription builder
+			pub fn subscription<F>(
+				client: &::mqtt_typed_client_core::MqttClient<F>,
+			) -> ::mqtt_typed_client_core::SubscriptionBuilder<Self, #serializer_ty>
+			where
+				F: Clone #extra_bounds
+			{
+				::mqtt_typed_client_core::SubscriptionBuilder::new(
+					#client_expr,
+					Self::default_pattern().clone()
+				)
 			}
 		}
 	}
@@ -223,47 +205,49 @@ impl CodeGenerator {
 		}
 		let payload_type = self.get_payload_type_token();
 
-		if let Some(serializer_type) = &self.macro_args.custom_serializer {
-			// With custom serializer
-			quote! {
-				/// Subscribe with custom serializer from macro
-				pub async fn subscribe<F>(
-					client: &::mqtt_typed_client_core::MqttClient<F>,
-				) -> ::std::result::Result<
-					::mqtt_typed_client_core::MqttTopicSubscriber<Self, #payload_type, #serializer_type>,
-					::mqtt_typed_client_core::MqttClientError,
-				>
-				where
-					F: Clone,
-					#serializer_type: ::std::default::Default
-						+ ::std::clone::Clone
-						+ ::std::marker::Send
-						+ ::std::marker::Sync
-						+ 'static
-						+ ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
-				{
-					Self::subscription(client).subscribe().await
-				}
-			}
-		} else {
-			// Without custom serializer (existing behavior)
-			quote! {
-				/// Subscribe with default configuration
-				pub async fn subscribe<F>(
-					client: &::mqtt_typed_client_core::MqttClient<F>,
-				) -> ::std::result::Result<
-					::mqtt_typed_client_core::MqttTopicSubscriber<Self, #payload_type, F>,
-					::mqtt_typed_client_core::MqttClientError,
-				>
-				where
-					F: ::std::default::Default
-						+ ::std::clone::Clone
-						+ ::std::marker::Send
-						+ ::std::marker::Sync
-						+ ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
-				{
-					Self::subscription(client).subscribe().await
-				}
+		// Only the serializer type and its bounds differ: a concrete serializer
+		// (bounded with `'static`, with `F: Clone`) vs bounding the generic `F`
+		// directly. The method body is identical.
+		let (serializer_ty, where_clause) =
+			if let Some(s) = &self.macro_args.custom_serializer {
+				(
+					quote! { #s },
+					quote! {
+						where
+							F: Clone,
+							#s: ::std::default::Default
+								+ ::std::clone::Clone
+								+ ::std::marker::Send
+								+ ::std::marker::Sync
+								+ 'static
+								+ ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
+					},
+				)
+			} else {
+				(
+					quote! { F },
+					quote! {
+						where
+							F: ::std::default::Default
+								+ ::std::clone::Clone
+								+ ::std::marker::Send
+								+ ::std::marker::Sync
+								+ ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
+					},
+				)
+			};
+
+		quote! {
+			/// Subscribe using the topic's default configuration
+			pub async fn subscribe<F>(
+				client: &::mqtt_typed_client_core::MqttClient<F>,
+			) -> ::std::result::Result<
+				::mqtt_typed_client_core::MqttTopicSubscriber<Self, #payload_type, #serializer_ty>,
+				::mqtt_typed_client_core::MqttClientError,
+			>
+			#where_clause
+			{
+				Self::subscription(client).subscribe().await
 			}
 		}
 	}
@@ -280,127 +264,88 @@ impl CodeGenerator {
 		let method_params = self.get_publisher_method_params();
 		let (format_string, format_args) = self.get_topic_format_and_args();
 
-		if let Some(serializer_type) = &self.macro_args.custom_serializer {
-			// With custom serializer
-			Ok(quote! {
-				/// Publish message to default topic with custom serializer
-				#[allow(clippy::ptr_arg)]
-				pub async fn publish<F>(
-					client: &::mqtt_typed_client_core::MqttClient<F>,
-					#(#method_params,)*
-					data: &#payload_type,
-				) -> ::std::result::Result<(), ::mqtt_typed_client_core::MqttClientError>
-				where
-					F: Clone,
-					#serializer_type: Default + Clone + Send + Sync + 'static + ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
-				{
-					Self::get_publisher(client #(, #format_args)*)?.publish(data).await
-				}
-
-				/// Get publisher for default topic with custom serializer
-				pub fn get_publisher<F>(
-					client: &::mqtt_typed_client_core::MqttClient<F>,
-					#(#method_params,)*
-				) -> ::std::result::Result<
-					::mqtt_typed_client_core::MqttPublisher<#payload_type, #serializer_type>,
-					::mqtt_typed_client_core::TopicError,
-				>
-				where
-					F: Clone,
-					#serializer_type: Default + Clone + Send + Sync + 'static + ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
-				{
-					let topic = format!(#format_string #(, #format_args)*);
-					client.clone_with_serializer::<#serializer_type>().get_publisher::<#payload_type>(&topic)
-				}
-
-				pub fn get_publisher_to<F>(
-					client: &::mqtt_typed_client_core::MqttClient<F>,
-					custom_pattern: impl TryInto <
-						::mqtt_typed_client_core::TopicPatternPath,
-						Error = ::mqtt_typed_client_core::TopicPatternError,
-					>,
-					#(#method_params,)*
-				) -> ::std::result::Result<
-					::mqtt_typed_client_core::MqttPublisher<#payload_type, #serializer_type>,
-					::mqtt_typed_client_core::TopicError,
-				>
-				where
-					F: Clone,
-					#serializer_type: Default + Clone + Send + Sync + 'static + ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
-				{
-					let custom_pattern = custom_pattern.try_into()?;
-					let default_pattern = Self::default_pattern();
-
-					let validated_pattern = default_pattern
-						.check_pattern_compatibility(custom_pattern)?;
-
-					let topic =
-						validated_pattern.format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])?;
-
-					client.clone_with_serializer::<#serializer_type>().get_publisher::<#payload_type>(&topic)
-				}
-			})
+		// The three publisher methods differ only in: the serializer type token
+		// (`F` vs a concrete type), how the serializer-aware client is obtained
+		// (bare `client` vs `client.clone_with_serializer::<S>()`), and the
+		// where-clause bounds. The method bodies are otherwise identical.
+		let (serializer_ty, client_expr, where_clause) = if let Some(s) =
+			&self.macro_args.custom_serializer
+		{
+			(
+				quote! { #s },
+				quote! { client.clone_with_serializer::<#s>() },
+				quote! {
+					where
+						F: Clone,
+						#s: Default + Clone + Send + Sync + 'static + ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
+				},
+			)
 		} else {
-			// Without custom serializer (existing behavior)
-			// Suppress clippy::ptr_arg for generated methods that may take &Vec<T> or &String
-			// parameters. These warnings are not actionable in macro-generated code since
-			// the parameter types are derived from user struct fields.
-			Ok(quote! {
-				/// Publish message to default topic
-				#[allow(clippy::ptr_arg)]
-				pub async fn publish<F>(
-					client: &::mqtt_typed_client_core::MqttClient<F>,
-					#(#method_params,)*
-					data: &#payload_type,
-				) -> ::std::result::Result<(), ::mqtt_typed_client_core::MqttClientError>
-				where
-					F: ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
-				{
-					Self::get_publisher(client #(, #format_args)*)?.publish(data).await
-				}
+			(
+				quote! { F },
+				quote! { client },
+				quote! {
+					where
+						F: ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
+				},
+			)
+		};
 
-				/// Get publisher for default topic
-				pub fn get_publisher<F>(
-					client: &::mqtt_typed_client_core::MqttClient<F>,
-					#(#method_params,)*
-				) -> ::std::result::Result<
-					::mqtt_typed_client_core::MqttPublisher<#payload_type, F>,
-					::mqtt_typed_client_core::TopicError,
-				>
-				where
-					F: ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
-				{
-					let topic = format!(#format_string #(, #format_args)*);
-					client.get_publisher::<#payload_type>(&topic)
-				}
+		// Suppress clippy::ptr_arg for generated methods that may take &Vec<T> or &String
+		// parameters. These warnings are not actionable in macro-generated code since
+		// the parameter types are derived from user struct fields.
+		Ok(quote! {
+			/// Publish message to default topic
+			#[allow(clippy::ptr_arg)]
+			pub async fn publish<F>(
+				client: &::mqtt_typed_client_core::MqttClient<F>,
+				#(#method_params,)*
+				data: &#payload_type,
+			) -> ::std::result::Result<(), ::mqtt_typed_client_core::MqttClientError>
+			#where_clause
+			{
+				Self::get_publisher(client #(, #format_args)*)?.publish(data).await
+			}
 
-				pub fn get_publisher_to<F>(
-					client: &::mqtt_typed_client_core::MqttClient<F>,
-					custom_pattern: impl TryInto <
-						::mqtt_typed_client_core::TopicPatternPath,
-						Error = ::mqtt_typed_client_core::TopicPatternError,
-					>,
-					#(#method_params,)*
-				) -> ::std::result::Result<
-					::mqtt_typed_client_core::MqttPublisher<#payload_type, F>,
-					::mqtt_typed_client_core::TopicError,
-				>
-				where
-					F: ::mqtt_typed_client_core::MessageSerializer<#payload_type>,
-				{
-					let custom_pattern = custom_pattern.try_into()?;
-					let default_pattern = Self::default_pattern();
+			/// Get publisher for default topic
+			pub fn get_publisher<F>(
+				client: &::mqtt_typed_client_core::MqttClient<F>,
+				#(#method_params,)*
+			) -> ::std::result::Result<
+				::mqtt_typed_client_core::MqttPublisher<#payload_type, #serializer_ty>,
+				::mqtt_typed_client_core::TopicError,
+			>
+			#where_clause
+			{
+				let topic = format!(#format_string #(, #format_args)*);
+				#client_expr.get_publisher::<#payload_type>(&topic)
+			}
 
-					let validated_pattern = default_pattern
-						.check_pattern_compatibility(custom_pattern)?;
+			pub fn get_publisher_to<F>(
+				client: &::mqtt_typed_client_core::MqttClient<F>,
+				custom_pattern: impl TryInto <
+					::mqtt_typed_client_core::TopicPatternPath,
+					Error = ::mqtt_typed_client_core::TopicPatternError,
+				>,
+				#(#method_params,)*
+			) -> ::std::result::Result<
+				::mqtt_typed_client_core::MqttPublisher<#payload_type, #serializer_ty>,
+				::mqtt_typed_client_core::TopicError,
+			>
+			#where_clause
+			{
+				let custom_pattern = custom_pattern.try_into()?;
+				let default_pattern = Self::default_pattern();
 
-					let topic =
-						validated_pattern.format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])?;
+				let validated_pattern = default_pattern
+					.check_pattern_compatibility(custom_pattern)?;
 
-					client.get_publisher::<#payload_type>(&topic)
-				}
-			})
-		}
+				let topic =
+					validated_pattern.format_topic(&[#(&#format_args as &dyn ::std::fmt::Display),*])?;
+
+				#client_expr.get_publisher::<#payload_type>(&topic)
+			}
+		})
 	}
 
 	/// Generate last will methods

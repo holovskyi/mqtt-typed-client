@@ -34,36 +34,29 @@
   Винесення rumqttc у `[workspace.dependencies]` — лишилось у низькому пріоритеті.
 
 ### Тести
-- [ ] **Офлайн codegen-тест на `serializer = Type`**. Зараз 0 покриття (усі тести `custom_serializer: None`).
-  - Додати в `macros/src/codegen_test.rs` кейс з `custom_serializer: Some(...)`; перевірити що
-    згенерований код містить `clone_with_serializer::<...>()` і правильні where-bounds, і що
-    TypedClient НЕ генерується.
-  - Бажано `trybuild` compile-pass тест для `#[mqtt_topic("...", serializer = JsonSerializer)]`.
-- [ ] **Інтеграційний тест per-topic serializer через живий брокер** (round-trip publish→subscribe
-  з кастомним серіалізатором). Базувати на патерні `tests/serializers_integration.rs`, але
-  тригерити через макрос. Має деградувати без брокера, як решта.
+- [x] **Офлайн codegen-тест на `serializer = Type`** — `test_custom_serializer_generation`
+  у `macros/src/codegen_test.rs`: перевіряє `clone_with_serializer`, тип `JsonSerializer` у
+  сигнатурах, наявність методів, і `NotPresent("TestStructClient")`/`NotPresent("TestStructExt")`
+  (TypedClient вимкнено). Маркери звірені з `naming.rs`. (trybuild — лишився опційним.)
+- [x] **Інтеграційний тест per-topic serializer через живий брокер** —
+  `tests/serializer_macro_integration.rs`: `#[mqtt_topic(..., serializer = JsonSerializer)]`,
+  round-trip publish→subscribe→deserialize з **assert** цілісності даних; тихо деградує без брокера.
+  Пройшов проти EMQX.
 - [ ] **Хоч мінімальні unit-тести для `core`** (зараз 0 у lib): конструювання топіків/конфігу,
   парсинг URL — без брокера.
 
-### Документація
-- [ ] **README: секція "Per-topic serializer override"** — синтаксис `#[mqtt_topic("...", serializer = JsonSerializer)]`,
-  коли вживати, обмеження (вимикається TypedClient; підтримуються лише не-generic типи).
-- [ ] **README: секція "TLS / transport features"** — це прямо те, що просив коментатор.
-  Матриця: `rumqttc-use-rustls` (+ aws-lc) / `rumqttc-use-rustls-no-provider` (свій provider, напр. ring) /
-  `rumqttc-use-native-tls` / no-TLS (default-features = false) / `rumqttc-websocket` / `rumqttc-proxy`.
-  Як вимкнути TLS повністю, як уникнути aws-lc на 32-біт через no-provider. Приклад вибору backend.
-- [ ] **Оновити версію в усіх доках** `0.1.0 → 0.2.0` (README рядок ~148 install-snippet,
-  COMPARISON, examples/README за потреби).
+> ⚠️ **Документація — у самому кінці** (після стабілізації API/флагів), щоб не переписувати двічі.
+> Див. блок "📚 Документація (фінал)" нижче.
 
 ---
 
 ## 🟠 Середній пріоритет — якість/UX
 
 ### Код
-- [ ] **Прибрати дублювання в `macros/src/codegen.rs`** (гілки with/without serializer у
-  `generate_builder/subscriber/publisher_methods`, ~120 рядків). Обчислити токен серіалізатора +
-  bounds + `clone`/`clone_with_serializer` один раз, шаблонізувати. **Тільки ПІСЛЯ** офлайн-тесту
-  (страхувальна сітка для рефактора proc-макро).
+- [x] **Прибрати дублювання в `macros/src/codegen.rs`** — три методи
+  (`generate_builder/subscriber/publisher_methods`) тепер обчислюють `(serializer_ty, client_expr,
+  where_clause/extra_bounds)` один раз, а тіло `quote!` єдине. `default_pattern()` винесено з гілок.
+  Підтверджено 37 тестами macros (включно з новим serializer-тестом) + build example 102. Без нових clippy-warning.
 - [ ] **Re-export `Transport` і потрібних TLS-типів** з кореня крейта, щоб приклад
   `004_hello_world_tls.rs` не ліз напряму в `rumqttc::tokio_rustls::rustls::{...}` і користувач
   не мусив додавати rumqttc прямою залежністю. (НЕ повноцінна абстракція — лише зручний re-export.)
@@ -93,7 +86,19 @@
   - [ ] Прибрати/задіяти мертвий `get_max_qos_for_topic`; рішення по TODO QoS-downgrade (`topic_router.rs`).
   - [ ] `CHANGELOG.md` для engine.
 - [ ] Рішення щодо публічності внутрішнього `doc-macros` (зараз публікується публічно).
-- [ ] Винести `rumqttc = "0.24"` у `[workspace.dependencies]` (хардкод у 3 місцях).
+- [ ] Винести `rumqttc` у `[workspace.dependencies]` (хардкод у кількох місцях).
+
+---
+
+## 📚 Документація (фінал — робиться ОСТАННЬОЮ, після стабілізації API/флагів)
+- [ ] **README: секція "Per-topic serializer override"** — синтаксис `#[mqtt_topic("...", serializer = JsonSerializer)]`,
+  коли вживати, обмеження (вимикається TypedClient; підтримуються лише не-generic типи).
+- [ ] **README: секція "TLS / transport features"** — це прямо те, що просив коментатор.
+  Матриця: `rumqttc-use-rustls` (+ aws-lc) / `rumqttc-use-rustls-no-provider` (свій provider, напр. ring) /
+  `rumqttc-use-native-tls` / no-TLS (default-features = false) / `rumqttc-websocket` / `rumqttc-proxy`.
+  Як вимкнути TLS повністю, як уникнути aws-lc на 32-біт через no-provider. Приклад вибору backend.
+- [ ] **Оновити версію в усіх доках** `0.1.0 → 0.2.0` (README install-snippet, COMPARISON, examples/README).
+- [ ] Фіналізувати CHANGELOG (дата релізу замість TBD).
 
 ---
 
