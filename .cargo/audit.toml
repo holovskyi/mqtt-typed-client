@@ -1,0 +1,17 @@
+# cargo-audit configuration.
+#
+# Ignored advisories — all four are in `rustls-webpki` 0.102.8, pulled
+# transitively via `rumqttc` 0.25.1 (the latest release). No patched version is
+# reachable within rumqttc's pinned rustls constraints, and there is no newer
+# rumqttc. The practical impact for this crate's usage (MQTT-over-TLS to a known
+# broker) is low — these concern CRL parsing and X.509 name-constraint matching.
+#
+# REVISIT: drop these the moment rumqttc bumps its rustls/rustls-webpki and a
+# patched version (rustls-webpki >= 0.103.x with the fixes) becomes reachable.
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0049", # rustls-webpki: CRLs not considered authoritative (faulty matching)
+    "RUSTSEC-2026-0098", # rustls-webpki: URI name constraints incorrectly accepted
+    "RUSTSEC-2026-0099", # rustls-webpki: name constraints accepted for wildcard certs
+    "RUSTSEC-2026-0104", # rustls-webpki: reachable panic in CRL parsing
+]

@@ -79,6 +79,9 @@
   - ТЕХ-БОРГ (не блокер): (1) `examples` job маскує помилки `|| echo` — впалий приклад дасть
     false-green навіть із брокером (треба enforcement-гейт як у тестах); (2) feature `paho-mqtt`
     engine не має compile-coverage у CI (свідомо — нативний C-лінк відсутній).
+  - [ ] REVISIT: `.cargo/audit.toml` ігнорує 4 rustls-webpki адвайзорі (RUSTSEC-2026-0049/0098/0099/0104),
+    бо фікс заблокований upstream (rumqttc 0.25.1 пінить старий rustls; новішого rumqttc немає).
+    Прибрати ці ignore, щойно rumqttc оновить rustls/rustls-webpki на пропатчену гілку.
 
 ---
 
