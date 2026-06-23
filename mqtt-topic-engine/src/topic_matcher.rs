@@ -1,5 +1,11 @@
+//! Prefix-tree topic matcher.
+//!
+//! [`TopicMatcherNode`] is a trie keyed by topic segments that stores a payload
+//! `T` per subscription pattern (literals, `+` and `#` wildcards) and resolves
+//! all payloads matching a concrete topic. The [`Len`] trait lets a node prune
+//! empty payload containers during removal.
+
 #![allow(clippy::missing_docs_in_private_items)]
-#![allow(missing_docs)]
 use std::collections::{HashMap, HashSet};
 
 use arcstr::Substr;
@@ -18,11 +24,19 @@ pub enum TopicMatcherError {
 
 	/// Invalid topic segment encountered during matching
 	#[error("Invalid topic segment '{segment}' at position {position}")]
-	InvalidSegment { segment: String, position: usize },
+	InvalidSegment {
+		/// The offending segment value.
+		segment: String,
+		/// Zero-based position of the segment within the path.
+		position: usize,
+	},
 
 	/// Topic path contains invalid UTF-8 characters
 	#[error("Topic path contains invalid UTF-8: {details}")]
-	InvalidUtf8 { details: String },
+	InvalidUtf8 {
+		/// Details about the decoding failure.
+		details: String,
+	},
 }
 
 impl TopicMatcherError {
@@ -62,8 +76,12 @@ pub struct TopicMatcherNode<T> {
 	multi_level_wildcard_data: Option<T>,
 }
 
+/// Abstraction over payload containers stored in a [`TopicMatcherNode`],
+/// used to detect when a node's payload has become empty and can be pruned.
 pub trait Len {
+	/// Number of elements currently held.
 	fn len(&self) -> usize;
+	/// Returns `true` when the container holds no elements.
 	fn is_empty(&self) -> bool {
 		self.len() == 0
 	}
@@ -104,6 +122,8 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 		}
 	}
 
+	/// Returns `true` when this node holds no payload and has no children,
+	/// i.e. it carries no subscriptions and can be removed by its parent.
 	pub fn is_empty(&self) -> bool {
 		self.exact_match_data.as_ref().is_none_or(T::is_empty)
 			&& self.exact_children.is_empty()
@@ -302,6 +322,10 @@ impl<T: Default + Len> TopicMatcherNode<T> {
 		}
 	}
 
+	/// Collects every stored `(pattern, payload)` by walking the trie.
+	///
+	/// Test-only helper used to assert routing-tree contents; production code
+	/// should use `TopicRouter::get_active_subscriptions`, which is cheaper.
 	#[cfg(test)]
 	pub fn collect_active_subscriptions(&self) -> Vec<(TopicPatternPath, &T)> {
 		let mut result = Vec::new();

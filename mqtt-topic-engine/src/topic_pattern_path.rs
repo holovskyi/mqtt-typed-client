@@ -1,3 +1,9 @@
+//! Parsed MQTT topic patterns.
+//!
+//! [`TopicPatternPath`] holds a validated sequence of [`TopicPatternItem`]
+//! segments (literals, `+` single-level and `#` multi-level wildcards) together
+//! with bound parameter values, and renders back to the wire MQTT pattern.
+
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::fmt::{self, Display, Write};

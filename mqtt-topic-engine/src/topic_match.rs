@@ -1,5 +1,10 @@
+//! Matched-topic types.
+//!
+//! [`TopicPath`] is a concrete topic split into segments; [`TopicMatch`] is the
+//! result of matching such a topic against a pattern, exposing the captured
+//! positional and named parameters.
+
 #![allow(clippy::missing_docs_in_private_items)]
-#![allow(missing_docs)]
 
 use std::fmt;
 use std::ops::Range;
@@ -9,13 +14,20 @@ use arcstr::{ArcStr, Substr};
 use smallvec::SmallVec;
 use thiserror::Error;
 
+/// A concrete MQTT topic, split into its `/`-delimited segments.
+///
+/// The original topic string and the segment slices share the same backing
+/// [`ArcStr`] allocation, so cloning and slicing are cheap.
 #[derive(Debug, Clone)]
 pub struct TopicPath {
+	/// The full topic string.
 	pub path: ArcStr,
+	/// The topic split on `/`; each segment is a slice into [`path`](Self::path).
 	pub segments: Vec<Substr>,
 }
 
 impl TopicPath {
+	/// Builds a [`TopicPath`] by splitting `path` on `/` into segments.
 	pub fn new(path: impl Into<ArcStr>) -> Self {
 		let path = path.into();
 		let segments: Vec<Substr> =
@@ -23,6 +35,7 @@ impl TopicPath {
 		Self { path, segments }
 	}
 
+	/// Returns a cheap (refcounted) clone of the full topic string.
 	pub fn path(&self) -> ArcStr {
 		self.path.clone()
 	}
@@ -34,6 +47,7 @@ impl fmt::Display for TopicPath {
 	}
 }
 
+/// Errors returned when matching a topic against a pattern.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum TopicMatchError {
 	/// Pattern ended unexpectedly while matching topic
@@ -67,6 +81,11 @@ pub enum TopicMatchError {
 	DuplicateParameterName,
 }
 
+/// The result of matching a [`TopicPath`] against a pattern.
+///
+/// Holds the matched topic plus the ranges of segments captured by the
+/// pattern's wildcards, accessible by position ([`get_param`](Self::get_param))
+/// or by name ([`get_named_param`](Self::get_named_param)).
 pub struct TopicMatch {
 	topic: Arc<TopicPath>,
 	params: SmallVec<[Range<usize>; 3]>,
@@ -86,6 +105,7 @@ impl TopicMatch {
 		}
 	}
 
+	/// Returns the matched topic's segments.
 	pub fn path_segments(&self) -> &Vec<Substr> {
 		&self.topic.segments
 	}
@@ -109,12 +129,17 @@ impl TopicMatch {
 		}
 	}
 
+	/// Returns the positional parameter captured at `index`, if any.
+	///
+	/// Parameters are numbered in pattern order; a `#` wildcard yields the
+	/// joined remainder of the topic.
 	pub fn get_param(&self, index: usize) -> Option<Substr> {
 		self.params
 			.get(index)
 			.map(|range| self.get_param_range(range))
 	}
 
+	/// Returns the value of the named parameter `name`, if the pattern bound one.
 	pub fn get_named_param(&self, name: &str) -> Option<Substr> {
 		self.named_params
 			.iter()
@@ -124,6 +149,7 @@ impl TopicMatch {
 		//self.named_params.get(name).map(|range| self.get_param_range(range))
 	}
 
+	/// Returns a cheap (refcounted) clone of the matched topic string.
 	pub fn topic_path(&self) -> ArcStr {
 		self.topic.path.clone()
 	}

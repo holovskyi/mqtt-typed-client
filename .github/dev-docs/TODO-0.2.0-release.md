@@ -57,15 +57,14 @@
   (`generate_builder/subscriber/publisher_methods`) тепер обчислюють `(serializer_ty, client_expr,
   where_clause/extra_bounds)` один раз, а тіло `quote!` єдине. `default_pattern()` винесено з гілок.
   Підтверджено 37 тестами macros (включно з новим serializer-тестом) + build example 102. Без нових clippy-warning.
-- [ ] **Re-export `Transport` і потрібних TLS-типів** з кореня крейта, щоб приклад
-  `004_hello_world_tls.rs` не ліз напряму в `rumqttc::tokio_rustls::rustls::{...}` і користувач
-  не мусив додавати rumqttc прямою залежністю. (НЕ повноцінна абстракція — лише зручний re-export.)
+- [x] **Re-export `Transport` і TLS-типів** — `Transport` з core (+ prelude); `tokio_rustls`/`rustls`
+  з root під rustls-feature (version-matched). Приклад `004` більше не імпортує `rumqttc::*`;
+  додано `[[example]]` required-features. (коміт 995680b)
 
 ### Реліз-гігієна
-- [ ] **Виправити clippy/build-попередження** (4 шт.):
-  - `mqtt-topic-engine/src/topic_pattern_item.rs:~295` та `topic_pattern_path.rs` — elided lifetime (`Iter<'_, ...>`).
-  - `core/src/structured/subscriber.rs:6` — невикористаний `use tracing::error`.
-  - `src/lib.rs:~277` — const-assertion у тестовому коді.
+- [x] **Виправити clippy/build-попередження** (4 шт.) — elided lifetimes в engine, unused import у
+  core, `#[allow(clippy::assertions_on_constants)]` на feature-тестах. clippy `--workspace
+  --all-targets` чисто. (коміт 995680b)
 - [ ] **`cargo package --list`** для root, core, macros, engine — переконатися що `README.md`,
   `examples/README.md` (потрібен для `include_md_transformed!`), LICENSE-файли потрапляють у пакет.
   Інакше docs.rs впаде.
@@ -80,12 +79,18 @@
   (зараз взаємовиключність не enforced).
 - [ ] Підтримати generic-серіалізатор `MySerializer<Foo>` у парсері (`macros/src/lib.rs` — зараз
   лише `Expr::Path`) АБО уточнити обмеження в error-меседжі.
-- [ ] **mqtt-topic-engine standalone-готовність** (✅ РІШЕННЯ: публікуємо окремо, У СКОУПІ 0.2.0):
-  - [ ] Документувати pub-модулі `topic_router` / `topic_matcher` (зняти `#![allow(missing_docs)]`).
-  - [ ] LICENSE: прибрати у README посилання `../LICENSE-MIT` (не рендериться на crates.io) — власні копії.
-  - [ ] Прибрати/задіяти мертвий `get_max_qos_for_topic`; рішення по TODO QoS-downgrade (`topic_router.rs`).
-  - [ ] `CHANGELOG.md` для engine (стартує з 0.1.0).
-- [ ] Винести `rumqttc` у `[workspace.dependencies]` (хардкод у кількох місцях).
+- [x] **mqtt-topic-engine standalone-готовність** (✅ РІШЕННЯ: публікуємо окремо, У СКОУПІ 0.2.0):
+  - [x] Документувати публічні елементи + додано крейт-рівневий `#![warn(missing_docs)]` у lib.rs
+    (без нього зняття локальних `#![allow(missing_docs)]` було б no-op — лінт за дефолтом `allow`).
+    Знято allow у `topic_router`/`topic_matcher`/`topic_match` (скоуп розширено на `topic_match` —
+    центральні `TopicMatch`/`TopicPath`); `clippy::missing_docs_in_private_items` лишився.
+    `cargo doc --all-features` та `clippy --all-targets` — 0 warning.
+  - [x] LICENSE: у README посилання `../LICENSE-*` → `LICENSE-*` (3 шт.); власні копії вже були.
+  - [x] `get_max_qos_for_topic` — РІШЕННЯ: **лишаємо як заготовку під QoS-downgrade** (private +
+    `#[allow(dead_code)]`, не впливає на docs.rs/clippy). Підсилено перехресні коментарі
+    `get_max_qos_for_topic` ↔ TODO в `unsubscribe`.
+  - [x] `CHANGELOG.md` для engine (стартує з 0.1.0).
+- [x] Винести `rumqttc` у `[workspace.dependencies]` — члени на `workspace = true`. (коміт 995680b)
 
 ---
 

@@ -1,5 +1,12 @@
+//! Subscription router built on the topic matcher.
+//!
+//! [`TopicRouter`] maps MQTT subscription patterns to caller-supplied payloads
+//! `T`, assigns each a [`SubscriptionId`], and resolves all payloads whose
+//! pattern matches a delivered topic. It also tracks the set of distinct broker
+//! subscriptions (with their effective QoS) so callers know when to actually
+//! subscribe or unsubscribe on the wire.
+
 #![allow(clippy::missing_docs_in_private_items)]
-#![allow(missing_docs)]
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 
@@ -25,15 +32,26 @@ pub enum TopicRouterError {
 
 	/// Subscription with given ID was not found
 	#[error("Subscription {id:?} not found")]
-	SubscriptionNotFound { id: SubscriptionId },
+	SubscriptionNotFound {
+		/// The subscription id that could not be found.
+		id: SubscriptionId,
+	},
 
 	/// Topic is invalid for routing operations
 	#[error("Topic '{topic}' is invalid for routing: {reason}")]
-	InvalidRoutingTopic { topic: String, reason: String },
+	InvalidRoutingTopic {
+		/// The topic that was rejected.
+		topic: String,
+		/// Why the topic is invalid for routing.
+		reason: String,
+	},
 
 	/// Internal state corruption detected
 	#[error("Internal routing state corrupted: {details}")]
-	InternalStateCorrupted { details: String },
+	InternalStateCorrupted {
+		/// Description of the detected inconsistency.
+		details: String,
+	},
 }
 
 impl TopicRouterError {
@@ -77,6 +95,12 @@ impl Display for SubscriptionId {
 type SubscriptionTable<T> = HashMap<SubscriptionId, T>;
 //type RouteCallback = Box<dyn for<'a, 'b> Fn(&'a str, &'b [u8]) + Send + Sync>;
 
+/// Routes MQTT topics to subscription payloads.
+///
+/// Each subscription pattern is associated with a payload `T` and a unique
+/// [`SubscriptionId`]. Delivered topics are matched against all stored patterns
+/// (including `+`/`#` wildcards); the router also bookkeeps which distinct
+/// broker subscriptions are active and at what QoS.
 pub struct TopicRouter<T> {
 	topic_matcher: TopicMatcherNode<SubscriptionTable<T>>,
 	subscriptions: SubscriptionTable<(TopicPatternPath, QoS)>,
@@ -90,6 +114,7 @@ impl<T> Default for TopicRouter<T> {
 }
 
 impl<T> TopicRouter<T> {
+	/// Creates an empty router with no subscriptions.
 	pub fn new() -> Self {
 		Self {
 			topic_matcher: TopicMatcherNode::new(),
@@ -98,6 +123,12 @@ impl<T> TopicRouter<T> {
 		}
 	}
 
+	/// Registers a subscription for `topic` with the given `qos` and payload.
+	///
+	/// Returns `(needs_subscribe, id)`: `needs_subscribe` is `true` when this is
+	/// the first subscription for the pattern or it raises the effective QoS, so
+	/// the caller must (re)subscribe on the broker; `id` identifies the new
+	/// subscription for later [`unsubscribe`](Self::unsubscribe).
 	pub fn add_subscription(
 		&mut self,
 		topic: TopicPatternPath,
@@ -133,13 +164,22 @@ impl<T> TopicRouter<T> {
 		(needs_subscribe, id)
 	}
 
+	/// Removes the subscription identified by `id`.
+	///
+	/// Returns `(topic_now_empty, pattern)`: `topic_now_empty` is `true` when no
+	/// other subscription remains for the pattern, so the caller should
+	/// unsubscribe it on the broker. Fails with
+	/// [`TopicRouterError::SubscriptionNotFound`] if `id` is unknown.
 	pub fn unsubscribe(
 		&mut self,
 		id: &SubscriptionId,
 	) -> Result<(bool, TopicPatternPath), TopicRouterError> {
-		// TODO(enhancement): Implement QoS downgrade
-		// Currently keeping higher QoS on broker (safe but potentially wasteful)
-		// Look to add_subscriptions for reference to mirror this logic
+		// TODO(enhancement): Implement QoS downgrade.
+		// We currently keep the higher QoS on the broker after a removal (safe
+		// but potentially wasteful). To implement: after removing this id,
+		// recompute the max QoS among the remaining subscribers for the pattern
+		// — `get_max_qos_for_topic` below is the ready-made helper for that — and
+		// mirror the QoS-raising logic in `add_subscription`.
 		let topic = self.subscriptions.remove(id);
 		match topic {
 			| Some((topic_pattern, _qos)) => {
@@ -156,6 +196,10 @@ impl<T> TopicRouter<T> {
 		}
 	}
 
+	/// Returns every subscription whose pattern matches `topic`.
+	///
+	/// Each entry is `(id, (pattern, qos), payload)` for a matching subscription
+	/// (one delivered topic may match several patterns via `+`/`#` wildcards).
 	pub fn get_subscribers<'a>(
 		&'a self,
 		topic: &TopicPath,
@@ -174,16 +218,23 @@ impl<T> TopicRouter<T> {
 			.collect()
 	}
 
+	/// Iterates over every active subscription as `(pattern, qos)`.
+	///
+	/// Patterns are not deduplicated; multiple subscriptions may share one.
 	pub fn get_active_subscriptions(
 		&self,
 	) -> impl Iterator<Item = &(TopicPatternPath, QoS)> {
 		self.subscriptions.values()
 	}
 
-	/// Helper method for finding maximum QoS among subscribers to a topic.
-	/// Currently used for future QoS downgrade implementation.
-	/// See TODO in unsubscribe() method.
-	#[allow(dead_code)] // Explicitly mark as intentionally unused
+	/// Finds the maximum QoS among the subscribers to a single topic pattern.
+	///
+	/// Intentionally unused for now: it is the ready-made helper for the QoS
+	/// downgrade described in the TODO inside [`unsubscribe`](Self::unsubscribe).
+	/// The QoS-raising counterpart is currently inlined in
+	/// [`add_subscription`](Self::add_subscription); when downgrade is
+	/// implemented, the two should share this helper.
+	#[allow(dead_code)] // Kept as the helper for the planned QoS-downgrade in unsubscribe()
 	fn get_max_qos_for_topic(
 		&self,
 		topic: &TopicPatternPath,
@@ -252,6 +303,9 @@ impl<T> TopicRouter<T> {
 		self.next_id = 0;
 	}
 
+	/// Looks up the `(pattern, qos)` registered for a subscription `id`.
+	///
+	/// Fails with [`TopicRouterError::SubscriptionNotFound`] if `id` is unknown.
 	pub fn get_topic_by_id(
 		&self,
 		id: &SubscriptionId,

@@ -3,6 +3,8 @@
 //! This library provides efficient topic pattern matching, routing, and subscription
 //! management for MQTT-based applications.
 
+#![warn(missing_docs)]
+
 // Public modules
 pub mod cache_strategy;
 pub mod error;
