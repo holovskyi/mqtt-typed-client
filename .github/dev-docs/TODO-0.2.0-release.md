@@ -77,6 +77,16 @@
     `examples/internal/`, дрібний junk) → **84 → 33** легітимних файли. `examples/.env` лишено
     (навмисні безпечні дефолти, localhost, без секретів). Члени-крейти чисті, exclude не треба.
   - `README.md` входить у всі; `cargo package --list` потребує `--allow-dirty` на брудному дереві.
+- [x] **ВИТІК dev-ключа — ремедіація** (виявлено під час пакувальної розвідки): опублікований
+  `mqtt-typed-client-0.1.0.crate` на crates.io **містить** `dev/certs/key.pem` (+ весь `dev/certs/`,
+  `.github/`, `examples/internal/`; 72 файли). Це self-signed **localhost** test-cert (`CN=localhost`,
+  `Test CA`) — продакшн-цінності 0, але приватний ключ публічний. crates.io незмінний (файли не
+  видалити; `yank` їх не прибирає) + ключ також у git-історії (коміт 29eaaa5) і на публічному GitHub.
+  **Зроблено:** `git rm --cached dev/certs/*.pem`; `.gitignore` тепер ігнорує `dev/certs/*.pem|srl|csr`;
+  додано `dev/certs/generate-certs.sh` (генерує свіжий CA+localhost-cert, MSYS-сумісний); ключ
+  **ротовано локально** (старий hash 3cddd1da → новий); `dev/README.md` оновлено. Пакет 0.2.0 уже
+  захищено `exclude`. **НЕ робили:** scrub git-історії (`filter-repo`) — overkill для localhost-cert;
+  опц. `yank 0.1.0` після виходу 0.2.0 (файли все одно лишаться завантажуваними).
 - [x] **CI `actions/cache@v3` → `@v4`** (4 входження в `ci.yml`). (Сесія A)
 - [x] **Мінімальні core unit-тести** (`core/src/message_serializer.rs`, `#[cfg(test)] mod tests`):
   round-trip (serialize→deserialize→`assert_eq`) для кожного серіалізатора під своїм `#[cfg(feature)]`

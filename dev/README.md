@@ -41,12 +41,22 @@ Local EMQ X broker setup for testing mqtt-typed-client examples and development.
 
 ## TLS Configuration
 
-The broker includes self-signed certificates for TLS testing:
-- CA Certificate: `dev/certs/ca.pem`
-- Server Certificate: `dev/certs/cert.pem`
-- Server Key: `dev/certs/key.pem`
+The TLS certificates are **not committed** — they are throwaway self-signed
+material for the localhost broker and are gitignored. Generate them once after
+cloning (and any time you want fresh ones):
 
-**Note:** These are development certificates only - never use in production!
+```bash
+./dev/certs/generate-certs.sh
+```
+
+This creates, in `dev/certs/`:
+- CA Certificate: `ca.pem` (and a `cacert.pem` copy) — loaded by `examples/004_hello_world_tls.rs`
+- Server Certificate: `cert.pem` — used by the broker (`docker-compose.yml`)
+- Server Key: `key.pem` — used by the broker
+
+**Note:** These are development certificates only (CN=localhost) — never use in
+production, and never commit them. A server private key once leaked into the
+published 0.1.0 crate this way; the gitignore + this script exist to prevent a repeat.
 
 ## Testing Tools
 
