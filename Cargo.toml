@@ -20,6 +20,31 @@ categories = ["network-programming", "asynchronous"]
 authors = ["Artem Holovskyi <artem.holovskyi@gmail.com>"]
 readme = "README.md"
 
+# The root crate lives at the repo root, so `cargo package` would otherwise sweep
+# in CI configs, internal planning docs, dev certs (incl. a private key!), scratch
+# examples, and other repo-only files. Keep the published crate to source + public
+# examples + docs. Member crates (core/macros/engine/doc-macros) live in subdirs
+# and need no exclude.
+exclude = [
+	".github/",
+	".cargo/",
+	"dev/",
+	"docs/",
+	"scripts/",
+	"examples/internal/",
+	"check_result.txt",
+	".enable-ai-filesystem",
+	".gitattributes",
+	"deny.toml",
+	"rust-toolchain.toml",
+	"rustfmt.toml",
+]
+
+# docs.rs builds with all features. The root crate does not depend on paho-mqtt
+# (which links a native C library), so all-features is safe here.
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 mqtt-typed-client-core = { path = "./core", version = "0.2.0" }
 

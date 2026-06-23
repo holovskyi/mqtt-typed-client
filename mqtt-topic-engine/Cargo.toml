@@ -12,6 +12,12 @@ categories = ["network-programming", "parser-implementations"]
 authors = ["Artem Holovskyi <artem.holovskyi@gmail.com>"]
 readme = "README.md"
 
+# docs.rs: document the pure-Rust interop features. paho-mqtt is deliberately
+# EXCLUDED — it links a native C library that the docs.rs builder lacks, so
+# all-features would fail. router + lru-cache (defaults) are documented too.
+[package.metadata.docs.rs]
+features = ["rumqttc", "ntex-mqtt"]
+
 [dependencies]
 mqtt-typed-client-doc-macros = { path = "../doc-macros", version = "0.1.0" }
 arcstr = "1.2"
@@ -30,5 +36,3 @@ lru-cache = ["dep:lru"]
 rumqttc = ["dep:rumqttc"]
 paho-mqtt = ["dep:paho-mqtt"]
 ntex-mqtt = ["dep:ntex-mqtt"]
-
-[dev-dependencies]

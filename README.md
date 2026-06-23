@@ -9,7 +9,7 @@ A **type-safe async MQTT client** built on top of rumqttc
 [![CI](https://github.com/holovskyi/mqtt-typed-client/workflows/CI/badge.svg)](https://github.com/holovskyi/mqtt-typed-client/actions)
 [![Crates.io](https://img.shields.io/crates/v/mqtt-typed-client.svg)](https://crates.io/crates/mqtt-typed-client)
 [![Documentation](https://docs.rs/mqtt-typed-client/badge.svg)](https://docs.rs/mqtt-typed-client)
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/holovskyi/mqtt-typed-client/blob/main/LICENSE-MIT)
 [![MSRV](https://img.shields.io/badge/MSRV-1.85.1-blue.svg)](https://blog.rust-lang.org/2025/01/09/Rust-1.85.0.html)
 
 **Like this project? [⭐ Star it on GitHub!](https://github.com/holovskyi/mqtt-typed-client)**
@@ -264,8 +264,8 @@ tokio::select! {
 
 This project is licensed under either of
 
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
+ * Apache License, Version 2.0, ([LICENSE-APACHE](https://github.com/holovskyi/mqtt-typed-client/blob/main/LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+ * MIT license ([LICENSE-MIT](https://github.com/holovskyi/mqtt-typed-client/blob/main/LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
 

@@ -4,6 +4,15 @@ use std::fmt::Debug;
 
 #[cfg(feature = "bincode-serializer")]
 use bincode::{Decode, Encode};
+// Used by the serde-based serializers; unused under `--no-default-features`.
+#[cfg(any(
+	feature = "json",
+	feature = "messagepack",
+	feature = "cbor",
+	feature = "postcard",
+	feature = "ron",
+	feature = "flexbuffers",
+))]
 use serde::{Serialize, de::DeserializeOwned};
 
 /// Trait for serializing and deserializing MQTT message payloads.
@@ -301,5 +310,121 @@ where T: Serialize + DeserializeOwned + 'static
 
 	fn deserialize(&self, bytes: &[u8]) -> Result<T, Self::DeserializeError> {
 		flexbuffers::from_slice(bytes)
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	//! Round-trip tests (`serialize` → `deserialize` → equality) for the
+	//! built-in serializers. Each test is gated by the same feature that gates
+	//! the serializer it exercises. `protobuf` is intentionally not covered
+	//! here — `ProtobufSerializer` requires a `prost::Message` type, which would
+	//! need a generated/hand-written protobuf type beyond a minimal unit test.
+
+	// Helper exists only when at least one covered serializer is enabled, so a
+	// `--no-default-features` build (no serializer) does not see a dead fn.
+	#[cfg(any(
+		feature = "bincode-serializer",
+		feature = "json",
+		feature = "messagepack",
+		feature = "cbor",
+		feature = "postcard",
+		feature = "ron",
+		feature = "flexbuffers",
+	))]
+	fn round_trip<S, T>(serializer: &S, value: &T)
+	where
+		S: super::MessageSerializer<T>,
+		T: PartialEq + std::fmt::Debug,
+	{
+		let bytes = serializer
+			.serialize(value)
+			.expect("serialize should succeed");
+		let restored = serializer
+			.deserialize(&bytes)
+			.expect("deserialize should succeed");
+		assert_eq!(&restored, value, "round-trip must preserve the value");
+	}
+
+	// Shared message for the serde-based serializers. `serde` (with `derive`) is
+	// a non-optional dependency of this crate, so this type always compiles.
+	#[cfg(any(
+		feature = "json",
+		feature = "messagepack",
+		feature = "cbor",
+		feature = "postcard",
+		feature = "ron",
+		feature = "flexbuffers",
+	))]
+	#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
+	struct SerdeMsg {
+		text: String,
+		id: u32,
+	}
+
+	#[cfg(any(
+		feature = "json",
+		feature = "messagepack",
+		feature = "cbor",
+		feature = "postcard",
+		feature = "ron",
+		feature = "flexbuffers",
+	))]
+	fn serde_sample() -> SerdeMsg {
+		SerdeMsg {
+			text: "round-trip".to_string(),
+			id: 42,
+		}
+	}
+
+	#[cfg(feature = "bincode-serializer")]
+	#[test]
+	fn bincode_round_trip() {
+		#[derive(bincode::Encode, bincode::Decode, Debug, PartialEq)]
+		struct BincodeMsg {
+			text: String,
+			id: u32,
+		}
+		let msg = BincodeMsg {
+			text: "round-trip".to_string(),
+			id: 42,
+		};
+		round_trip(&super::BincodeSerializer::new(), &msg);
+	}
+
+	#[cfg(feature = "json")]
+	#[test]
+	fn json_round_trip() {
+		round_trip(&super::JsonSerializer::new(), &serde_sample());
+	}
+
+	#[cfg(feature = "messagepack")]
+	#[test]
+	fn messagepack_round_trip() {
+		round_trip(&super::MessagePackSerializer::new(), &serde_sample());
+	}
+
+	#[cfg(feature = "cbor")]
+	#[test]
+	fn cbor_round_trip() {
+		round_trip(&super::CborSerializer::new(), &serde_sample());
+	}
+
+	#[cfg(feature = "postcard")]
+	#[test]
+	fn postcard_round_trip() {
+		round_trip(&super::PostcardSerializer::new(), &serde_sample());
+	}
+
+	#[cfg(feature = "ron")]
+	#[test]
+	fn ron_round_trip() {
+		round_trip(&super::RonSerializer::new(), &serde_sample());
+	}
+
+	#[cfg(feature = "flexbuffers")]
+	#[test]
+	fn flexbuffers_round_trip() {
+		round_trip(&super::FlexbuffersSerializer::new(), &serde_sample());
 	}
 }

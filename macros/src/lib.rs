@@ -407,8 +407,11 @@ fn parse_macro_args(args: TokenStream) -> Result<MacroArgs, syn::Error> {
 						} else {
 							return Err(syn::Error::new_spanned(
 								&assign.right,
-								"Serializer must be a type identifier (e.g., \
-								 JsonSerializer)",
+								"Serializer must be a simple type path (e.g. \
+								 `JsonSerializer`). For a generic serializer, \
+								 declare a type alias first: `type MySer = \
+								 MySerializer<Foo>;` then use `serializer = \
+								 MySer`.",
 							));
 						}
 					} else {

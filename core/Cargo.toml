@@ -11,6 +11,10 @@ categories = ["network-programming", "asynchronous"]
 authors = ["Artem Holovskyi <artem.holovskyi@gmail.com>"]
 readme = "README.md"
 
+# docs.rs builds with all features. core does not depend on paho-mqtt, so this is safe.
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 default = ["bincode-serializer", "json"]
 bincode-serializer = ["dep:bincode"]
@@ -50,5 +54,3 @@ mqtt-typed-client-macros = { path = "../macros" }
 serde_json = "1.0.140"
 # Dependencies for examples and tests
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
-
-[lib]

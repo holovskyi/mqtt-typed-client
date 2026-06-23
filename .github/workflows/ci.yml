@@ -32,7 +32,7 @@ jobs:
         components: clippy, rustfmt
     
     - name: Cache cargo registry
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -96,7 +96,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
     
     - name: Cache cargo
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -137,7 +137,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
     
     - name: Cache cargo
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -196,7 +196,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
     
     - name: Cache cargo
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry

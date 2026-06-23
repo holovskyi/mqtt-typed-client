@@ -6,7 +6,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/mqtt-topic-engine.svg)](https://crates.io/crates/mqtt-topic-engine)
 [![Documentation](https://docs.rs/mqtt-topic-engine/badge.svg)](https://docs.rs/mqtt-topic-engine)
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/holovskyi/mqtt-typed-client/blob/main/LICENSE-MIT)
 
 Zero-dependency (by default) topic pattern parser, matcher, and router for MQTT applications
 
@@ -768,8 +768,8 @@ Contributions are welcome! This library is part of the [mqtt-typed-client](https
 
 This project is licensed under either of
 
- * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
+ * Apache License, Version 2.0 ([LICENSE-APACHE](https://github.com/holovskyi/mqtt-typed-client/blob/main/LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+ * MIT license ([LICENSE-MIT](https://github.com/holovskyi/mqtt-typed-client/blob/main/LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
 
