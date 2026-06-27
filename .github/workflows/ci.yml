@@ -31,14 +31,14 @@ jobs:
         toolchain: ${{ matrix.rust }}
         components: clippy, rustfmt
     
-    - name: Cache cargo registry
-      uses: actions/cache@v4
+    # Swatinem/rust-cache keys on Cargo.toml/Cargo.lock + rustc version and
+    # manages ~/.cargo + target/ itself. We deliberately gitignore Cargo.lock,
+    # which made the old `hashFiles('**/Cargo.lock')` key resolve to an empty
+    # hash (constant key -> the cache froze and never invalidated).
+    - name: Cache cargo and target
+      uses: Swatinem/rust-cache@v2
       with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ matrix.rust }}
     
     - name: Check formatting
       run: |
@@ -95,14 +95,8 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
     
-    - name: Cache cargo
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo and target
+      uses: Swatinem/rust-cache@v2
     
     # `emqx ping` (service healthcheck) reports the node is up before the MQTT
     # listener actually accepts connections, so wait for the TCP port directly.
@@ -136,14 +130,8 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
     
-    - name: Cache cargo
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo and target
+      uses: Swatinem/rust-cache@v2
     
     - name: Build documentation
       run: cargo doc --all-features --no-deps
@@ -195,14 +183,8 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
     
-    - name: Cache cargo
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo and target
+      uses: Swatinem/rust-cache@v2
     
     - name: Wait for broker
       run: |
