@@ -27,13 +27,12 @@ readme = "README.md"
 # and need no exclude.
 # NOTE: `docs/COMPARISON_WITH_RUMQTTC.md` is `include_str!`-embedded as the
 # `comparison` module doc (src/lib.rs), so it MUST ship — exclude only the
-# internal docs (ROADMAP, generated) rather than all of `docs/`.
+# internal docs (e.g. ROADMAP) rather than all of `docs/`.
 exclude = [
 	".github/",
 	".cargo/",
 	"dev/",
 	"docs/ROADMAP.md",
-	"docs/generated/",
 	"scripts/",
 	"examples/internal/",
 	"check_result.txt",
