@@ -52,9 +52,12 @@
   і **далі весь Крок 2 і Крок 3 ганяти з `--locked`**, щоб verify-білд публікації йшов проти ТОГО
   САМОГО дерева залежностей, що й тести. (Комітити lock не обов'язково — library-крейт; головне —
   стабільний стан від тестів до публікації в межах сесії.)
-- **Фікс гігієни (W1):** `core/Cargo.toml` має dev-dep `mqtt-typed-client-macros = { path = "../macros" }`
-  БЕЗ `version` (на відміну від решти внутрішніх deps). publish не блокує (cargo стрипає path-dev-deps
-  без version), але додати `version = "0.2.0"` для консистентності (як у `macros`→core). Дешево.
+- **W1 (СКАСОВАНО — Сесія D):** `core/Cargo.toml` dev-dep на macros МАЄ лишатись `{ path = "../macros" }`
+  БЕЗ `version`. Раніше тут радили додати `version = "0.2.0"` «для консистентності» — це ПОМИЛКА:
+  `macros` залежить від `core` і публікується ПІСЛЯ нього, тож версійований dev-dep утворює
+  нерозв'язний цикл (`cargo publish -p core` падав: «failed to select a version for
+  mqtt-typed-client-macros ^0.2.0»). Path-only dev-dep cargo стрипає з опублікованого маніфесту —
+  саме тому він і має бути без version. Виправлено комітом 0b15ae7.
 - **`publish = false` має бути ВІДСУТНІЙ** у всіх 4 (перевірено — його ніде немає; усі 4 публікуються).
 - **🔴 Верифікація tarball на витік (критично після інциденту ad8e3d5):**
   `cargo package --list --allow-dirty -p mqtt-typed-client` і ВРУЧНУ переконатись, що `dev/`

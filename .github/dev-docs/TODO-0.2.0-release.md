@@ -185,7 +185,9 @@
   `exclude` (`docs/` → `docs/ROADMAP.md`+`docs/generated/`), бо `src/lib.rs` `include_str!`-ить
   `docs/COMPARISON_WITH_RUMQTTC.md` — інакше verify-білд root падав («couldn't read …COMPARISON»).
   Перевірено: COMPARISON тепер у tarball, ROADMAP/generated — ні.
-- [x] `core` dev-dep на macros → `version="0.2.0"` (W1).
+- [x] `core` dev-dep на macros — **path-only БЕЗ version** (W1 із `version="0.2.0"` СКАСОВАНО в
+  Сесії D: версія утворювала нерозв'язний publish-цикл core↔macros; коміт 0b15ae7). Cargo стрипає
+  path-only dev-dep з опублікованого маніфесту — тому version тут не потрібен і шкідливий.
 - [ ] **Крок 3 (КОРИСТУВАЧ): `cargo publish --locked` по порядку** engine → core → macros → root
   (dry-run перед кожним; пауза на індекс; СТОП на помилці). Потребує `cargo login`.
 - [ ] **Крок 4: Git tag `v0.2.0`** (`git tag -a v0.2.0 -m "Release 0.2.0"` → `git push origin v0.2.0`) ПІСЛЯ публікації.
