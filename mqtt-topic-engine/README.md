@@ -12,6 +12,13 @@ Zero-dependency (by default) topic pattern parser, matcher, and router for MQTT 
 
 </div>
 
+> **Part of the [`mqtt-typed-client`](https://crates.io/crates/mqtt-typed-client) project.**
+> This crate is the standalone topic pattern-matching and routing engine. Use it directly
+> only if you need the matching/routing primitives on their own — for example, to build your
+> own MQTT layer or custom routing. If you just want a type-safe async MQTT client (connect,
+> publish/subscribe, automatic topic routing and (de)serialization), use
+> [`mqtt-typed-client`](https://crates.io/crates/mqtt-typed-client) instead.
+
 ## Contents
 
 - [Features](#features)
