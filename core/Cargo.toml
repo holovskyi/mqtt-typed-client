@@ -49,8 +49,13 @@ flexbuffers = { version = "2.0", optional = true }
 mqtt-topic-engine = { path = "../mqtt-topic-engine", version = "0.1.0", features = ["rumqttc"] }
 
 
+# Dev-only: used by tests to exercise the `mqtt_topic` macro against core types.
+# Path-only (NO version) on purpose — `macros` depends on `core`, so a versioned
+# dev-dep would form an unpublishable cycle (core would require macros 0.2.0,
+# which is only published AFTER core). Cargo strips path-only dev-deps from the
+# published manifest, so core publishes without needing macros in the index.
 [dev-dependencies]
-mqtt-typed-client-macros = { path = "../macros", version = "0.2.0" }
+mqtt-typed-client-macros = { path = "../macros" }
 serde_json = "1.0.140"
 # Dependencies for examples and tests
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
