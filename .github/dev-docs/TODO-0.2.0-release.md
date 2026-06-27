@@ -5,7 +5,14 @@
 
 Статус контексту:
 - API backward-compat shim для v0.1.0 шляхів — ✅ зроблено (коміт 1c31bc8).
-- Version bump → 0.2.0 (core/macros/root); engine + doc-macros лишаються 0.1.0 — ✅ зроблено.
+- Version bump → 0.2.0 (core/macros/root); engine лишається 0.1.0 — ✅ зроблено.
+- **Сесія D: крейт `doc-macros` ВИДАЛЕНО до публікації.** Рішення «варіант A» (нижче) скасовано:
+  proc-macro = той самий supply-chain ризик, що й `build.rs` (виконання коду під час білда,
+  cargo-vet/deny трактують однаково), плюс нав'язував `syn+quote+regex` усім споживачам. Заміна:
+  чистий `#![doc = include_str!(...)]`, а лінки на приклади — абсолютні GitHub-URL (`blob/main`),
+  що рендеряться і на GitHub, і на docs.rs. Крейта на crates.io не було → yank не потрібен.
+  Публікується тепер **4 крейти**: engine → core → macros → root. Історичні згадки `doc-macros`
+  нижче (Сесії A–C) лишено як літопис — вони описують стан на той момент.
 - Брокер для інтеграційних тестів: `dev/docker-compose.yml` (EMQX, localhost:1883). Тести
   деградують тихо без брокера.
 
@@ -170,12 +177,15 @@
 - [x] `cargo test --locked` зелене (workspace-lib 86, all-features lib+doc, engine 86+21, root 3+27ign — 0 failed).
 - [x] `cargo clippy --locked --all-targets --all-features -D warnings` чисто; `cargo doc -D warnings` чисто.
 - [x] CHANGELOG: дату релізу `2026-06-23` виставлено у всіх 5 файлах (коміт ccc0122).
-- [x] Узгодженість версій (root/core/macros = 0.2.0; engine/doc-macros = 0.1.0); path-deps звірені.
-- [x] Нові імена `mqtt-topic-engine`, `mqtt-typed-client-doc-macros` — ВІЛЬНІ на crates.io.
+- [x] Узгодженість версій (root/core/macros = 0.2.0; engine = 0.1.0); path-deps звірені.
+- [x] Нове ім'я `mqtt-topic-engine` — ВІЛЬНЕ на crates.io. (`doc-macros` видалено — більше не публікується.)
 - [x] Tarball root НЕ містить `dev/`/`key.pem`/`.github/` (перевірено).
-- [x] Per-crate build + `package --list` усіх 5 (10/20/26/16/33 файлів); повний dry-run листа doc-macros ✅.
+- [x] Per-crate build + `package --list` усіх 4 (engine/core/macros/root). ⚠️ Сесія D: звужено root
+  `exclude` (`docs/` → `docs/ROADMAP.md`+`docs/generated/`), бо `src/lib.rs` `include_str!`-ить
+  `docs/COMPARISON_WITH_RUMQTTC.md` — інакше verify-білд root падав («couldn't read …COMPARISON»).
+  Перевірено: COMPARISON тепер у tarball, ROADMAP/generated — ні.
 - [x] `core` dev-dep на macros → `version="0.2.0"` (W1).
-- [ ] **Крок 3 (КОРИСТУВАЧ): `cargo publish --locked` по порядку** doc-macros → engine → core → macros → root
+- [ ] **Крок 3 (КОРИСТУВАЧ): `cargo publish --locked` по порядку** engine → core → macros → root
   (dry-run перед кожним; пауза на індекс; СТОП на помилці). Потребує `cargo login`.
 - [ ] **Крок 4: Git tag `v0.2.0`** (`git tag -a v0.2.0 -m "Release 0.2.0"` → `git push origin v0.2.0`) ПІСЛЯ публікації.
 - [ ] Перевірити docs.rs (engine без paho) + сторінки crates.io.
@@ -190,8 +200,10 @@
 - **Без власної TLS-абстракції**: коментатор просив гнучкі флаги, не обгортку. Достатньо
   passthrough-флагів + re-export `Transport`/TLS-типів для зручності.
 - **Публікація крейтів**: `mqtt-topic-engine` — публікуємо окремо (standalone-цінність для спільноти).
-  `doc-macros` — **лишаємо назавжди** (варіант A): авто-конвертація GitHub→docs.rs посилань потрібна,
-  тож зайвий internal-крейт у реєстрі — прийнятна ціна. Варіант C (викинути) відхилено.
+  `doc-macros` — **ВИДАЛЕНО** (Сесія D, скасовано варіант A): proc-macro = той самий supply-chain
+  ризик, що й `build.rs`, плюс нав'язував `syn+quote+regex` усім споживачам. Замість трансформації —
+  абсолютні GitHub-URL (`blob/main`) + чистий `include_str!`. Раніше відхилений «варіант C (викинути)»
+  фактично й обрано.
 - **Версіонування — НЕЗАЛЕЖНЕ (не lockstep)**: клієнтські крейти (root/core/macros) = 0.2.0;
-  standalone `mqtt-topic-engine` і internal `doc-macros` = 0.1.0 (їхній перший реліз; версія
-  відображає власний API крейта, а не клієнта).
+  standalone `mqtt-topic-engine` = 0.1.0 (його перший реліз; версія відображає власний API крейта,
+  а не клієнта).

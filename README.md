@@ -108,7 +108,7 @@ async fn main() -> Result<()> {
 
 ## Examples
 
-See [examples/](examples/) - Complete usage examples with source code
+See [examples/](https://github.com/holovskyi/mqtt-typed-client/tree/main/examples) - Complete usage examples with source code
 
 - `000_hello_world.rs` - Basic publish/subscribe with macros
 - `001_ping_pong.rs` - Multi-client communication
@@ -230,7 +230,7 @@ ClientConfig::builder()
 # }
 ```
 
-See [`examples/004_hello_world_tls.rs`](examples/004_hello_world_tls.rs) for a complete TLS example,
+See [`examples/004_hello_world_tls.rs`](https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/004_hello_world_tls.rs) for a complete TLS example,
 including loading a CA certificate from a PEM file.
 
 ## Advanced Usage: Low-Level API
@@ -311,7 +311,7 @@ tokio::select! {
 }
 ```
 
-**For a detailed comparison see:** [docs/COMPARISON_WITH_RUMQTTC.md](docs/COMPARISON_WITH_RUMQTTC.md)
+**For a detailed comparison see:** [docs/COMPARISON_WITH_RUMQTTC.md](https://github.com/holovskyi/mqtt-typed-client/blob/main/docs/COMPARISON_WITH_RUMQTTC.md)
 
 ## Alternatives
 
@@ -345,7 +345,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+See [CONTRIBUTING.md](https://github.com/holovskyi/mqtt-typed-client/blob/main/CONTRIBUTING.md) for detailed guidelines.
 
 ## API Reference
 

@@ -1,11 +1,12 @@
 # Examples Guide
 
-<!-- 
-📝 DEVELOPMENT NOTE:
-When adding new example links, always use the #example marker at the end:
-[example_name.rs](example_name.rs#example)
-
-This allows build.rs to automatically convert GitHub links to rust doc format.
+<!--
+DEVELOPMENT NOTE:
+This file is embedded into the crate docs via `include_str!` (see src/lib.rs).
+There is no link transform anymore. Example sources are linked by reference-style
+shortcuts: write `[NNN_name.rs]` inline, and define the URL once in the link-
+definition block at the BOTTOM of this file. Relative links (`[foo.rs](foo.rs)`)
+render broken on docs.rs — always use the absolute GitHub URL in the definition.
 -->
 
 This directory contains examples demonstrating how to use the `mqtt-typed-client` library. Each example showcases different features and use cases.
@@ -14,17 +15,17 @@ This directory contains examples demonstrating how to use the `mqtt-typed-client
 
 Jump directly to any example:
 
-- **[000_hello_world.rs](000_hello_world.rs#example)** - Basic Usage
-- **[001_ping_pong.rs](001_ping_pong.rs#example)** - Multi-Client Communication
-- **[002_configuration.rs](002_configuration.rs#example)** - Advanced Configuration
-- **[003_hello_world_lwt.rs](003_hello_world_lwt.rs#example)** - Last Will & Testament
-- **[004_hello_world_tls.rs](004_hello_world_tls.rs#example)** - TLS/SSL Connections
-- **[005_hello_world_serializers.rs](005_hello_world_serializers.rs#example)** - Custom Serializers
-- **[006_retain_and_clear.rs](006_retain_and_clear.rs#example)** - Retained Messages
-- **[007_custom_patterns.rs](007_custom_patterns.rs#example)** - Custom Topic Patterns
-- **[008_modular_example.rs](008_modular_example.rs#example)** - Modular Architecture
-- **[100_all_serializers_demo.rs](100_all_serializers_demo.rs#example)** - Complete Serializer Test Suite
-- **[102_multi_serializer_macro.rs](102_multi_serializer_macro.rs#example)** - Per-Topic Custom Serializers
+- **[000_hello_world.rs]** - Basic Usage
+- **[001_ping_pong.rs]** - Multi-Client Communication
+- **[002_configuration.rs]** - Advanced Configuration
+- **[003_hello_world_lwt.rs]** - Last Will & Testament
+- **[004_hello_world_tls.rs]** - TLS/SSL Connections
+- **[005_hello_world_serializers.rs]** - Custom Serializers
+- **[006_retain_and_clear.rs]** - Retained Messages
+- **[007_custom_patterns.rs]** - Custom Topic Patterns
+- **[008_modular_example.rs]** - Modular Architecture
+- **[100_all_serializers_demo.rs]** - Complete Serializer Test Suite
+- **[102_multi_serializer_macro.rs]** - Per-Topic Custom Serializers
 
 ## 🚀 Quick Start
 
@@ -53,7 +54,7 @@ Jump directly to any example:
 
 ## 📚 Examples Index
 
-### <a id="000_hello_worldrs---basic-usage"></a>**[000_hello_world.rs](000_hello_world.rs#example)** - Basic Usage
+### <a id="000_hello_worldrs---basic-usage"></a>**[000_hello_world.rs]** - Basic Usage
 **What it demonstrates:**
 - Basic publish/subscribe pattern
 - Topic parameter extraction with `#[mqtt_topic]` macro
@@ -65,7 +66,7 @@ Jump directly to any example:
 - BincodeSerializer for efficient binary serialization
 - Wildcard subscriptions: `greetings/+/+`
 
-### <a id="001_ping_pongrs---multi-client-communication"></a>**[001_ping_pong.rs](001_ping_pong.rs#example)** - Multi-Client Communication  
+### <a id="001_ping_pongrs---multi-client-communication"></a>**[001_ping_pong.rs]** - Multi-Client Communication  
 **What it demonstrates:**
 - Multiple MQTT clients in one application
 - Inter-client communication patterns
@@ -78,7 +79,7 @@ Jump directly to any example:
 - Random event generation
 - Graceful shutdown handling
 
-### <a id="⚙️-002_configurationrs---advanced-configuration"></a>⚙️ **[002_configuration.rs](002_configuration.rs#example)** - Advanced Configuration
+### <a id="⚙️-002_configurationrs---advanced-configuration"></a>⚙️ **[002_configuration.rs]** - Advanced Configuration
 **What it demonstrates:**
 - Custom MQTT client settings
 - Connection parameter tuning
@@ -91,7 +92,7 @@ Jump directly to any example:
 - Cache size optimization
 - Credential management
 
-### <a id="003_hello_world_lwtrs---last-will--testament-lwt"></a>**[003_hello_world_lwt.rs](003_hello_world_lwt.rs#example)** - Last Will & Testament (LWT)
+### <a id="003_hello_world_lwtrs---last-will--testament-lwt"></a>**[003_hello_world_lwt.rs]** - Last Will & Testament (LWT)
 **What it demonstrates:**
 - MQTT Last Will & Testament functionality
 - Ungraceful vs graceful disconnect handling
@@ -113,7 +114,7 @@ cargo run --example 003_hello_world_lwt
 cargo run --example 003_hello_world_lwt -- --publisher
 ```
 
-### <a id="🔒-004_hello_world_tlsrs---tlsssl-connections"></a>🔒 **[004_hello_world_tls.rs](004_hello_world_tls.rs#example)** - TLS/SSL Connections
+### <a id="🔒-004_hello_world_tlsrs---tlsssl-connections"></a>🔒 **[004_hello_world_tls.rs]** - TLS/SSL Connections
 **What it demonstrates:**
 - Secure MQTT connections (MQTTS)
 - Custom TLS certificate handling
@@ -126,7 +127,7 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - TLS transport configuration
 - Development vs production certificates
 
-### <a id="🔧-005_hello_world_serializersrs---custom-message-serializers"></a>🔧 **[005_hello_world_serializers.rs](005_hello_world_serializers.rs#example)** - Custom Message Serializers
+### <a id="🔧-005_hello_world_serializersrs---custom-message-serializers"></a>🔧 **[005_hello_world_serializers.rs]** - Custom Message Serializers
 **What it demonstrates:**
 - Using different serializers (MessagePack vs built-in Bincode)
 - Creating custom MessageSerializer trait implementation
@@ -139,7 +140,7 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - Binary vs text serialization formats
 - Custom serializer wrapper creation
 
-### <a id="🔄-006_retain_and_clearrs---mqtt-retained-messages"></a>🔄 **[006_retain_and_clear.rs](006_retain_and_clear.rs#example)** - MQTT Retained Messages
+### <a id="🔄-006_retain_and_clearrs---mqtt-retained-messages"></a>🔄 **[006_retain_and_clear.rs]** - MQTT Retained Messages
 **What it demonstrates:**
 - MQTT retained message functionality with multiple clients
 - Message persistence and broker storage behavior
@@ -163,7 +164,7 @@ cargo run --example 003_hello_world_lwt -- --publisher
 - t=15s: Clear retained messages from broker storage
 - t=18s: Subscriber-4 connects → receives nothing (storage empty)
 
-### <a id="007_custom_patternsrs---custom-topic-patterns"></a>**[007_custom_patterns.rs](007_custom_patterns.rs#example)** - Custom Topic Patterns
+### <a id="007_custom_patternsrs---custom-topic-patterns"></a>**[007_custom_patterns.rs]** - Custom Topic Patterns
 **What it demonstrates:**
 - Overriding default topic patterns from `#[mqtt_topic]` macro
 - Environment-specific topic routing (dev/prod prefixes)
@@ -190,7 +191,7 @@ topic_client.get_publisher_to("dev/greetings/{language}/{sender}", "rust", "alic
 GreetingTopic::last_will_to("dev/greetings/{language}/{sender}", "rust", "client", msg)?
 ```
 
-### <a id="008_modular_examplers---modular-project-architecture"></a>**[008_modular_example.rs](008_modular_example.rs#example)** - Modular Project Architecture
+### <a id="008_modular_examplers---modular-project-architecture"></a>**[008_modular_example.rs]** - Modular Project Architecture
 **What it demonstrates:**
 - Organizing MQTT applications with multiple modules
 - Separating topic definitions from business logic
@@ -219,7 +220,7 @@ modular_example/
 - **Filtered subscription:** Only specific device with caching
 - **Data flow:** Real sensor data → MQTT → Multiple typed subscribers
 
-### <a id="100_all_serializers_demors---complete-serializer-test-suite"></a>**[100_all_serializers_demo.rs](100_all_serializers_demo.rs#example)** - Complete Serializer Test Suite
+### <a id="100_all_serializers_demors---complete-serializer-test-suite"></a>**[100_all_serializers_demo.rs]** - Complete Serializer Test Suite
 **What it demonstrates:**
 - Full publish/subscribe cycle testing for all 8 available serializers
 - Serialization and deserialization verification
@@ -243,7 +244,7 @@ modular_example/
 cargo run --example 100_all_serializers_demo --all-features
 ```
 
-### <a id="102_multi_serializer_macrors---per-topic-custom-serializers"></a>**[102_multi_serializer_macro.rs](102_multi_serializer_macro.rs#example)** - Per-Topic Custom Serializers
+### <a id="102_multi_serializer_macrors---per-topic-custom-serializers"></a>**[102_multi_serializer_macro.rs]** - Per-Topic Custom Serializers
 **What it demonstrates:**
 - Using different serializers for different topics in the same MQTT session
 - Custom serializer specification via `#[mqtt_topic]` macro attribute
@@ -400,11 +401,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## 📖 Additional Resources
 
-- **Main documentation:** [../README.md](../README.md)
+- **Main documentation:** [README.md](https://github.com/holovskyi/mqtt-typed-client/blob/main/README.md)
 - **API reference:** `cargo doc --open`
 - **MQTT protocol:** [mqtt.org](https://mqtt.org/)
-- **Local broker management:** [dev/README.md](../dev/README.md)
+- **Local broker management:** [dev/README.md](https://github.com/holovskyi/mqtt-typed-client/blob/main/dev/README.md)
 
 ---
 
 **Happy coding!** 🦀 If you run into issues, check the troubleshooting section above or create an issue on GitHub.
+
+<!--
+Example source links — single definition per file (referenced from both the
+Quick Navigation list and the Examples Index headers above). When adding a new
+example, write `[NNN_name.rs]` where you mention it and add ONE matching line
+here. Must be a full absolute GitHub URL (no link transform on docs.rs).
+-->
+[000_hello_world.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/000_hello_world.rs
+[001_ping_pong.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/001_ping_pong.rs
+[002_configuration.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/002_configuration.rs
+[003_hello_world_lwt.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/003_hello_world_lwt.rs
+[004_hello_world_tls.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/004_hello_world_tls.rs
+[005_hello_world_serializers.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/005_hello_world_serializers.rs
+[006_retain_and_clear.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/006_retain_and_clear.rs
+[007_custom_patterns.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/007_custom_patterns.rs
+[008_modular_example.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/008_modular_example.rs
+[100_all_serializers_demo.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/100_all_serializers_demo.rs
+[102_multi_serializer_macro.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/102_multi_serializer_macro.rs

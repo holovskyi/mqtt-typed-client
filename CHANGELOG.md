@@ -27,7 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ClientConfig` for `Transport::tls_with_config(...)`.
 - New standalone crate `mqtt-topic-engine` — the topic pattern matching and routing
   engine, usable without the MQTT client.
-- New internal crate `mqtt-typed-client-doc-macros` (replaces the previous `build.rs`).
 
 ### Changed
 - **BREAKING (default features):** the default feature set now includes
@@ -36,8 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   enabled implicitly, enable the corresponding `rumqttc-*` feature explicitly.
 - The topic engine was extracted from `core` into the `mqtt-topic-engine` crate.
   Public types remain available through `mqtt_typed_client_core::topic::*`.
-- Documentation link transformation moved from `build.rs` to the `doc-macros`
-  proc-macro (supply-chain hardening — no more build script).
+- Removed the `build.rs` documentation-generation step (supply-chain hardening —
+  no build script). README and example docs are now embedded directly via
+  `include_str!`, with example links pointing at absolute GitHub URLs so they
+  resolve both on GitHub and on docs.rs.
 - Upgraded `rumqttc` from 0.24 to 0.25.1. The public API surface used by this
   crate is unchanged; with default features (`rumqttc-use-rustls`) rustls now
   pulls `aws-lc-rs` as its crypto provider — use `rumqttc-use-rustls-no-provider`

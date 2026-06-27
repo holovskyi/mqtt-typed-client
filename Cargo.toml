@@ -1,5 +1,5 @@
 [workspace]
-members = ["core", "macros", "mqtt-topic-engine", "doc-macros"]
+members = ["core", "macros", "mqtt-topic-engine"]
 resolver = "2"
 
 # Shared dependency versions for all workspace members. Members opt in with
@@ -23,13 +23,17 @@ readme = "README.md"
 # The root crate lives at the repo root, so `cargo package` would otherwise sweep
 # in CI configs, internal planning docs, dev certs (incl. a private key!), scratch
 # examples, and other repo-only files. Keep the published crate to source + public
-# examples + docs. Member crates (core/macros/engine/doc-macros) live in subdirs
+# examples + docs. Member crates (core/macros/engine) live in subdirs
 # and need no exclude.
+# NOTE: `docs/COMPARISON_WITH_RUMQTTC.md` is `include_str!`-embedded as the
+# `comparison` module doc (src/lib.rs), so it MUST ship — exclude only the
+# internal docs (ROADMAP, generated) rather than all of `docs/`.
 exclude = [
 	".github/",
 	".cargo/",
 	"dev/",
-	"docs/",
+	"docs/ROADMAP.md",
+	"docs/generated/",
 	"scripts/",
 	"examples/internal/",
 	"check_result.txt",
@@ -49,8 +53,6 @@ all-features = true
 mqtt-typed-client-core = { path = "./core", version = "0.2.0" }
 
 mqtt-typed-client-macros = { path = "./macros", version = "0.2.0", optional = true }
-
-mqtt-typed-client-doc-macros = { path = "./doc-macros", version = "0.1.0" }
 
 rumqttc = { workspace = true }
 

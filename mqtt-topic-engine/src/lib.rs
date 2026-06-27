@@ -1,6 +1,6 @@
 //! # MQTT Topic Engine
 //!
-#![doc = mqtt_typed_client_doc_macros::include_md_transformed!("README.md", transform = "readme")]
+#![doc = include_str!("../README.md")]
 //!
 #![warn(missing_docs)]
 
