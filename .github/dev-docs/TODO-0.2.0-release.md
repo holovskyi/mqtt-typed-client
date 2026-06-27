@@ -176,7 +176,8 @@
 - [x] `cargo build --locked --all-features` без warning.
 - [x] `cargo test --locked` зелене (workspace-lib 86, all-features lib+doc, engine 86+21, root 3+27ign — 0 failed).
 - [x] `cargo clippy --locked --all-targets --all-features -D warnings` чисто; `cargo doc -D warnings` чисто.
-- [x] CHANGELOG: дату релізу `2026-06-23` виставлено у всіх 5 файлах (коміт ccc0122).
+- [x] CHANGELOG: дату релізу `2026-06-27` виставлено у всіх 4 файлах (Сесія D; було `2026-06-23`
+  від ccc0122 — оновлено на реальний день публікації).
 - [x] Узгодженість версій (root/core/macros = 0.2.0; engine = 0.1.0); path-deps звірені.
 - [x] Нове ім'я `mqtt-topic-engine` — ВІЛЬНЕ на crates.io. (`doc-macros` видалено — більше не публікується.)
 - [x] Tarball root НЕ містить `dev/`/`key.pem`/`.github/` (перевірено).

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-06-23
+## [0.1.0] - 2026-06-27
 
 First standalone release of `mqtt-topic-engine`, the topic pattern matching and
 routing engine extracted from [`mqtt-typed-client`](https://crates.io/crates/mqtt-typed-client).

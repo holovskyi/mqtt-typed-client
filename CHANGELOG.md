@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-06-23
+## [0.2.0] - 2026-06-27
 
 ### Added
 - Per-topic serializer override via the `mqtt_topic` macro attribute:
