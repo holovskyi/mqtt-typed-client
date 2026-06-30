@@ -55,8 +55,8 @@ This creates, in `dev/certs/`:
 - Server Key: `key.pem` — used by the broker
 
 **Note:** These are development certificates only (CN=localhost) — never use in
-production, and never commit them. A server private key once leaked into the
-published 0.1.0 crate this way; the gitignore + this script exist to prevent a repeat.
+production, and never commit them. They are gitignored (see `.gitignore`); always
+regenerate locally with this script rather than checking them in.
 
 ## Testing Tools
 

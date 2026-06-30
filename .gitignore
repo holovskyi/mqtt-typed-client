@@ -39,8 +39,7 @@ lcov.info
 *.orig
 
 # Local dev TLS certs — throwaway self-signed material for the localhost broker.
-# Generate with dev/certs/generate-certs.sh; NEVER commit (a private key leaked
-# into the published 0.1.0 crate this way — do not repeat it).
+# Generate with dev/certs/generate-certs.sh; NEVER commit private keys.
 dev/certs/*.pem
 dev/certs/*.srl
 dev/certs/*.csr
