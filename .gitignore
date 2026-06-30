@@ -44,3 +44,6 @@ lcov.info
 dev/certs/*.pem
 dev/certs/*.srl
 dev/certs/*.csr
+
+# Promo materials live in the private mqtt-typed-client-promo repo, never here
+docs/promo/
