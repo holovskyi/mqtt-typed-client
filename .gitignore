@@ -45,5 +45,7 @@ dev/certs/*.pem
 dev/certs/*.srl
 dev/certs/*.csr
 
-# Promo materials live in the private mqtt-typed-client-promo repo, never here
+# Internal/promo materials live in the private mqtt-typed-client-internal repo,
+# nested here as _private/ (its own git repo) for convenience — never tracked here.
 docs/promo/
+_private/

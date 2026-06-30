@@ -53,7 +53,7 @@ cd mqtt-typed-client
 cargo test --all
 
 # Run examples
-cargo run --example main_example
+cargo run --example 000_hello_world
 
 # Check formatting and linting
 cargo fmt --all
