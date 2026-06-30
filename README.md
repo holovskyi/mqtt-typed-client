@@ -14,31 +14,57 @@ A **type-safe async MQTT client** built on top of rumqttc
 
 </div>
 
+## The problem
+
+Raw MQTT topics are stringly-typed. You hand-build them with `format!()`, split
+them with `split('/')`, and deserialize payloads by hand — and the compiler
+can't help when you swap two segments or typo a prefix:
+
+```rust,ignore
+// rumqttc: easy to get wrong, fails silently at runtime
+let topic = format!("sensors/{}/{}/data", location, device_id); // swapped order? compiler shrugs
+let payload = serde_json::to_vec(&reading)?;
+client.publish(topic, QoS::AtLeastOnce, false, payload).await?;
+```
+
+With `mqtt-typed-client` the topic *is* a type. One derive turns the pattern into
+a checked API — wrong order, wrong parameter type, or a typo won't compile:
+
+```rust,ignore
+#[mqtt_topic("sensors/{location}/{device_id}/data")]
+struct SensorTopic { location: String, device_id: u32, payload: SensorReading }
+
+// generated, type-checked: device_id must be u32, order is fixed
+client.sensor_topic().publish("kitchen", 42, &reading).await?;
+```
+
 ## Key Features
 
-- **Type-safe topic patterns** with named parameters and automatic parsing
-- **Zero-cost abstractions** via procedural macros with compile-time validation
-- **IDE-friendly experience** - full autocomplete for topics, parameters, and generated client methods
-- **Automatic subscription management** with intelligent routing and lifecycle handling
-- **Built-in serialization** support for 8+ formats (Bincode, JSON, MessagePack, etc.)
-- **Efficient message routing** with tree-based topic matching and internal caching
-- **Smart defaults** with full configurability when needed
-- **Memory efficient** design with proper resource management
-- **Automatic reconnection** and graceful shutdown
+- **Topics as types** — named parameters parsed/validated at compile time
+- **Typed parameters** — `{device_id}` can be `u32`, `Uuid`, or your own enum, not just `String`
+- **Automatic routing** — one broker stream fanned out to typed subscribers, no manual `if topic.starts_with(...)`
+- **Pluggable serialization** — Bincode, JSON, MessagePack, CBOR and more behind one trait
+- **Reconnect that keeps subscriptions** — resubscribe on reconnect, graceful shutdown, LWT
 
 **MSRV**: Rust 1.85.1 (driven by default `bincode` serializer; can be lowered with alternative serializers)
 
 ## Quick Start
 
-Add to your `Cargo.toml`:
+Add the crate and the few deps the derive example needs:
 ```toml
 [dependencies]
 mqtt-typed-client = "0.2.0"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+bincode = "2"
 ```
+
+> `serde` is needed for the `Serialize`/`Deserialize` derives and `bincode` for the
+> default serializer's `Encode`/`Decode`. Switch serializers (e.g. `json`) and the
+> derive requirements change accordingly.
 
 ```rust,no_run
 use mqtt_typed_client::prelude::*;
-use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
 use bincode::{Encode, Decode};
 
