@@ -48,3 +48,7 @@ dev/certs/*.csr
 # nested here as _private/ (its own git repo) for convenience — never tracked here.
 docs/promo/
 _private/
+
+# Personal Claude Code working guidance (local dev workflow + local tooling).
+# Contributor-facing docs live in CONTRIBUTING.md; this file is machine-local.
+CLAUDE.md
