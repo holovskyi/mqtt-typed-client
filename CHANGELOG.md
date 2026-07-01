@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- crates.io `keywords`: replaced the redundant `tokio` with `typed` (identity
+  term, less crowded) for `mqtt-typed-client` and `mqtt-typed-client-core`.
+  Metadata-only; takes effect on the next published release.
+
 ## [0.2.0] - 2026-06-27
 
 ### Added
