@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-01
+
+### Documentation
+- README now leads with a pointer to [`mqtt-typed-client`](https://crates.io/crates/mqtt-typed-client)
+  as the recommended entry point (this crate is its routing core; use it standalone
+  only when building your own MQTT layer). Docs-only release — no code changes.
+
 ## [0.1.0] - 2026-06-27
 
 First standalone release of `mqtt-topic-engine`, the topic pattern matching and
