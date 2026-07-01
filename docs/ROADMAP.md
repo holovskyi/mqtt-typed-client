@@ -2,6 +2,8 @@
 
 *This document outlines the long-term vision for mqtt-typed-client development. Items are grouped by theme rather than strict version numbers.*
 
+*Deep-dive research backing several of these items (MQTT v5, ack correlation, `no_std`) lives in [FUTURE_WORK_RESEARCH.md](./FUTURE_WORK_RESEARCH.md).*
+
 ## Core Protocol Enhancements
 
 - [ ] **Add retain, qos, dup flags to incoming message metadata**  
