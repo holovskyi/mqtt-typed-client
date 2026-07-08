@@ -353,3 +353,92 @@ or (c) prerequisites:
   Rust.
 - Watch: `mqtt5` crate (v5 feature bar in Rust), miniconf/minimq (embedded typed-topic
   demand), aiomqtt discussions (best articulation of router trade-offs).
+
+---
+
+## 6. Follow-up: code-level findings and design sketches
+
+*Added after reviewing our own dispatch code and the rumqttc 0.25.1 source against the
+survey's conclusions.*
+
+### 6.1 Our slow-consumer policy: exists, but implicit (subscription_manager.rs)
+
+Correction to the survey's framing: we do NOT lack a slow-consumer policy. The current
+contract in `core/src/routing/subscription_manager.rs` is:
+
+- each subscriber gets a bounded `mpsc::channel(500)` (`handle_subscribe`);
+- dispatch uses `try_send`; on `Full`, a "slow send" task is spawned with
+  `send_timeout(msg, 2s)`; on timeout the message is dropped with an `error!` log;
+- at most 100 concurrent slow-send tasks — beyond that, immediate drop;
+- on `Closed`, the subscriber is auto-unsubscribed.
+
+So the policy is: *buffer 500 → 2s grace → drop*. What actually needs fixing:
+
+1. **Unconfigurable** — 500 / 100 / 2s are hardcoded; `SubscriptionConfig` only carries
+   `qos`. These belong in per-subscription config.
+2. **Undocumented** — the drop behavior is invisible in public docs.
+3. **Invisible to the application** — a drop is only a tracing line; no counter, no
+   callback, no error surfaced to the subscriber. At minimum expose a per-subscriber
+   dropped-message counter or a lag/overflow event (cf. HiveMQ's QoS-tiered policy).
+4. **QoS-blind** — a QoS 1 message the broker considers delivered (we auto-ack today)
+   can be silently dropped client-side, breaking the end-to-end at-least-once story.
+   Ties directly into the manual-acks design (Tier 1.3 / §6.2).
+5. **Ordering bug in the slow path** — while message A waits in a slow-send task, the
+   actor keeps dispatching; if the consumer drains the channel, message B passes
+   `try_send` and is delivered *before* A. Per-subscriber ordering is violated exactly
+   when the subscriber is struggling. Fix (route subsequent messages for that subscriber
+   through the same pending queue while a slow-send is in flight) or document it.
+
+### 6.2 rumqttc 0.25.1 ack surface — verified against source
+
+- **Inbound acks (backpressure primitive): already available, no fork needed.**
+  `MqttOptions::set_manual_acks(true)` + `AsyncClient::ack(&publish)` exist in both the
+  v3 API (`src/client.rs`) and the v5 API (`src/v5/client.rs`). "Don't PUBACK until the
+  typed handler has processed" is implementable today.
+- **Outbound confirmations (our publish → PUBACK, our subscribe → SUBACK): not exposed
+  directly** — `publish()` returns `Result<(), ClientError>` with no packet id. However,
+  `Outgoing::Publish(pkid)` / `Outgoing::Subscribe(pkid)` and
+  `Incoming::PubAck/PubComp/SubAck(pkid)` all flow through *our* event loop, and rumqttc
+  processes its request channel strictly in order — so Outgoing events appear in the
+  same order as our calls. A **FIFO correlation layer** (queue of pending oneshots;
+  assign pkid on the matching Outgoing event; resolve on the matching Incoming ack)
+  gives publish/subscribe futures **without forking**. Known wrinkles to handle: QoS 0
+  has no ack; retransmissions after reconnect; pkid wraparound.
+- **Ranked plan:** (1) correlation layer now, fork-free; (2) in parallel, upstream PR to
+  rumqttc returning pkid/notice from publish — the clean fix for everyone;
+  (3) fork only if upstream declines (permanent maintenance tax); (4) long-term, keep
+  the backend abstraction thin enough that a sans-IO core (`mqtt-protocol-core` style)
+  stays an option — it doubles as the no_std path.
+
+### 6.3 v3/v5 unification sketch
+
+One API surface designed in v5 terms, v3 as the degenerate case (paho v2's lesson
+applied *before* the break instead of after):
+
+- Unified `MessageMeta`, `PublishOptions`, reason-code types with `Option`-al
+  v5-specific fields (properties, expiry); empty/`None` on v3.
+- Internally an **enum backend** — `enum Backend { V3(rumqttc::AsyncClient),
+  V5(rumqttc::v5::AsyncClient) }` behind a small internal trait — *not* a third public
+  generic parameter (`MqttClient<F>` is already one generic too visible; a `<Protocol>`
+  parameter would infect every signature). Protocol selected via config/URL
+  (`mqtt://...?protocol=5`); one `match` per operation is noise next to network I/O.
+- v5-only operations on a v3 connection return an explicit capability error — or are
+  emulated where proven (MQTTnet emulates RPC on v3.1.1 via topic conventions).
+- The macro and router are protocol-agnostic and need no changes.
+- Alternative considered: a `client.v5()` namespace (Swift mqtt-nio) — good for exposing
+  raw v5 extras later, but the unified surface is the right default at our altitude.
+
+### 6.4 Cross-language typed wrappers — strategy
+
+Generate wrappers for other languages **via AsyncAPI as the intermediate
+representation**, not by emitting per-language code from the proc-macro directly:
+the macro exports an AsyncAPI document (topics + parameters + JSON-Schema payloads);
+existing generators (e.g. Modelina) produce payload models; we add only a thin
+topic-layer template per language. First target: **TypeScript** — template literal
+types can derive `{ location: string; device_id: string }` from
+`"sensors/{location}/{device_id}/data"` *at the type level* with no codegen, and zod
+supplies runtime validation + typed coercion (`z.coerce.number()`) that the TS type
+system can't do for topic params. The niche is verified empty on npm. Constraints:
+only cross-language serialization formats qualify (JSON/MessagePack/CBOR — another
+argument against bincode-by-default), and exported param types must be restricted to a
+portable subset (strings, numbers, UUIDs; custom enums via schema).
