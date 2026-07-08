@@ -35,6 +35,7 @@ exclude = [
 	".cargo/",
 	"dev/",
 	"docs/ROADMAP.md",
+	"docs/research/",
 	"scripts/",
 	"examples/internal/",
 	"check_result.txt",
