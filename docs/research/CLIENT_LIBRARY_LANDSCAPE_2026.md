@@ -419,6 +419,11 @@ So the policy is: *buffer 500 → 2s grace → drop*. What actually needs fixing
 
 ### 6.3 v3/v5 unification sketch
 
+*(2026-07-08: this sketch was validated and refined by dedicated research —
+see [DUAL_PROTOCOL_API_DESIGN_2026.md](./DUAL_PROTOCOL_API_DESIGN_2026.md)
+for the decision, the ecosystem/Rust-precedent evidence, and the
+locked-in-0.3 vs deferred-to-0.4 list.)*
+
 One API surface designed in v5 terms, v3 as the degenerate case (paho v2's lesson
 applied *before* the break instead of after):
 
