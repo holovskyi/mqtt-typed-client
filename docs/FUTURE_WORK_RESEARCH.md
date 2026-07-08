@@ -16,6 +16,10 @@ Baseline: the workspace pins `rumqttc = "0.25.1"` (`Cargo.toml`, root) with
 published version, so there is nothing to upgrade to. The `[Unreleased]` section
 of rumqttc's changelog is empty.
 
+*Naming note: "v4"/"v5" throughout follows rumqttc's module naming, which uses the
+protocol-level byte from the CONNECT packet — MQTT 3.1 = level 3, MQTT 3.1.1 =
+level 4, MQTT 5.0 = level 5. So rumqttc's default "v4" API is MQTT 3.1.1.*
+
 ---
 
 ## 1. MQTT v5 support
@@ -148,23 +152,138 @@ from 2022; external feature PRs systematically stall (mostly dependabot + the
 maintainer's own PRs merge). Issue #1029 ("I Will Be Maintaining a Fork For
 Rumqttc") is a contributor publicly forking because PRs sit for years.
 
-### Recommendation
+### Source verification of the fork-free wrapper idea (2026-07-08)
+
+An adversarial source audit of the published 0.25.1 crate settled the dispute
+between "a FIFO correlation layer works without a fork" (an earlier claim in
+CLIENT_LIBRARY_LANDSCAPE_2026.md §6.2) and "only a fork is sound". **The naive
+FIFO mechanism is refuted**; a much heavier pkid-aware wrapper is possible for
+publishes but fragile; subscribe correlation has an unfixable-from-outside gap.
+
+What holds: requests flow through a bounded flume MPSC (`eventloop.rs:103`),
+are dequeued one at a time, and `handle_outgoing_packet` emits exactly one
+`Outgoing` event per request synchronously, with pkid assigned in
+`outgoing_publish`/`outgoing_subscribe` (`state.rs:311-348, 409-429`). In-stream
+ordering is deterministic.
+
+What breaks naive FIFO matching:
+
+1. **pkid collision → `Outgoing::AwaitAck(pkid)`, not `Publish`**
+   (`state.rs:318-329`). When `outgoing_pub[pkid]` is still awaiting an ack
+   (pkid rollover + out-of-order broker acks), the publish is stashed in
+   `state.collision` and the real `Outgoing::Publish(pkid)` is injected *later,
+   from inside incoming-ack handling* (`state.rs:236-245, 292-298`). A pure FIFO
+   matcher pops the wrong entry.
+2. **Reconnect retransmission**: unacked QoS 1/2 publishes move to
+   `EventLoop::pending` (`eventloop.rs:127-143`) and after reconnect re-emit
+   `Outgoing::Publish(pkid)` events matching no new client call.
+3. **`session_present == false` after reconnect → `pending.clear()`**
+   (`eventloop.rs:160-163`): those publishes vanish with no event ever.
+4. **Subscribes are never retransmitted** (not stored in state,
+   `state.rs:409-429`) — a subscribe that hit the wire before a disconnect gets
+   no SubAck, ever.
+5. **Subscribe pkid reuse — the residual, unfixable gap**: sub/unsub pkids come
+   from the same `next_pkid` counter with *no collision check*
+   (`state.rs:417, 435`; wraps at `max_inflight`, `state.rs:486-500`). With more
+   than `max_inflight` unacked sub/unsub requests, two inflight subscribes can
+   share a pkid — SubAck matching becomes ambiguous, and this is not observable
+   from the event stream. Only avoidable by self-throttling.
+
+A *sound* fork-free layer for publishes therefore must: serialize all calls
+through itself, bind on `Publish(pkid)` OR `AwaitAck(pkid)`, ignore re-emissions
+for already-mapped pkids, fail everything on `session_present == false`, and
+fail inflight subscribes on every connection error — i.e. re-implement a shadow
+of rumqttc's session state, bug-compatible with undocumented event-emission
+details (which even differ between v4 and v5 in ConnAck-vs-stale-events
+ordering: `eventloop.rs:170` vs `v5/eventloop.rs:162-163`). Buildable, fragile,
+and still incomplete for subscribes.
+
+Also verified: 0.25.1 and `main` (e886a78, 2026-05-01; `state.rs` byte-identical
+to the release) contain **no** Notice/Token/ack-notification API whatsoever.
+`manual_acks` for *inbound* acks exists and works in both v4 and v5
+(`lib.rs:708`, `v5/mod.rs:521`, `client.rs:115-131`).
+
+**rumqttc bugs found during the audit** (worth upstream issues, and fixing in a
+fork): (a) `MqttState::clean()` never clears `state.collision`
+(`state.rs:103-130`) — a collided publish is lost on reconnect AND keeps the
+request branch disabled until `CollisionTimeout` (`state.rs:381-385`);
+(b) the subscribe pkid-reuse above is also a spec violation (packet id reused
+while still unacknowledged); (c) v4 rotates `pending` around `last_puback` on
+`clean()` while v5 doesn't (`state.rs:103-130` vs `v5/state.rs:144-168`) —
+inconsistent retransmission order.
+
+### Recommendation (updated 2026-07-08 — decision: fork)
 
 1. **Don't bank on an upstream PR** as a path on any timeline — 2+ years, 4 PRs,
    an RFC, zero in a release.
-2. **First ask whether we actually need per-request correlation.** For most typed
-   pub/sub, rumqttc's QoS guarantees suffice without explicit pkid feedback. The
-   cheap first win is to stop discarding `SubAck.return_codes` and at least
-   surface a broker-side subscription rejection.
-3. **If correlation is a hard requirement:**
-   - *Wrapper on our side* is possible (we already own the eventloop for
-     routing) by catching `Outgoing::Publish/Subscribe(pkid)` + later
-     PubAck/SubAck — but matching the first `Outgoing::*` to our call still needs
-     serialization/ordering assumptions (hacky, only OK at low concurrency).
-   - *Thin fork of rumqttc* is the cleanest pragmatic route: port the ready
-     token/oneshot mechanism from the `ack-notify` branch / PR #916 / #1049 on
-     top of 0.25.1 (what #1029's author did).
-   - *Upstream PR* only opportunistically — don't plan around its merge.
+2. **Cheap first win stays valid**: stop discarding `SubAck.return_codes` and
+   surface broker-side subscription rejection — needs no fork.
+3. **For real correlation, a thin fork is the decided route** (the fork-free
+   wrapper is refuted as unsound-in-general above). Minimal fork sketch:
+   - carry an optional completion sender on the request —
+     `Request::Publish(Publish, Option<oneshot::Sender<Result<Pkid, AckError>>>)`
+     or a dedicated `NoticeTx`;
+   - widen `MqttState::outgoing_pub: Vec<Option<Publish>>` (`state.rs:64`) to
+     store the sender alongside the publish so it survives collision and
+     retransmission;
+   - resolve it in `handle_incoming_puback` (`state.rs:222`) /
+     `handle_incoming_pubcomp` (`state.rs:284`); fail it in `clean()` and the
+     `session_present == false` drop path;
+   - a parallel `HashMap<pkid, NoticeTx>` for subscribes, resolved in
+     `handle_incoming_suback` (`state.rs:187`), plus a collision check for
+     subscribe pkids;
+   - mirror in `src/v5/`. ~5 functions per protocol version + two enum/struct
+     field changes. Can be made API-additive (new `publish_with_notice()`
+     methods; new `Request` variant instead of changing the existing one) so the
+     fork stays a drop-in superset of upstream.
+   - Since this crate is published on crates.io, `[patch.crates-io]` does NOT
+     propagate to downstream users — the fork must be *published under its own
+     name* (what issue #1029's author did).
+4. *Upstream PRs* (the bugs above; opportunistically the notice mechanism) —
+   file them, don't plan around their merge.
+
+### rumqttc-next — the fork from issue #1029 already did this (checked 2026-07-08)
+
+The fork announced in bytebeamio/rumqtt#1029 is **rumqttc-next**
+(https://github.com/thehouseisonfire/rumqtt, crates.io: `rumqttc-next` facade +
+`rumqttc-v4-next` / `rumqttc-v5-next` / `rumqttc-core-next` / `mqttbytes-core-next`;
+library target is still named `rumqttc`, so imports are unchanged). Verified
+against a clone at commit 2026-07-07 (yes, active the day before this check):
+
+- **The ack-notification feature we planned to fork for is implemented**:
+  `publish_tracked()` / `subscribe_tracked()` / `unsubscribe_tracked()` return
+  notices resolving to `PublishResult::{Qos0Flushed, Qos1(PubAck),
+  Qos2Completed(PubComp)}` with explicit failure modes
+  (`PublishNoticeError::{Recv, SessionReset, Qos0NotFlushed, ...}`,
+  `SessionReset` covering the `session_present == false` drop path that naive
+  wrappers can't see). Untracked `publish()` remains — API superset
+  (`rumqttc-v4/src/notice.rs`, `client.rs:713-910`; mirrored in v5).
+- **Our audit's bugs are addressed**: changelog explicitly lists "Prevent
+  packet identifier reuse across publish, PUBREL, subscribe, and unsubscribe
+  flows, returning state errors instead of silently colliding identifiers"
+  (= our subscribe pkid-reuse bug); collision handling is reworked
+  (`next_pkid()` now returns `Option`, no silent reuse); notices complete only
+  after session-store durability barriers.
+- Beyond our fork scope: manual acks with reason codes (`AckMode::{Automatic,
+  Manual}`, PR #855), validated `Topic`/`TopicFilter` types (= our Tier 2.9
+  idea), opt-in persistent `SessionStore`, `EventLoop::into_stream()`,
+  per-requirement MQTT spec-compliance tracking (`docs/spec/*.requirements.json`),
+  scheduler rework so control packets aren't stuck behind publish backpressure.
+- Maintainer stance: "issues and PRs are very welcome" (2026-05-04 comment),
+  responds within days, explicitly offered to help upstream the changes back
+  to rumqttc when bytebeam is ready.
+- **Risks**: bus factor 1 (pseudonymous), exists only since 2026-02, heavy
+  breaking-change churn between releases (the Unreleased changelog section is
+  full of Breaking Changes — e.g. the publish API was just unified around
+  `PublishOptions`), repo carries `AGENTS.md` + `TODO1-5.md` suggesting heavy
+  AI-agent-assisted development (the spec-requirement tracking suggests rigor,
+  but audit before trusting), adoption unknown/small.
+
+**Implication: "thin fork" likely means "adopt/pin rumqttc-next", not "write
+our own fork".** Before committing, audit its state machine against our §2
+failure scenarios (collision, reconnect retransmission, session reset) and its
+test suite quality, and pin an exact version to absorb its API churn behind
+our de-leaked public API.
 
 Key source anchors: `rumqttc/src/client.rs`, `rumqttc/src/v5/client.rs`,
 `rumqttc/src/state.rs` (`outgoing_publish` / `next_pkid`), `rumqttc/src/lib.rs`

@@ -170,8 +170,11 @@ Recurring patterns that showed up independently in 3–5 ecosystems (strong sign
 - **Rust competitors**: rumqttc has a feature-gated `v5` module (steadily improving) and
   — critically — a **`manual_acks` mode**, the primitive our backpressure design needs.
   paho-mqtt-rust: full v5 but C-bindings friction, untyped. **`mqtt5` crate**: active
-  (v0.34, 2026-07), v5-native client+broker with RPC utilities and shared-subscription
-  parsing — untyped, but it sets the v5 feature bar; watch it. Embedded: **minimq**
+  (v0.35.1, 2026-07), v5-native client+broker with shared-subscription parsing —
+  untyped, but it sets the v5 feature bar. *(Correction 2026-07-08: the "RPC
+  utilities" previously claimed here don't exist in the client crate — request/response
+  is only a wasm example. Full evaluation as a candidate backend:
+  [MQTT5_CRATE_EVALUATION_2026.md](./MQTT5_CRATE_EVALUATION_2026.md).)* Embedded: **minimq**
   (no_std, v5, built-in request/response) and **miniconf** (derive macro mapping a
   settings struct onto topic paths — the closest existing "typed topics" relative in
   Rust). A future no_std story implies a sans-IO core (cf. `mqtt-protocol-core`), since
@@ -396,17 +399,21 @@ So the policy is: *buffer 500 → 2s grace → drop*. What actually needs fixing
   v3 API (`src/client.rs`) and the v5 API (`src/v5/client.rs`). "Don't PUBACK until the
   typed handler has processed" is implementable today.
 - **Outbound confirmations (our publish → PUBACK, our subscribe → SUBACK): not exposed
-  directly** — `publish()` returns `Result<(), ClientError>` with no packet id. However,
-  `Outgoing::Publish(pkid)` / `Outgoing::Subscribe(pkid)` and
-  `Incoming::PubAck/PubComp/SubAck(pkid)` all flow through *our* event loop, and rumqttc
-  processes its request channel strictly in order — so Outgoing events appear in the
-  same order as our calls. A **FIFO correlation layer** (queue of pending oneshots;
-  assign pkid on the matching Outgoing event; resolve on the matching Incoming ack)
-  gives publish/subscribe futures **without forking**. Known wrinkles to handle: QoS 0
-  has no ack; retransmissions after reconnect; pkid wraparound.
-- **Ranked plan:** (1) correlation layer now, fork-free; (2) in parallel, upstream PR to
-  rumqttc returning pkid/notice from publish — the clean fix for everyone;
-  (3) fork only if upstream declines (permanent maintenance tax); (4) long-term, keep
+  directly** — `publish()` returns `Result<(), ClientError>` with no packet id.
+  ~~A FIFO correlation layer gives publish/subscribe futures without forking.~~
+  **CORRECTED 2026-07-08 — the FIFO claim is refuted by a source audit of 0.25.1**:
+  pkid collisions emit `Outgoing::AwaitAck` instead of `Publish` (with the real
+  `Publish` event injected later from incoming-ack handling), reconnect retransmission
+  re-emits events matching no call, and subscribe pkids can be reused while inflight
+  (unobservable ambiguity). A pkid-aware wrapper remains possible for publishes but
+  must shadow rumqttc's session state; subscribe correlation is unsound under load.
+  Full analysis and failure scenarios with source citations:
+  [FUTURE_WORK_RESEARCH.md §2](../FUTURE_WORK_RESEARCH.md).
+- **Ranked plan (updated 2026-07-08):** (1) surface `SubAck.return_codes` now —
+  fork-free; (2) **thin, API-additive fork of rumqttc** for real ack correlation
+  (decided; sketch in FUTURE_WORK_RESEARCH.md §2), published under its own crate name
+  since `[patch.crates-io]` doesn't propagate to downstream users; (3) upstream PRs for
+  the bugs the audit found, opportunistically the notice mechanism; (4) long-term, keep
   the backend abstraction thin enough that a sans-IO core (`mqtt-protocol-core` style)
   stays an option — it doubles as the no_std path.
 
