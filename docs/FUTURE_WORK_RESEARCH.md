@@ -279,11 +279,16 @@ against a clone at commit 2026-07-07 (yes, active the day before this check):
   AI-agent-assisted development (the spec-requirement tracking suggests rigor,
   but audit before trusting), adoption unknown/small.
 
-**Implication: "thin fork" likely means "adopt/pin rumqttc-next", not "write
-our own fork".** Before committing, audit its state machine against our §2
-failure scenarios (collision, reconnect retransmission, session reset) and its
-test suite quality, and pin an exact version to absorb its API churn behind
-our de-leaked public API.
+**Update 2026-07-08, after a full adversarial audit: verdict is
+adopt-with-mitigations — do not write our own fork.** All §2 failure scenarios
+verified handled at fork HEAD in both v4 and v5; test suite is genuinely
+stronger than upstream's; adoption is small but real (rustfs, 29.6k stars,
+uses the tracked-notice API). Mandatory mitigations: pin the audited git rev
+(crates.io 0.33.2 LACKS several audited fixes), diff-review every upgrade,
+hide the fork fully behind our own public types. Full report incl. the
+scenario table, risks, the maintainer's port of this library
+(`mqtt-typed-client-next`), and the validated migration recipe:
+[research/RUMQTTC_NEXT_AUDIT_2026.md](./research/RUMQTTC_NEXT_AUDIT_2026.md).
 
 Key source anchors: `rumqttc/src/client.rs`, `rumqttc/src/v5/client.rs`,
 `rumqttc/src/state.rs` (`outgoing_publish` / `next_pkid`), `rumqttc/src/lib.rs`
