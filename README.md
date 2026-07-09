@@ -229,19 +229,22 @@ struct LogPattern {
 
 ## TLS and Transport
 
-Transport security and extras are opt-in via feature flags (all forwarded to rumqttc):
+Transport security and extras are opt-in via feature flags:
 
 | Feature | Effect |
 | --- | --- |
-| `rumqttc-use-rustls` *(default)* | TLS via rustls with the aws-lc-rs provider |
-| `rumqttc-use-rustls-no-provider` | rustls without a bundled crypto provider — bring your own (e.g. ring) and avoid the aws-lc build |
-| `rumqttc-use-native-tls` | TLS via the platform's native-tls |
-| `rumqttc-websocket` | MQTT over WebSocket |
-| `rumqttc-proxy` | Connect through an HTTP/HTTPS proxy |
+| `tls-rustls` *(default)* | TLS via rustls with the aws-lc-rs provider |
+| `tls-rustls-no-provider` | rustls without a bundled crypto provider — bring your own (e.g. ring) and avoid the aws-lc build |
+| `tls-native` | Compile in the platform's native-tls (reachable via the backend escape hatch for now) |
+| `websocket` | MQTT over WebSocket |
+| `proxy` | Connect through an HTTP/HTTPS proxy |
+
+(The 0.2 `rumqttc-*` feature names still work as deprecated aliases and will be
+removed in 0.4.)
 
 For custom TLS setups you can build the rustls config yourself. The crate
-re-exports rumqttc's `rustls` and `tokio_rustls` (version-matched, so you don't
-add a separate `rustls` dependency that could drift out of sync):
+re-exports the backend's `rustls` (version-matched, so you don't add a
+separate `rustls` dependency that could drift out of sync):
 
 ```rust,no_run
 use mqtt_typed_client::rustls::{ClientConfig, RootCertStore};
@@ -277,7 +280,7 @@ struct SensorData {
 #[tokio::main]
 async fn main() -> Result<()> {
     let (client, connection) = MqttClient::<BincodeSerializer>::connect(
-        "mqtt://broker.hivemq.com:1883"
+        "mqtt://broker.hivemq.com:1883?client_id=demo_client"
     ).await?;
 
     // Direct topic operations

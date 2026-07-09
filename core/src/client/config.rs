@@ -71,7 +71,7 @@ pub struct ClientSettings {
 
 	/// **Event Loop Channel Capacity** - Internal buffer for MQTT protocol messages.
 	///
-	/// Controls the buffer size of the underlying rumqttc event loop channel.
+	/// Controls the buffer size of the underlying backend event loop channel.
 	/// This affects how many MQTT protocol packets (ConnAck, Publish, PubAck, etc.)
 	/// can be queued internally before backpressure occurs.
 	///

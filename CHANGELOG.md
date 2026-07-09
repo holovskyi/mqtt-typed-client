@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — public API de-leak (BREAKING)
+
+The public API no longer exposes `rumqttc` types anywhere. This is the
+prerequisite for the planned backend switch and MQTT 5 support (0.4) landing
+WITHOUT another breaking release. Migration map:
+
+| 0.2 | 0.3 |
+| --- | --- |
+| `use rumqttc::QoS` / re-exported `QoS` | `mqtt_typed_client::QoS` (protocol-neutral, same variants) |
+| `config.connection: rumqttc::MqttOptions` | `config.connection: ConnectionOptions` (own type) |
+| `.set_keep_alive(d)` | `config.connection.keep_alive = d` |
+| `.set_clean_session(true/false)` | `config.connection.session = SessionPolicy::CleanPerConnection / ::Resume` |
+| `.set_credentials(u, p)` | `config.connection.credentials = Some(Credentials { .. })` |
+| `.set_transport(Transport::tls_with_config(c))` | `config.connection.transport = Transport::Tls(c.into())` |
+| `.set_inflight(..)`, `.set_max_packet_size(..)`, other backend knobs | `backend_tweak(..)` behind the `unstable-backend-api` feature (SEMVER-EXEMPT) |
+| `from_url` → `rumqttc::OptionError` | `from_url` → `UrlParseError` (own type) |
+| URL params `inflight_num`, `request_channel_capacity_num`, `max_request_batch_num`, `pending_throttle_usecs`, `max_*_packet_size_bytes`, `conn_timeout_secs` | rejected with an explicit error pointing to the escape hatch |
+| `BrokerRejected { code: rumqttc::ConnectReturnCode }` | `BrokerRejected { code: ConnectReasonCode }` (v5-superset enum) |
+| `MqttClientError::ClientOperation(rumqttc::ClientError)` | `ClientOperation(ClientOperationError)` |
+| `Network(Box<rumqttc::ConnectionError>)` | `Network(BackendError)` (opaque, keeps Display + source chain) |
+| feature `rumqttc-use-rustls` etc. | `tls-rustls`, `tls-rustls-no-provider`, `tls-native`, `websocket`, `proxy` (old names remain as deprecated aliases; removed in 0.4) |
+| feature `rumqttc-url` | gone — URL parsing is built in |
+| re-export `tokio_rustls` | gone (`rustls` is still re-exported under the TLS features) |
+
+### Added
+- `ConnectionOptions` with `SessionPolicy` (v5-shaped: `CleanPerConnection` /
+  `Resume` / `ResumeFor` — the latter is MQTT 5 only and errors on v4),
+  `ProtocolVersion` (`?protocol=4|5` in URLs; `V5` gives a clean "arrives in
+  0.4" connect error), own `Transport`/`TlsConfig` enums.
+- Connect-time validation instead of backend panics: sub-second `keep_alive`,
+  `Resume` with an empty `client_id`, and unsupported transports now return
+  `MqttClientError::ConfigurationValue`.
+- `unstable-backend-api` feature: `ConnectionOptions::backend_tweak` gives raw
+  access to backend options at connect time (semver-exempt), and
+  `backend::rumqttc` re-exports the backend crate version-matched.
+- All public error enums are `#[non_exhaustive]`; new `ConnectReasonCode`,
+  `BackendError`, `ClientOperationError`, `UrlParseError` types.
+
 ### Changed
 - crates.io `keywords`: replaced the redundant `tokio` with `typed` (identity
   term, less crowded) for `mqtt-typed-client` and `mqtt-typed-client-core`.
