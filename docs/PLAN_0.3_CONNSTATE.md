@@ -4,6 +4,17 @@
 resolved by an unbiased Fable-5 decision pass (2026-07-09), grounded in the
 current tree.*
 
+> **DONE 2026-07-10.** Shipped in two commits: `fix(core): close subscriber
+> channels on terminal event-loop death` (piece 1) then `feat(core): observable
+> connection state via watch channel` (piece 2). One deviation from the plan
+> below, prompted by the code-critic: `Reconnecting { attempt }` uses a SEPARATE
+> `reconnect_attempt` counter, not `error_count`. Resetting `error_count` on a
+> reconnect CONNACK (as an earlier draft did) made a flapping broker immortal
+> (never hits `MAX_CONSECUTIVE_ERRORS`) and pinned backoff at the 100ms floor.
+> The two-counter split keeps `error_count` driving backoff+termination
+> (unchanged from pre-feature) while `reconnect_attempt` (resets on ANY
+> successful poll) feeds the observable state. All else landed as planned.
+
 ## Goal
 
 Make the connection lifecycle **observable** (a `watch` channel of typed state)

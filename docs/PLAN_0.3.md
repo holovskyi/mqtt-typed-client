@@ -505,10 +505,17 @@ feature is welcome any time (independent of all of the above).
    engine), narrow reserve-and-error. Example `009_message_metadata` compile-
    tests the owned path. Two plan-critic passes + one code-critic pass (caught a
    blocker: bare `topic` needed `TopicMatch: Clone`).
-5. Connection state (§4). **← NEXT** — detailed plan in
-   [PLAN_0.3_CONNSTATE.md](./PLAN_0.3_CONNSTATE.md) (forks resolved, zombie-fix
-   sequenced first).
-6. SubAck minimal (§3) on whatever backend is current — QoS downgrade surfaces
+5. Connection state (§4). **DONE 2026-07-10** — detailed plan/record in
+   [PLAN_0.3_CONNSTATE.md](./PLAN_0.3_CONNSTATE.md). Shipped in two commits:
+   the zombie-consumer bugfix (terminal event-loop death now runs the same
+   channel cleanup as `shutdown()` via a new `Command::Shutdown`, so `receive()`
+   yields `None` instead of hanging) then the feature
+   (`MqttClient::connection_state() -> watch::Receiver<ConnectionState>`;
+   `Connected{session_present}`/`Reconnecting{attempt}`/`Disconnected{reason}`,
+   own `#[non_exhaustive]` enums; frozen-seed `state_rx` so late subscribers see
+   the terminal; two-counter reconnect bookkeeping). Example `010`. Two critic
+   passes (plan + code). No `mqtt-topic-engine` change.
+6. SubAck minimal (§3) on whatever backend is current — QoS downgrade surfaces **← NEXT**
    at `subscribe()` AND on the reconnect/resubscribe path (§3 covers both).
 7. Resubscribe-failure surfacing (§2c) — `ReceiveEvent::SubscriptionLost` on the
    affected subscriber; gated on step 6 (SubAck on the reconnect path). Touches
