@@ -495,8 +495,17 @@ feature is welcome any time (independent of all of the above).
    `SubscriberEvent`. Migrated all examples/README/comparison-doc/tests.
    Adversarial critic + 4-angle code review passed. Deferred (tracked in
    ROADMAP): concrete topic in `MessageConversionError`.
-4. MessageMeta (§2) + macro work (builds on the §2b `receive()` shape). **← NEXT**
-5. Connection state (§4).
+4. MessageMeta (§2) + macro work (builds on the §2b `receive()` shape) —
+   **DONE 2026-07-09**. `MessageMeta`/`Mqtt5Meta`/`RawMeta`; routing tuple →
+   `(Arc<TopicMatch>, Arc<MessageMeta>, Arc<T>)` built once in `handle_send`;
+   mid-layer named structs `IncomingMessage<T>`/`DecodeFailure<E>` (breaking for
+   direct subscribers, macro users unaffected); `FromMqttMessage` +`meta` arg.
+   Macro recognises `meta`, Arc-adaptive `topic`+`meta` (bare →
+   `Arc::unwrap_or_clone`, needed `#[derive(Clone)]` on `TopicMatch` in the
+   engine), narrow reserve-and-error. Example `009_message_metadata` compile-
+   tests the owned path. Two plan-critic passes + one code-critic pass (caught a
+   blocker: bare `topic` needed `TopicMatch: Clone`).
+5. Connection state (§4). **← NEXT**
 6. SubAck minimal (§3) on whatever backend is current — QoS downgrade surfaces
    at `subscribe()` AND on the reconnect/resubscribe path (§3 covers both).
 7. Resubscribe-failure surfacing (§2c) — `ReceiveEvent::SubscriptionLost` on the
