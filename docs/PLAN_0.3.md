@@ -201,10 +201,15 @@ feature is welcome any time (independent of all of the above).
    `channel_capacity`/`slow_send_timeout`/`max_parked_messages` on
    `SubscriptionConfig` (+ builder methods); `dropped_messages()` on the
    subscriber types. Plan-critic + code-critic passed.
-3. `ReceiveEvent` receive() shape + push lag notice (§2b) — completes §5's
-   drop visibility; finalizes the breaking `receive()` signature ONCE, before
-   the metadata/ack work builds on it. **← NEXT**
-4. MessageMeta (§2) + macro work (builds on the §2b `receive()` shape).
+3. `ReceiveEvent` receive() shape + push lag notice (§2b) — **DONE 2026-07-09**.
+   `Option<ReceiveEvent<M,E>>` (`Message`/`DecodeFailed`/`Lagged{missed}`,
+   `#[non_exhaustive]`, `.message()` opt-out) across all three subscriber
+   layers; lag via a counter-watermark in `Subscriber::recv` (`missed` exact,
+   position approximate — documented). `IncomingMessage` alias renamed
+   `SubscriberEvent`. Migrated all examples/README/comparison-doc/tests.
+   Adversarial critic + 4-angle code review passed. Deferred (tracked in
+   ROADMAP): concrete topic in `MessageConversionError`.
+4. MessageMeta (§2) + macro work (builds on the §2b `receive()` shape). **← NEXT**
 5. Connection state (§4).
 6. SubAck minimal (§3) on whatever backend is current — QoS downgrade surfaces
    at `subscribe()`, not in the `receive()` stream.
