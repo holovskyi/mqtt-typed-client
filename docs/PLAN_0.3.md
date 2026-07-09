@@ -115,8 +115,9 @@ feature is welcome any time (independent of all of the above).
 
 ## Order of work
 
-1. De-leak API (§1) — unblocks everything, no external dependency.
-2. Ordering-bug fix + backpressure knobs (§5) — self-contained.
+1. De-leak API (§1) — **DONE 2026-07-09** (see PLAN_0.3_DELEAK.md for the
+   commit list and design record).
+2. Ordering-bug fix + backpressure knobs (§5) — self-contained. **← NEXT**
 3. MessageMeta (§2) + macro work.
 4. Connection state (§4).
 5. SubAck minimal (§3) on whatever backend is current.
@@ -129,6 +130,8 @@ feature is welcome any time (independent of all of the above).
   PR, release cadence).
 - LabOverWire/mqtt-lib#100 response (mqtt5 client/broker split — 0.4+ signal
   only).
-- File the two upstream bytebeamio/rumqtt bug issues from our audit
-  (`clean()` doesn't clear `state.collision`; subscribe pkid reuse) — cheap,
-  community-useful, independent of our backend choice.
+- bytebeamio/rumqtt reports filed 2026-07-09 (both bugs verified on main @
+  e886a78): issue #1056 + PR #1058 (collision-in-clean fix, v4+v5, tests;
+  fork branch holovskyi/rumqtt:fix-clean-collision-livelock), issue #1057
+  (subscribe pkid reuse — PR waits for maintainer direction on stash vs
+  StateError). Watch for responses.

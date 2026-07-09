@@ -1,5 +1,11 @@
 # 0.3 §1 — De-leak the Public API: Detailed Plan
 
+> **STATUS: IMPLEMENTED 2026-07-09** — commits `c6e1ca2` (W1), `1251c11`
+> (W2), `5dc3480` (W3+W4, merged: example 004 requires the TLS plumbing to
+> land with the facade), `9075516` (W5), `05e61d8` (post-review fixes).
+> Post-implementation critic verdict: ship (after fixes). Remaining plan text
+> below is kept as the design record.
+
 *2026-07-09. Expands PLAN_0.3.md §1. Input: exhaustive leak map (agent audit)
 + DUAL_PROTOCOL_API_DESIGN_2026.md locked decisions. Revised same day after a
 critic pass (verdict: fix-then-ship) — all BLOCKER/MAJOR findings folded in.
