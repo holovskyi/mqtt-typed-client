@@ -1,7 +1,8 @@
 use std::marker::PhantomData;
 
 use arcstr::ArcStr;
-use rumqttc::{AsyncClient, QoS};
+use mqtt_topic_engine::QoS;
+use rumqttc::AsyncClient;
 
 use super::error::MqttClientError;
 use crate::message_serializer::MessageSerializer;
@@ -22,7 +23,7 @@ impl<T, F> MqttPublisher<T, F>
 where F: MessageSerializer<T>
 {
 	/// Internal constructor. Use MqttClient::get_publisher() instead.
-	pub fn new(
+	pub(crate) fn new(
 		client: AsyncClient,
 		serializer: F,
 		topic: impl Into<ArcStr>,
@@ -95,7 +96,12 @@ where F: MessageSerializer<T>
 			.serialize(data)
 			.map_err(|e| MqttClientError::Serialization(format!("{e:?}")))?;
 		self.client
-			.publish(self.topic.as_str(), self.qos, retain, payload)
+			.publish(
+				self.topic.as_str(),
+				self.qos.to_rumqttc(),
+				retain,
+				payload,
+			)
 			.await
 			.map_err(MqttClientError::from)
 	}
@@ -106,7 +112,12 @@ where F: MessageSerializer<T>
 	/// Uses the same QoS level as configured for this publisher.
 	pub async fn clear_retained(&self) -> Result<(), MqttClientError> {
 		self.client
-			.publish(self.topic.as_str(), self.qos, true, Vec::new())
+			.publish(
+				self.topic.as_str(),
+				self.qos.to_rumqttc(),
+				true,
+				Vec::new(),
+			)
 			.await
 			.map_err(MqttClientError::from)
 	}

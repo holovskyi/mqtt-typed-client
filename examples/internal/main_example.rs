@@ -45,7 +45,7 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 		.await?;
 
 	let config_high_freq = SubscriptionConfig {
-		qos: rumqttc::QoS::AtLeastOnce,
+		qos: mqtt_typed_client::QoS::AtLeastOnce,
 	};
 	let topic = TopicPatternPath::new_from_string(
 		"sensors/+/temperature",

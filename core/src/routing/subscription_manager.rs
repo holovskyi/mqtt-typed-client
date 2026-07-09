@@ -6,6 +6,7 @@ use arcstr::ArcStr;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 use lru::LruCache;
+use mqtt_topic_engine::QoS;
 use rumqttc::AsyncClient;
 use tokio::{
 	sync::{
@@ -33,13 +34,13 @@ type TopicRouterType<T> = TopicRouter<Sender<MessageType<T>>>;
 
 #[derive(Debug, Clone)]
 pub struct SubscriptionConfig {
-	pub qos: rumqttc::QoS,
+	pub qos: QoS,
 }
 
 impl Default for SubscriptionConfig {
 	fn default() -> Self {
 		Self {
-			qos: rumqttc::QoS::AtLeastOnce,
+			qos: QoS::AtLeastOnce,
 		}
 	}
 }
@@ -237,7 +238,7 @@ where T: Send + Sync + 'static
 		if needs_subscribe {
 			let res = self
 				.client
-				.subscribe(topic_patern_str.as_str(), config.qos)
+				.subscribe(topic_patern_str.as_str(), config.qos.to_rumqttc())
 				.await;
 			if let Err(err) = res {
 				if let Err(unsub_err) = self.topic_router.unsubscribe(&id) {

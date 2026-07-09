@@ -4,9 +4,8 @@
 //! custom topic patterns and validates pattern compatibility.
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, MqttClient};
+use mqtt_typed_client::{BincodeSerializer, MqttClient, QoS};
 use mqtt_typed_client_macros::mqtt_topic;
-use rumqttc::QoS;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Encode, Decode, PartialEq)]

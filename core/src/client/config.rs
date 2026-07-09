@@ -227,7 +227,7 @@ impl<S> MqttClientConfig<S> {
 	/// # Example
 	/// ```rust
 	/// # use mqtt_typed_client_core::{MqttClientConfig, BincodeSerializer, TypedLastWill};
-	/// # use rumqttc::QoS;
+	/// # use mqtt_typed_client_core::QoS;
 	/// let mut config = MqttClientConfig::<BincodeSerializer>::new("client", "broker", 1883);
 	///
 	/// // Create last will manually (in real code, use generated methods from #[mqtt_topic])
@@ -259,7 +259,7 @@ impl<S> MqttClientConfig<S> {
 		self.connection.set_last_will(LastWill::new(
 			last_will.topic,
 			payload,
-			last_will.qos,
+			last_will.qos.to_rumqttc(),
 			last_will.retain,
 		));
 

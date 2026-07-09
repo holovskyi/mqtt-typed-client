@@ -7,7 +7,7 @@
 pub mod error;
 /// Low-level subscriber implementation
 pub mod subscriber;
-pub mod subscription_manager;
+pub(crate) mod subscription_manager;
 
 // Re-export commonly used types for convenience
 pub use error::SubscriptionError;

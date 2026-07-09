@@ -14,9 +14,8 @@ mod shared;
 use std::time::Duration;
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientConfig};
+use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientConfig, QoS};
 use mqtt_typed_client_macros::mqtt_topic;
-use rumqttc::QoS;
 
 /// Sensor data payload containing temperature measurement
 #[derive(Encode, Decode, Debug)]

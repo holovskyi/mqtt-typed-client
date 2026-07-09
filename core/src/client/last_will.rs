@@ -1,6 +1,6 @@
 //! Last Will and Testament message types
 
-use rumqttc::QoS;
+use mqtt_topic_engine::QoS;
 
 /// Represents a Last Will and Testament (LWT) message for MQTT clients.
 pub struct TypedLastWill<T> {

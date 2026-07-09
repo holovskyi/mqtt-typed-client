@@ -107,7 +107,7 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 		.subscription()
 		.for_room("room52") // Фільтр для конкретної кімнати
 		//.for_sensor_id(37)   // Фільтр для конкретного сенсора
-		.with_qos(rumqttc::QoS::AtLeastOnce)
+		.with_qos(mqtt_typed_client::QoS::AtLeastOnce)
 		.subscribe()
 		.await?;
 

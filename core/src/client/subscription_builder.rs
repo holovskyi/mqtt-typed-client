@@ -95,7 +95,7 @@ where F: Clone
 	}
 
 	/// Set QoS level
-	pub fn with_qos(self, qos: rumqttc::QoS) -> Self {
+	pub fn with_qos(self, qos: crate::QoS) -> Self {
 		Self {
 			config: SubscriptionConfig { qos },
 			..self

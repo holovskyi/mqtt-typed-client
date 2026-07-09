@@ -146,13 +146,14 @@ pub use message_serializer::PostcardSerializer;
 pub use message_serializer::ProtobufSerializer;
 #[cfg(feature = "ron")]
 pub use message_serializer::RonSerializer;
+// Protocol-neutral QoS (from mqtt-topic-engine); conversion to the backend's
+// QoS happens internally at the rumqttc boundary.
+pub use mqtt_topic_engine::QoS;
 // === Advanced API ===
 // Advanced subscription configuration
 pub use routing::SubscriptionConfig;
 // Re-export rumqttc types for advanced configuration
 pub use rumqttc::MqttOptions;
-// Essential external types
-pub use rumqttc::QoS;
 // Transport selector for custom connections (TCP / TLS / WebSocket). Always
 // available; the TLS/WebSocket variants require the corresponding `rumqttc-*`
 // feature on the `mqtt-typed-client` crate.

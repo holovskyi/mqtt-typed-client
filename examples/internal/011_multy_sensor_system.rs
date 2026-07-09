@@ -38,7 +38,7 @@ async fn run_sensor_emulator(
 	// for a sensor in the living room with a specific GUID.
 	let sensor_publisher = sensor_client
 		.get_publisher(location, sensor_guid)?
-		.with_qos(rumqttc::QoS::AtMostOnce)
+		.with_qos(mqtt_typed_client::QoS::AtMostOnce)
 		.with_retain(true);
 
 	// Simulate sensor data publishing
@@ -62,7 +62,7 @@ async fn run_all_sensor_monitor(
 	// This will subscribe to all sensor topics in the format "sensors/{location}/{sensor
 	let mut sensor_subscription = sensor_client
 		.subscription()
-		.with_qos(rumqttc::QoS::AtMostOnce)
+		.with_qos(mqtt_typed_client::QoS::AtMostOnce)
 		.with_cache(100)
 		.subscribe()
 		.await?;
