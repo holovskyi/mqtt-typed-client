@@ -29,6 +29,21 @@
 
 - [ ] **Advanced backpressure handling is planned for future releases**
 
+- [ ] **Deserialize-once for identically-typed subscribers** (low priority)
+  When N subscribers match the *same concrete topic* with the *same* payload
+  type `T` and serializer `F`, the payload is deserialized N times. The routing
+  actor is type-erased at `Bytes` (`Subscriber<Bytes>`), so each typed
+  `MqttSubscriber<T, F>` deserializes independently — this is deliberate,
+  because two subscribers on one topic may legitimately request *different*
+  types (a broad wildcard vs a narrow one) and the actor cannot know `T`.
+  A deserialize-once cache keyed by `(TypeId, serializer)` would save the
+  redundant work only in the identical-`(T, F)` case, at the cost of type-aware
+  caching in the hot path. Marginal payoff (deserialization is usually cheap;
+  the overlap case is a minority), real complexity — hence low priority. If ever
+  built, `payload` would become an `Arc<T>` shared across those subscribers, at
+  which point the macro's Arc-vs-bare field-type adaptation (already used for
+  `topic`/`meta`) would extend to `payload` for free.
+
 ## Architecture Improvements
 
 - [ ] **Carry the concrete topic into `MessageConversionError`** (post-0.3, DX)
