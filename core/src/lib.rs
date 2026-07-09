@@ -34,9 +34,10 @@
 //!     ).await?;
 //!
 //!     // Advanced configuration
+//!     use mqtt_typed_client_core::SessionPolicy;
 //!     let mut config = MqttClientConfig::new("my_client", "broker.hivemq.com", 1883);
-//!     config.connection.set_keep_alive(std::time::Duration::from_secs(30));
-//!     config.connection.set_clean_session(true);
+//!     config.connection.keep_alive = std::time::Duration::from_secs(30);
+//!     config.connection.session = SessionPolicy::CleanPerConnection;
 //!     config.settings.topic_cache_size = 500;
 //!     
 //!     let (client, connection) = MqttClient::<BincodeSerializer>::connect_with_config(config).await?;
@@ -121,9 +122,13 @@ pub mod topic;
 
 // === Core Public API ===
 // Main client types
+// SEMVER-EXEMPT raw backend access (escape hatch)
+#[cfg(feature = "unstable-backend-api")]
+pub use client::backend;
 pub use client::{
-	ClientSettings, MqttClient, MqttClientConfig, MqttClientError,
-	TypedLastWill,
+	ClientSettings, ConnectionOptions, Credentials, MqttClient,
+	MqttClientConfig, MqttClientError, ProtocolVersion, RustlsClientConfig,
+	SessionPolicy, TlsConfig, Transport, TypedLastWill,
 };
 // High-level typed publishers and subscribers
 pub use client::{MqttPublisher, MqttSubscriber, SubscriptionBuilder};
@@ -152,12 +157,12 @@ pub use mqtt_topic_engine::QoS;
 // === Advanced API ===
 // Advanced subscription configuration
 pub use routing::SubscriptionConfig;
-// Re-export rumqttc types for advanced configuration
-pub use rumqttc::MqttOptions;
-// Transport selector for custom connections (TCP / TLS / WebSocket). Always
-// available; the TLS/WebSocket variants require the corresponding `rumqttc-*`
-// feature on the `mqtt-typed-client` crate.
-pub use rumqttc::Transport;
+// The backend's rustls stack, so a `rustls::ClientConfig` for
+// `Transport::Tls(..)` can be built without a version-matched rustls
+// dependency of your own. The rustls major version tracks the backend's TLS
+// stack (documented semver-coupled exception).
+#[cfg(any(feature = "tls-rustls", feature = "tls-rustls-no-provider"))]
+pub use rumqttc::tokio_rustls::rustls;
 // Structured subscribers (macro support)
 pub use structured::{
 	FromMqttMessage, MessageConversionError, MqttTopicSubscriber,
@@ -198,9 +203,9 @@ pub mod prelude {
 	#[cfg(feature = "ron")]
 	pub use crate::RonSerializer;
 	pub use crate::{
-		ClientSettings, MessageSerializer, MqttClient, MqttClientConfig,
-		MqttClientError, MqttConnection, MqttOptions, QoS, Result,
-		SubscriptionBuilder, TypedLastWill,
+		ClientSettings, ConnectionOptions, MessageSerializer, MqttClient,
+		MqttClientConfig, MqttClientError, MqttConnection, QoS, Result,
+		SessionPolicy, SubscriptionBuilder, Transport, TypedLastWill,
 	};
 }
 
@@ -242,7 +247,7 @@ pub mod errors {
 	// Client and connection errors
 	pub use crate::client::{
 		BackendError, ClientOperationError, ConnectReasonCode,
-		ConnectionEstablishmentError,
+		ConnectionEstablishmentError, UrlParseError,
 	};
 	// High-level routing errors
 	pub use crate::routing::SubscriptionError;

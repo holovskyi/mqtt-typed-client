@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		1883,
 	);
 
-	// Configure rumqttc connection options - MqttOptions
+	// Configure connection options
 	// Set keep-alive interval, clean session, and etc.
 	config.connection
 		.set_keep_alive(Duration::from_secs(60))

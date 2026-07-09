@@ -1,4 +1,3 @@
-use rumqttc::OptionError;
 use tokio::sync::mpsc::error::SendError;
 
 use crate::{
@@ -118,6 +117,45 @@ impl ClientOperationError {
 	}
 }
 
+/// Errors when parsing an MQTT connection URL.
+#[non_exhaustive]
+#[derive(Debug, thiserror::Error)]
+pub enum UrlParseError {
+	/// The string is not a valid URL
+	#[error("invalid URL: {0}")]
+	Invalid(String),
+	/// Unsupported URL scheme (expected tcp/mqtt/ssl/mqtts/ws/wss)
+	#[error("unsupported URL scheme `{0}`")]
+	Scheme(String),
+	/// The URL has no host
+	#[error("URL is missing a host")]
+	MissingHost,
+	/// The required `client_id` query parameter is missing
+	#[error("URL is missing the `client_id` query parameter")]
+	MissingClientId,
+	/// A query parameter has an invalid value
+	#[error("invalid `{name}` query parameter: {reason}")]
+	InvalidParam {
+		/// Parameter name
+		name: String,
+		/// Why the value was rejected
+		reason: String,
+	},
+	/// A backend-tuning parameter that is intentionally not part of the URL
+	/// grammar; configure it via the `unstable-backend-api` escape hatch.
+	#[error(
+		"query parameter `{0}` is not supported; configure it via the \
+		 `unstable-backend-api` escape hatch instead"
+	)]
+	UnsupportedParam(String),
+	/// An unrecognized query parameter
+	#[error("unknown query parameter `{0}`")]
+	UnknownParam(String),
+	/// Unsupported `protocol=` value
+	#[error("unsupported protocol version `{0}` (expected `4` or `5`)")]
+	UnsupportedProtocol(String),
+}
+
 /// Errors that can occur during MQTT connection establishment phase.
 ///
 /// These errors represent different failure modes when attempting to establish
@@ -174,9 +212,9 @@ pub enum MqttClientError {
 	#[error("Client operation failed: {0}")]
 	ClientOperation(#[from] ClientOperationError),
 
-	/// Configuration errors when parsing MQTT options
+	/// Errors when parsing an MQTT connection URL
 	#[error("Configuration error: {0}")]
-	Configuration(#[from] OptionError),
+	Configuration(#[from] UrlParseError),
 
 	/// Invalid configuration parameter values
 	#[error("Invalid configuration value: {0}")]

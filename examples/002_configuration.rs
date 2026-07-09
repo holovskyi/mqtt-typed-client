@@ -14,7 +14,9 @@ mod shared;
 use std::time::Duration;
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientConfig, QoS};
+use mqtt_typed_client::{
+	BincodeSerializer, MqttClient, MqttClientConfig, QoS, SessionPolicy,
+};
 use mqtt_typed_client_macros::mqtt_topic;
 
 /// Sensor data payload containing temperature measurement
@@ -54,11 +56,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		MqttClientConfig::<BincodeSerializer>::new(&client_id, &host, port);
 
 	// Configure connection parameters
-	config
-		.connection
-		.set_keep_alive(Duration::from_secs(30)) // Send ping every 30 seconds
-		.set_clean_session(false); // Resume session on reconnect
-	// .set_credentials("username", "password") // Uncomment for authenticated brokers
+	config.connection.keep_alive = Duration::from_secs(30); // Send ping every 30 seconds
+	config.connection.session = SessionPolicy::Resume; // Resume session on reconnect
+	// config.connection.credentials = Some(Credentials { .. }) // For authenticated brokers
 
 	// === 2. CLIENT SETTINGS CONFIGURATION ===
 	config.settings.event_loop_capacity = 50; // Channel capacity for event processing

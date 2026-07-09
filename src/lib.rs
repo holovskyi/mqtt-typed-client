@@ -14,36 +14,24 @@
 //! - [`crate::comparison`] - Detailed comparison with rumqttc
 //! - [`crate::examples`] - Complete usage examples with source code
 
+// Note: the backend's rustls stack is re-exported by core as `rustls` (under
+// the `tls-rustls`/`tls-rustls-no-provider` features) and flows through this
+// glob — build a `rustls::ClientConfig` for `Transport::Tls(..)` without a
+// version-matched rustls dependency of your own. PEM parsing still needs your
+// own crate (e.g. `rustls-pemfile`).
 pub use mqtt_typed_client_core::*;
 #[cfg(feature = "macros")]
 pub use mqtt_typed_client_macros::*;
-// Re-export rumqttc's bundled rustls stack so you can build a `ClientConfig`
-// for `Transport::tls_with_config(...)` without depending on `rumqttc` or
-// `rustls` directly — and with a version guaranteed to match the transport.
-// Available under either rustls feature: both `rumqttc-use-rustls` and
-// `rumqttc-use-rustls-no-provider` enable rumqttc's rustls stack (and thus its
-// `tokio_rustls` re-export). Note: PEM parsing still needs your own crate
-// (e.g. `rustls-pemfile`).
-#[cfg(any(
-	feature = "rumqttc-use-rustls",
-	feature = "rumqttc-use-rustls-no-provider"
-))]
-pub use rumqttc::tokio_rustls;
-#[cfg(any(
-	feature = "rumqttc-use-rustls",
-	feature = "rumqttc-use-rustls-no-provider"
-))]
-pub use rumqttc::tokio_rustls::rustls;
 
 pub mod prelude {
 	//! Convenient imports for common use cases
 
 	pub use mqtt_typed_client_core::structured::*;
 	pub use mqtt_typed_client_core::{
-		BincodeSerializer, ClientSettings, MessageSerializer, MqttClient,
-		MqttClientConfig, MqttClientError, MqttConnection, MqttOptions,
-		MqttPublisher, MqttSubscriber, QoS, Result, SubscriptionBuilder,
-		Transport, TypedLastWill,
+		BincodeSerializer, ClientSettings, ConnectionOptions,
+		MessageSerializer, MqttClient, MqttClientConfig, MqttClientError,
+		MqttConnection, MqttPublisher, MqttSubscriber, QoS, Result,
+		SessionPolicy, SubscriptionBuilder, Transport, TypedLastWill,
 	};
 	#[cfg(feature = "macros")]
 	pub use mqtt_typed_client_macros::*;

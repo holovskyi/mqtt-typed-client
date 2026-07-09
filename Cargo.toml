@@ -56,10 +56,8 @@ mqtt-typed-client-core = { path = "./core", version = "0.2.0" }
 
 mqtt-typed-client-macros = { path = "./macros", version = "0.2.0", optional = true }
 
-rumqttc = { workspace = true }
-
 [features]
-default = ["macros", "bincode", "json", "rumqttc-url", "rumqttc-use-rustls"]
+default = ["macros", "bincode", "json", "tls-rustls"]
 macros = ["mqtt-typed-client-macros"]
 bincode = ["mqtt-typed-client-core/bincode-serializer"]
 json = ["mqtt-typed-client-core/json"]
@@ -70,21 +68,30 @@ protobuf = ["mqtt-typed-client-core/protobuf"]
 ron = ["mqtt-typed-client-core/ron"]
 flexbuffers = ["mqtt-typed-client-core/flexbuffers"]
 
-rumqttc-url = ["rumqttc/url"]
-rumqttc-websocket = ["rumqttc/websocket"]
-rumqttc-use-rustls = ["rumqttc/use-rustls"]
+# Transport capability features (route through core; type shapes never change).
+websocket = ["mqtt-typed-client-core/websocket"]
+tls-rustls = ["mqtt-typed-client-core/tls-rustls"]
 # rustls without bundling a crypto provider (e.g. aws-lc-rs). Use this to bring
 # your own provider (such as ring) and avoid the aws-lc cross-compilation pain.
-rumqttc-use-rustls-no-provider = ["rumqttc/use-rustls-no-provider"]
-rumqttc-use-native-tls = ["rumqttc/use-native-tls"]
-rumqttc-proxy = ["rumqttc/proxy"]
+tls-rustls-no-provider = ["mqtt-typed-client-core/tls-rustls-no-provider"]
+tls-native = ["mqtt-typed-client-core/tls-native"]
+proxy = ["mqtt-typed-client-core/proxy"]
+# SEMVER-EXEMPT escape hatch: raw backend options access (backend_tweak).
+unstable-backend-api = ["mqtt-typed-client-core/unstable-backend-api"]
+
+# Deprecated aliases (removed in 0.4): the rumqttc-* names from 0.2.
+# `rumqttc-url` is gone entirely — URL parsing is now built in.
+rumqttc-websocket = ["websocket"]
+rumqttc-use-rustls = ["tls-rustls"]
+rumqttc-use-rustls-no-provider = ["tls-rustls-no-provider"]
+rumqttc-use-native-tls = ["tls-native"]
+rumqttc-proxy = ["proxy"]
 
 
 [dev-dependencies]
 bincode = "2.0.1"
 dotenv = "0.15.0"
 rand = "0.9.1"
-rumqttc = { workspace = true, features = ["url", "use-rustls"] }
 rustls-pemfile = "2.1.0"
 serde = "1.0.219"
 tokio = { version = "1.0", features = ["full"] }
@@ -96,7 +103,7 @@ chrono = { version = "0.4.41", features = ["serde"] }
 
 [[example]]
 name = "004_hello_world_tls"
-required-features = ["rumqttc-use-rustls"]
+required-features = ["tls-rustls"]
 
 [[example]]
 name = "100_all_serializers_demo"

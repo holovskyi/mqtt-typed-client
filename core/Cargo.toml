@@ -17,6 +17,15 @@ all-features = true
 
 [features]
 default = ["bincode-serializer", "json"]
+# Transport capability features: forward to the backend, never change public
+# type shapes (see docs/research/DUAL_PROTOCOL_API_DESIGN_2026.md).
+websocket = ["rumqttc/websocket"]
+tls-rustls = ["rumqttc/use-rustls"]
+tls-rustls-no-provider = ["rumqttc/use-rustls-no-provider"]
+tls-native = ["rumqttc/use-native-tls"]
+proxy = ["rumqttc/proxy"]
+# SEMVER-EXEMPT escape hatch: raw backend options access (backend_tweak).
+unstable-backend-api = []
 bincode-serializer = ["dep:bincode"]
 json = ["dep:serde_json"]
 messagepack = ["dep:rmp-serde"]
@@ -33,7 +42,8 @@ bincode = { version = "2.0", optional = true }
 bytes = "1.10"
 futures = "0.3"
 lru = "0.15"
-rumqttc = { workspace = true, features = ["url"] }
+rumqttc = { workspace = true }
+url = { version = "2", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 smallvec = "1.15"
 thiserror = "2.0"

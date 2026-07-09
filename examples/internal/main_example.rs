@@ -30,8 +30,9 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut config =
 		MqttClientConfig::new("my_client", "broker.mqtt.cool", 1883);
-	config.connection.set_keep_alive(Duration::from_secs(30));
-	config.connection.set_clean_session(true);
+	config.connection.keep_alive = Duration::from_secs(30);
+	config.connection.session =
+		mqtt_typed_client::SessionPolicy::CleanPerConnection;
 	config.settings.topic_cache_size = 500;
 
 	let (client, connection) =

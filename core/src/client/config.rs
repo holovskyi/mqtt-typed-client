@@ -2,8 +2,8 @@
 
 use std::marker::PhantomData;
 
-use rumqttc::{LastWill, MqttOptions, OptionError};
-
+use super::connection_options::{ConnectionOptions, LastWillMessage};
+use super::error::UrlParseError;
 use crate::{MessageSerializer, MqttClientError, TypedLastWill};
 
 /// Client-level performance and behavior settings for the MQTT typed client.
@@ -184,8 +184,8 @@ impl Default for ClientSettings {
 /// Configuration for MQTT client creation
 #[derive(Debug, Clone)]
 pub struct MqttClientConfig<S> {
-	/// Underlying MQTT connection options (from rumqttc)
-	pub connection: MqttOptions,
+	/// Protocol-neutral MQTT connection options
+	pub connection: ConnectionOptions,
 	/// Client-level performance and behavior settings
 	pub settings: ClientSettings,
 	/// Phantom data for serializer type
@@ -196,7 +196,7 @@ impl<S> MqttClientConfig<S> {
 	/// Create config with default settings
 	pub fn new(client_id: &str, host: &str, port: u16) -> Self {
 		Self {
-			connection: MqttOptions::new(client_id, host, port),
+			connection: ConnectionOptions::new(client_id, host, port),
 			settings: ClientSettings::default(),
 			_serializer: PhantomData,
 		}
@@ -205,9 +205,10 @@ impl<S> MqttClientConfig<S> {
 	/// Parse configuration from MQTT URL
 	///
 	/// Supports: tcp://, mqtt://, ssl://, mqtts://, ws://, wss://
-	pub fn from_url(url: &str) -> Result<Self, OptionError> {
+	/// (see [`ConnectionOptions::from_url`] for the full grammar)
+	pub fn from_url(url: &str) -> Result<Self, UrlParseError> {
 		Ok(Self {
-			connection: MqttOptions::parse_url(url)?,
+			connection: ConnectionOptions::from_url(url)?,
 			settings: ClientSettings::default(),
 			_serializer: PhantomData,
 		})
@@ -256,12 +257,12 @@ impl<S> MqttClientConfig<S> {
 			.serialize(&last_will.payload)
 			.map_err(|e| MqttClientError::Serialization(format!("{e:?}")))?;
 
-		self.connection.set_last_will(LastWill::new(
-			last_will.topic,
+		self.connection.last_will = Some(LastWillMessage {
+			topic: last_will.topic,
 			payload,
-			last_will.qos.to_rumqttc(),
-			last_will.retain,
-		));
+			qos: last_will.qos,
+			retain: last_will.retain,
+		});
 
 		Ok(self)
 	}

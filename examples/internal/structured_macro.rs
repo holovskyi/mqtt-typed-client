@@ -46,8 +46,8 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Creating MQTT client");
 	let mut config =
 		MqttClientConfig::from_url(&get_server(SERVER, "rust-pub-sub"))?;
-	config.connection.set_clean_session(false);
-	config.connection.set_keep_alive(Duration::from_secs(10));
+	config.connection.session = mqtt_typed_client::SessionPolicy::Resume;
+	config.connection.keep_alive = Duration::from_secs(10);
 
 	info!("Creating MQTT client");
 	let (client, connection) =
@@ -89,8 +89,8 @@ async fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
 async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 	let mut config =
 		MqttClientConfig::from_url(&get_server(SERVER, "rust-sub"))?;
-	config.connection.set_clean_session(false);
-	config.connection.set_keep_alive(Duration::from_secs(10));
+	config.connection.session = mqtt_typed_client::SessionPolicy::Resume;
+	config.connection.keep_alive = Duration::from_secs(10);
 
 	info!("Creating MQTT client");
 	let (client, connection) =
@@ -147,7 +147,7 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut config =
 		MqttClientConfig::from_url(&get_server(SERVER, "rust-pub-sub"))?;
-	config.connection.set_clean_session(false);
+	config.connection.session = mqtt_typed_client::SessionPolicy::Resume;
 
 	info!("Creating MQTT client");
 	let (client, connection) =

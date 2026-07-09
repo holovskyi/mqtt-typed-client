@@ -86,9 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	);
 
 	// Set TLS transport
-	config
-		.connection
-		.set_transport(Transport::tls_with_config(tls_config.into()));
+	config.connection.transport = Transport::Tls(tls_config.into());
 
 	println!("Connecting to MQTT broker with TLS: localhost:8883");
 

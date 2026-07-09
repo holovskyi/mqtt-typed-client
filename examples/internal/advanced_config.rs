@@ -10,6 +10,7 @@ use std::time::Duration;
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
 	BincodeSerializer, ClientSettings, MqttClient, MqttClientConfig,
+	SessionPolicy,
 };
 use serde::{Deserialize, Serialize};
 use tokio::time;
@@ -32,11 +33,11 @@ pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
 		MqttClientConfig::new("advanced_client", "broker.mqtt.cool", 1883);
 
 	// Configure MQTT connection options
-	config.connection.set_keep_alive(Duration::from_secs(30));
-	config.connection.set_clean_session(true);
-	config
-		.connection
-		.set_max_packet_size(1024 * 1024, 1024 * 1024); // 1MB
+	config.connection.keep_alive = Duration::from_secs(30);
+	config.connection.session = SessionPolicy::CleanPerConnection;
+	// Backend-specific knobs (packet-size caps, inflight window, ...) are
+	// available via ConnectionOptions::backend_tweak behind the
+	// `unstable-backend-api` feature.
 
 	// Configure client performance settings
 	config.settings.topic_cache_size = 500;
@@ -53,7 +54,7 @@ pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Example 3: URL-based configuration with query parameters
 	let _url_config = MqttClientConfig::<BincodeSerializer>::from_url(
-		"mqtt://broker.mqtt.cool:1883?client_id=url_client&keep_alive=60",
+		"mqtt://broker.mqtt.cool:1883?client_id=url_client&keep_alive_secs=60",
 	)?;
 
 	// Example 4: Configuration for high-throughput applications
@@ -62,10 +63,8 @@ pub async fn run_example() -> Result<(), Box<dyn std::error::Error>> {
 		"broker.mqtt.cool",
 		1883,
 	);
-	high_perf_config.connection.set_inflight(100); // Increase concurrent messages
-	high_perf_config
-		.connection
-		.set_request_channel_capacity(1000);
+	// inflight window / request channel capacity moved to the
+	// `unstable-backend-api` escape hatch (backend_tweak).
 	high_perf_config.settings = ClientSettings {
 		topic_cache_size: 1000,
 		event_loop_capacity: 100,

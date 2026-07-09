@@ -55,9 +55,11 @@ where F: Default + Clone + Send + Sync + 'static
 						"topic_cache_size must be greater than 0".to_string(),
 					)
 				})?;
-		// Use the provided MqttOptions directly - no more hardcoded values!
+		// Single facade -> backend conversion point (validates instead of
+		// inheriting rumqttc's assert-panics).
+		let backend_options = config.connection.to_backend_v4()?;
 		let (client, new_event_loop) = AsyncClient::new(
-			config.connection,
+			backend_options,
 			config.settings.event_loop_capacity,
 		);
 
