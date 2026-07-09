@@ -505,7 +505,9 @@ feature is welcome any time (independent of all of the above).
    engine), narrow reserve-and-error. Example `009_message_metadata` compile-
    tests the owned path. Two plan-critic passes + one code-critic pass (caught a
    blocker: bare `topic` needed `TopicMatch: Clone`).
-5. Connection state (§4). **← NEXT**
+5. Connection state (§4). **← NEXT** — detailed plan in
+   [PLAN_0.3_CONNSTATE.md](./PLAN_0.3_CONNSTATE.md) (forks resolved, zombie-fix
+   sequenced first).
 6. SubAck minimal (§3) on whatever backend is current — QoS downgrade surfaces
    at `subscribe()` AND on the reconnect/resubscribe path (§3 covers both).
 7. Resubscribe-failure surfacing (§2c) — `ReceiveEvent::SubscriptionLost` on the
