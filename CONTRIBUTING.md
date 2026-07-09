@@ -66,6 +66,9 @@ cargo clippy --all-targets --all-features
 - Ensure all existing tests pass
 - Include integration tests for complex features
 - Test with different MQTT brokers if possible
+- Reconnect / fault-injection tests (deterministic network faults via
+  `turmoil`) are planned — see [issue #3](https://github.com/holovskyi/mqtt-typed-client/issues/3).
+  Run instructions will land here once the harness exists.
 
 ### Documentation
 
