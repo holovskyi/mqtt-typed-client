@@ -41,8 +41,6 @@ pub struct MessageMeta {
     pub qos: QoS,
     pub retain: bool,
     pub dup: bool,
-    pub lagged: u64,             // messages dropped for THIS subscription since
-                                 // the previous delivered one (see §5)
     pub v5: Option<Mqtt5Meta>,   // None on v4; ALWAYS present, never cfg-gated
 }
 
@@ -59,12 +57,10 @@ pub struct Mqtt5Meta { /* user_properties, content_type, correlation_data,
   `"a/{meta}/b"`): explicit compile error + attribute escape hatch. Audit how
   `topic`/`payload` collisions behave today (suspected silent bug).
 - Stop discarding `p.retain/qos/dup` in async_client.rs.
-- `meta.lagged` is the **push** backpressure-drop notification (broadcast-style,
-  see §5): the actor stamps each delivered message with the number dropped for
-  that subscription since the previous delivery, and resets the per-subscription
-  delta. Zero-cost for users who don't declare `meta`; the cumulative
-  `dropped_messages()` counter (shipped in §5) remains the pull path and the
-  only signal at the low-level `Subscriber` (which has no `MessageMeta`).
+- NOTE: the backpressure lag notification is NOT a `MessageMeta` field — it is a
+  `ReceiveEvent::Lagged` variant on the `receive()` return (see §5 / step 2b),
+  landed before this section. `MessageMeta` is only per-message protocol
+  metadata.
 
 ### 3. Ack surfacing
 
@@ -99,21 +95,24 @@ pub struct Mqtt5Meta { /* user_properties, content_type, correlation_data,
   `slow_send_timeout` + builder methods). Exposed **pull** drop visibility as
   `dropped_messages() -> u64` on all subscriber types.
 
-- **Drop-notification design decision (locked):** the drop is *local* — between
-  our routing actor and the user's consumer, NOT the network. We cannot and do
-  not notify the network publisher (no such mechanism in MQTT 3.1.1; MQTT 5
-  Receive Maximum is the closest lever and only bounds the broker for QoS≥1).
-  Who we *can* notify is the local consumer. Two paths:
+- **Drop-notification design decision (locked, implemented in step 2b):** the
+  drop is *local* — between our routing actor and the user's consumer, NOT the
+  network. We cannot and do not notify the network publisher (no such mechanism
+  in MQTT 3.1.1; MQTT 5 Receive Maximum is the closest lever and only bounds the
+  broker for QoS≥1). Who we *can* notify is the local consumer, two ways:
   - **pull** — cumulative `dropped_messages()` counter (shipped above); the
-    metrics path and the only signal at the low-level `Subscriber`.
-  - **push** — a `lagged: u64` field on `MessageMeta` (see §2), broadcast-style:
-    each delivered message carries the count dropped since the previous one.
-    Rejected the faithful `broadcast::Lagged` return-type port — it is invasive
-    across the three receive layers, forces lag-handling on every consumer,
-    conflicts with the existing `Result<_, ConversionError>` shape, and only
-    half-addresses QoS≥1 (rumqttc has already auto-acked). The `MessageMeta`
-    field gives the same push semantics zero-cost and rides the metadata
-    machinery §2 builds anyway. **Implementation lands with §2.**
+    metrics path and a complement to the push event below.
+  - **push** — a `ReceiveEvent::Lagged { missed }` variant on the `receive()`
+    return type (step 2b). `receive() -> Option<ReceiveEvent<M, E>>` with
+    `Message` / `DecodeFailed` / `Lagged`, one type across all three layers
+    (`Infallible` for the low layer). See step 2b for the full rationale.
+  - **Rejected** two tempting shapes: (a) a `MessageMeta.lagged` field — it
+    buries data loss in the happy path and is opt-in/easy to miss; (b) folding
+    lag into `Err` (`Result<M, {Deserialize, Lagged}>`, broadcast-style) — the
+    `while let Some(Ok(m))` idiom compiles unchanged from 0.2 and then silently
+    ends the loop on the first (frequent) lag, it mislabels a healthy-stream
+    notice as an error, and it breaks `TryStream` composition. The event enum
+    makes the migration LOUD (old patterns fail to compile) and lag un-`Err`-able.
 
 - **QoS≥1 caveat (why this matters):** rumqttc auto-acks incoming QoS≥1 publishes
   in its event loop *before* they reach our channel, so a backpressure drop
@@ -122,6 +121,54 @@ pub struct Mqtt5Meta { /* user_properties, content_type, correlation_data,
   Receive Maximum in 0.4.
 
 - Full manual-acks/Receive-Maximum design → separate doc, implementation 0.4+.
+
+### 2b. `ReceiveEvent` — the `receive()` return shape (push drop notice)
+
+Completes §5's drop-visibility story (the push half; the pull counter shipped
+in §5). A single event enum across all three receive layers:
+
+```rust
+#[non_exhaustive]
+#[derive(Debug)]
+pub enum ReceiveEvent<M, E> {
+    Message(M),
+    DecodeFailed(E),           // a message arrived but could not be decoded; stream continues
+    Lagged { missed: u64 },    // `missed` messages dropped for this subscriber since the last report
+}
+
+impl<M, E> ReceiveEvent<M, E> {
+    // Explicit, greppable opt-out: keep only messages.
+    pub fn message(self) -> Option<M> { /* ... */ }
+}
+```
+
+- `receive() -> Option<ReceiveEvent<M, E>>`; `None` still means the
+  subscription is closed.
+- Per layer (one type, coherent): low `Subscriber::recv` uses
+  `ReceiveEvent<MessageType<T>, Infallible>` (the `DecodeFailed` arm is
+  statically dead; the `#[non_exhaustive]` wildcard already covers it); mid
+  `MqttSubscriber` uses `E = (Arc<TopicMatch>, F::DeserializeError)` (keep the
+  topic available on payload failure); top `MqttTopicSubscriber` uses
+  `E = MessageConversionError<DE>` (unchanged, stays a real `std::error::Error`).
+- **Position: lagged is an EVENT, not an error.** The stream is healthy and the
+  next buffered message is intact; `broadcast::RecvError::Lagged` is a `Result`
+  only because `broadcast` has no `Option` termination channel, a constraint we
+  don't share. Folding lag into `Err` was rejected (see §5).
+- Implementation is simple and needs no actor-side marker injection: drops only
+  happen when the consumer's channel is full, so a counter-delta check at the
+  top of `recv()` (compare the `dropped_messages` atomic against a locally
+  remembered `last_seen_drops`) is prompt by construction — the consumer cannot
+  be parked on an empty channel while drops occur. `Subscriber` already holds
+  the `Arc<AtomicU64>`.
+- **Documented caveat (positional fuzziness):** the dropped messages logically
+  follow whatever is still buffered ahead of the consumer, but the `Lagged`
+  notice is emitted before that backlog drains. Exact positioning would require
+  reserving channel slots for markers — not worth the complexity.
+- Canonical consumer loop (docs + `examples/` should show this `match` form, not
+  `while let Some(ReceiveEvent::Message(m))`, which re-creates the early-exit
+  footgun). Breaking: every 0.2/early-0.3 `receive()` loop must be rewritten,
+  and — deliberately — old `while let Some(Ok(m))` shapes fail to compile.
+- Keep `dropped_messages()` as the cumulative metrics side channel.
 
 ### 6. Backend switch to rumqttc-v4-next (decision: adopt-with-mitigations)
 
@@ -154,11 +201,14 @@ feature is welcome any time (independent of all of the above).
    `channel_capacity`/`slow_send_timeout`/`max_parked_messages` on
    `SubscriptionConfig` (+ builder methods); `dropped_messages()` on the
    subscriber types. Plan-critic + code-critic passed.
-3. MessageMeta (§2) + macro work — includes the `meta.lagged` push
-   drop-notification (backpressure design locked in §5). **← NEXT**
-4. Connection state (§4).
-5. SubAck minimal (§3) on whatever backend is current.
-6. Backend swap (§6) + tracked-notice publish/subscribe API — gated on the
+3. `ReceiveEvent` receive() shape + push lag notice (§2b) — completes §5's
+   drop visibility; finalizes the breaking `receive()` signature ONCE, before
+   the metadata/ack work builds on it. **← NEXT**
+4. MessageMeta (§2) + macro work (builds on the §2b `receive()` shape).
+5. Connection state (§4).
+6. SubAck minimal (§3) on whatever backend is current — QoS downgrade surfaces
+   at `subscribe()`, not in the `receive()` stream.
+7. Backend swap (§6) + tracked-notice publish/subscribe API — gated on the
    eagle coordination outcome; may slip to 0.4 without blocking the release.
 
 ## Open items (external)

@@ -31,6 +31,23 @@
 
 ## Architecture Improvements
 
+- [ ] **Ergonomic consumption APIs on top of the pull loop** (post-0.3)  
+  The core primitive stays the pull loop (`receive().await`) — it composes with
+  `select!`, cancellation, backpressure, and stack-local state. On top of it,
+  consider (in this order of preference):
+  1. **`Stream` adapter** — `subscriber -> impl futures::Stream<Item = …>`,
+     giving the whole `StreamExt` toolbox (`for_each`, `filter_map`,
+     `buffered(n)` for *controlled* concurrency) and idiomatic async ergonomics.
+  2. **Callback subscription** — thin sugar only: ONE task per subscription
+     awaiting the handler **sequentially** (preserves the per-subscriber FIFO
+     guarantee), returning a guard/handle to stop it. **Never spawn a task
+     per message** — that reintroduces the slow-consumer reordering bug fixed in
+     0.3 §5, plus unbounded concurrency. Callbacks also make it easy to silently
+     ignore `Err`/lag notices and push users toward `Arc<Mutex<>>` for shared
+     state, so they rank below the `Stream` adapter.
+  Decision pending; revisit after the 0.3 receive-API shape (lag/deserialize
+  surfacing) settles.
+
 - [ ] **Create minimal library version for embedded devices**  
   Possibly with no_std mode support.
 
