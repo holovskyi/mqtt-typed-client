@@ -26,7 +26,7 @@
 mod shared;
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, MqttClient, QoS};
+use mqtt_typed_client::{BincodeSerializer, MqttClient, QoS, ReceiveEvent};
 use mqtt_typed_client_macros::mqtt_topic;
 
 /// Message payload - automatically serialized/deserialized with bincode
@@ -133,7 +133,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// === 5. RECEIVING MESSAGES ===
 	println!("\nWaiting for published message...");
 
-	if let Some(Ok(greeting)) = custom_subscriber.receive().await {
+	if let Some(ReceiveEvent::Message(greeting)) =
+		custom_subscriber.receive().await
+	{
 		println!("Received custom greeting:");
 		println!("   Language: {}", greeting.language);
 		println!("   Sender: {}", greeting.sender);

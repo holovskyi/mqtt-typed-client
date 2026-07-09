@@ -44,6 +44,7 @@ use std::time::Duration;
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
 	BincodeSerializer, MqttClient, MqttClientError, MqttConnection,
+	ReceiveEvent,
 };
 use mqtt_typed_client_macros::mqtt_topic;
 
@@ -212,20 +213,17 @@ async fn run_supervisor() -> Result<(), Box<dyn std::error::Error>> {
 	// === 3. MESSAGE MONITORING LOOP ===
 	// Monitor for demo duration (25 seconds total gives buffer for cleanup)
 	let _result = tokio::time::timeout(Duration::from_secs(25), async {
-		while let Some(result) = subscriber.receive().await {
-			match result {
-				| Ok(msg) => {
-					let now =
-						chrono::Utc::now().format("%H:%M:%S%.3f").to_string();
-					println!(
-						"[SUPERVISOR] {}: Received: '{}'",
-						now, msg.payload.content
-					);
-				}
-				| Err(e) => {
-					eprintln!("[SUPERVISOR] Deserialization error: {e}");
-				}
-			}
+		while let Some(event) = subscriber.receive().await {
+			// Decode failures and lag notices are logged by the library;
+			// see 001_ping_pong for explicit ReceiveEvent handling.
+			let Some(msg) = event.message() else {
+				continue;
+			};
+			let now = chrono::Utc::now().format("%H:%M:%S%.3f").to_string();
+			println!(
+				"[SUPERVISOR] {}: Received: '{}'",
+				now, msg.payload.content
+			);
 		}
 	})
 	.await;
@@ -278,7 +276,7 @@ async fn run_delayed_subscriber(
 
 	match timeout_result {
 		// Successfully received a message
-		| Ok(Some(Ok(msg))) => {
+		| Ok(Some(ReceiveEvent::Message(msg))) => {
 			let now = chrono::Utc::now().format("%H:%M:%S%.3f").to_string();
 			println!(
 				"[{}] {}: ✓ Received retained message: '{}'",
@@ -288,13 +286,15 @@ async fn run_delayed_subscriber(
 			);
 		}
 		// Received a message but deserialization failed
-		| Ok(Some(Err(e))) => {
+		| Ok(Some(ReceiveEvent::DecodeFailed(e))) => {
 			println!(
 				"[{}] ✗ Error receiving message: {}",
 				client_id.to_uppercase(),
 				e
 			);
 		}
+		// Lag notice or a future event kind — not a retained message
+		| Ok(Some(_)) => {}
 		// No message received within timeout (broker has no retained message)
 		| Ok(None) | Err(_) => {
 			let now = chrono::Utc::now().format("%H:%M:%S%.3f").to_string();

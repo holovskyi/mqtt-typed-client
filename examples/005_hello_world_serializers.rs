@@ -10,7 +10,7 @@
 
 mod shared;
 
-use mqtt_typed_client::{MessageSerializer, MqttClient};
+use mqtt_typed_client::{MessageSerializer, MqttClient, ReceiveEvent};
 // use mqtt_typed_client::{JsonSerializer, MessageSerializer, MqttClient}; // Uncomment for JsonSerializer
 use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
@@ -107,7 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	topic_client.publish("msgpack", "demo", &message).await?;
 
 	println!("Waiting for message...");
-	if let Some(Ok(greeting)) = subscriber.receive().await {
+	if let Some(ReceiveEvent::Message(greeting)) = subscriber.receive().await {
 		println!(
 			"Received from {}/{}: {} (timestamp: {})",
 			greeting.language,

@@ -17,7 +17,7 @@ use bincode::{Decode, Encode};
 use mqtt_typed_client::{
 	BincodeSerializer, CborSerializer, FlexbuffersSerializer, JsonSerializer,
 	MessagePackSerializer, MessageSerializer, MqttClient, PostcardSerializer,
-	ProtobufSerializer, RonSerializer,
+	ProtobufSerializer, ReceiveEvent, RonSerializer,
 };
 use serde::{Deserialize, Serialize};
 
@@ -153,27 +153,33 @@ where
 							.await;
 
 							match receive_result {
-								| Ok(Some((_topic_match, result))) => {
-									match result {
-										| Ok(received_message) => {
-											assert_eq!(
-												received_message, message,
-												"{name} serializer: Message \
-												 mismatch",
-											);
-											println!(
-												"{name} serializer: Full \
-												 cycle successful (serialize \
-												 + deserialize)",
-											);
-										}
-										| Err(e) => {
-											panic!(
-												"{name} serializer: \
-												 Deserialization failed: {e:?}",
-											);
-										}
-									}
+								| Ok(Some(ReceiveEvent::Message((
+									_topic_match,
+									received_message,
+								)))) => {
+									assert_eq!(
+										received_message, message,
+										"{name} serializer: Message mismatch",
+									);
+									println!(
+										"{name} serializer: Full cycle \
+										 successful (serialize + deserialize)",
+									);
+								}
+								| Ok(Some(ReceiveEvent::DecodeFailed((
+									_topic,
+									e,
+								)))) => {
+									panic!(
+										"{name} serializer: Deserialization \
+										 failed: {e:?}",
+									);
+								}
+								| Ok(Some(_)) => {
+									panic!(
+										"{name} serializer: unexpected \
+										 non-message stream event",
+									);
 								}
 								| Ok(None) => {
 									// When a broker is required (CI), the full

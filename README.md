@@ -120,7 +120,7 @@ async fn main() -> Result<()> {
     //                    String    u32 -> automatically converts to "42" in topic
     
     // Receive with automatic parameter extraction and conversion
-    if let Some(Ok(msg)) = subscriber.receive().await {
+    if let Some(ReceiveEvent::Message(msg)) = subscriber.receive().await {
         println!("Device {} in location '{}' reported: temp={}°C, status={:?}", 
             msg.device_id,  // u32 (converted from "42" in topic)
             msg.location,   // String (extracted from topic)
@@ -290,11 +290,17 @@ async fn main() -> Result<()> {
     let data = SensorData { temperature: 23.5, humidity: 45.0 };
     publisher.publish(&data).await?;
 
-    if let Some((topic, result)) = subscriber.receive().await {
-        match result {
-            Ok(sensor_data) => println!("Received from {}: {:?}", topic.topic_path(), sensor_data),
-            Err(e) => eprintln!("Deserialization error: {:?}", e),
+    match subscriber.receive().await {
+        Some(ReceiveEvent::Message((topic, sensor_data))) => {
+            println!("Received from {}: {:?}", topic.topic_path(), sensor_data)
         }
+        Some(ReceiveEvent::DecodeFailed((topic, e))) => {
+            eprintln!("Deserialization error at {}: {:?}", topic.topic_path(), e)
+        }
+        Some(ReceiveEvent::Lagged { missed }) => {
+            eprintln!("Lagged: {} messages dropped", missed)
+        }
+        _ => {}
     }
 
     connection.shutdown().await?;

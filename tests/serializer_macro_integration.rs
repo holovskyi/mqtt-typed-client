@@ -12,7 +12,9 @@
 //! otherwise it only verifies that the macro-generated code compiles and the
 //! client can be constructed.
 
-use mqtt_typed_client::{BincodeSerializer, JsonSerializer, MqttClient};
+use mqtt_typed_client::{
+	BincodeSerializer, JsonSerializer, MqttClient, ReceiveEvent,
+};
 use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
 
@@ -78,8 +80,7 @@ async fn test_macro_per_topic_serializer_round_trip() {
 	// only applies when there is no broker at all, handled above.)
 	let timeout = tokio::time::Duration::from_millis(2000);
 	match tokio::time::timeout(timeout, status_sub.receive()).await {
-		| Ok(Some(result)) => {
-			let msg = result.expect("deserialize JSON-serialized message");
+		| Ok(Some(ReceiveEvent::Message(msg))) => {
 			assert_eq!(
 				msg.device_id, "device-xyz",
 				"topic parameter must round-trip"
@@ -90,6 +91,10 @@ async fn test_macro_per_topic_serializer_round_trip() {
 			);
 			println!("✓ JSON macro serializer round-trip verified");
 		}
+		| Ok(Some(ReceiveEvent::DecodeFailed(err))) => {
+			panic!("failed to deserialize JSON-serialized message: {err:?}")
+		}
+		| Ok(Some(_)) => panic!("unexpected non-message stream event"),
 		| Ok(None) => {
 			panic!("subscriber stream closed before receiving message")
 		}

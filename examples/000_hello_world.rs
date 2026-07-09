@@ -11,7 +11,7 @@
 mod shared;
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, MqttClient};
+use mqtt_typed_client::{BincodeSerializer, MqttClient, ReceiveEvent};
 use mqtt_typed_client_macros::mqtt_topic;
 
 /// Message payload - automatically serialized/deserialized with bincode
@@ -87,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// === 4. RECEIVING MESSAGES ===
 	println!("Waiting for greeting message from broker...");
 	// Wait for the first received message (our own greeting in this case)
-	if let Some(Ok(greeting)) = subscriber.receive().await {
+	if let Some(ReceiveEvent::Message(greeting)) = subscriber.receive().await {
 		println!("Received greeting:");
 		println!("   Language: {}", greeting.language);
 		println!("   Sender: {}", greeting.sender);

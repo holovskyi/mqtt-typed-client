@@ -30,8 +30,8 @@ pub mod prelude {
 	pub use mqtt_typed_client_core::{
 		BincodeSerializer, ClientSettings, ConnectionOptions,
 		MessageSerializer, MqttClient, MqttClientConfig, MqttClientError,
-		MqttConnection, MqttPublisher, MqttSubscriber, QoS, Result,
-		SessionPolicy, SubscriptionBuilder, Transport, TypedLastWill,
+		MqttConnection, MqttPublisher, MqttSubscriber, QoS, ReceiveEvent,
+		Result, SessionPolicy, SubscriptionBuilder, Transport, TypedLastWill,
 	};
 	#[cfg(feature = "macros")]
 	pub use mqtt_typed_client_macros::*;

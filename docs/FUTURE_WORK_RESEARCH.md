@@ -84,8 +84,8 @@ Protocol coupling is concentrated but cross-cutting:
 - `core/src/routing/subscription_manager.rs` — `SubscriptionConfig.qos` (public),
   `subscribe`/`unsubscribe` calls, `String`-typed topic dispatch.
 - `core/src/client/subscriber.rs` + `core/src/structured/subscriber.rs` — the
-  ceiling for v5 metadata: `IncomingMessage` and the macro-generated
-  `FromMqttMessage::from_mqtt_message`.
+  ceiling for v5 metadata: `SubscriberEvent` (the `ReceiveEvent` alias) and the
+  macro-generated `FromMqttMessage::from_mqtt_message`.
 - `mqtt-topic-engine/src/qos.rs` — v4-bound conversions; add v5 parallels.
 - `macros/src/codegen_typed_client.rs` — generated `publish()`/subscriber code;
   the `#[mqtt_topic(...)]` attribute syntax may need to grow if metadata is
@@ -98,7 +98,7 @@ Protocol coupling is concentrated but cross-cutting:
   module vs a `mqtt-v5` feature flag.
 - Where do message metadata live? A `MessageMeta { user_properties,
   correlation_data, response_topic, content_type, ... }` slot on
-  `IncomingMessage`/`FromMqttMessage` — always populated (simpler, heavier API)
+  `SubscriberEvent`/`FromMqttMessage` — always populated (simpler, heavier API)
   vs only when the type asks for it.
 - Reconnect/resubscribe logic is v4 `session_present`-based; v5 session-expiry
   semantics differ — re-check.

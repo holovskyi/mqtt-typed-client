@@ -149,14 +149,16 @@ while let Ok(notification) = eventloop.poll().await {
 // Automatic subscription and typed message handling
 let mut subscriber = topic_client.subscribe().await?;
 
-while let Some(result) = subscriber.receive().await {
-    match result {
-        Ok(message) => {
+while let Some(event) = subscriber.receive().await {
+    match event {
+        ReceiveEvent::Message(message) => {
             // Automatic topic parameter extraction and deserialization
             println!("Sensor {} in {} reported: {}°C", 
                 message.sensor_id, message.location, message.payload.temperature);
         }
-        Err(e) => eprintln!("Deserialization error: {}", e),
+        ReceiveEvent::DecodeFailed(e) => eprintln!("Deserialization error: {}", e),
+        ReceiveEvent::Lagged { missed } => eprintln!("Lagged: {} messages dropped", missed),
+        _ => {}
     }
 }
 ```
@@ -231,7 +233,8 @@ client.subscribe("sensors/+/+/data", QoS::AtLeastOnce).await?;
 
 // After
 let mut subscriber = client.sensor_topic().subscribe().await?;
-while let Some(Ok(message)) = subscriber.receive().await {
+while let Some(event) = subscriber.receive().await {
+    let Some(message) = event.message() else { continue };
     // message.location, message.id, message.payload are ready to use
 }
 ```

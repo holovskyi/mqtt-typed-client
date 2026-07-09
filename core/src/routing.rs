@@ -11,6 +11,7 @@ pub(crate) mod subscription_manager;
 
 // Re-export commonly used types for convenience
 pub use error::SubscriptionError;
+pub use subscriber::ReceiveEvent;
 pub(crate) use subscriber::Subscriber;
 pub use subscription_manager::SubscriptionConfig;
 pub(crate) use subscription_manager::{

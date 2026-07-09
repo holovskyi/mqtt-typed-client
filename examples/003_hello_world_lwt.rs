@@ -106,23 +106,21 @@ async fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
 			},
 		_ = async {
 			let mut message_count = 0;
-			while let Some(result) = subscriber.receive().await {
-				match result {
-					Ok(greeting) => {
-					message_count += 1;
+			while let Some(event) = subscriber.receive().await {
+				// Decode failures and lag notices are logged by the library;
+				// see 001_ping_pong for explicit ReceiveEvent handling.
+				let Some(greeting) = event.message() else {
+					continue;
+				};
+				message_count += 1;
 
-					// Distinguish between normal messages and LWT messages
-					if greeting.payload.text.contains("LWT") {
+				// Distinguish between normal messages and LWT messages
+				if greeting.payload.text.contains("LWT") {
 					println!("[{}] LWT from {}/{}: {} (publisher disconnected unexpectedly)",
-					message_count, greeting.language, greeting.sender, greeting.payload.text);
-					} else {
+						message_count, greeting.language, greeting.sender, greeting.payload.text);
+				} else {
 					println!("[{}] Greeting from {}/{}: {}",
-					message_count, greeting.language, greeting.sender, greeting.payload.text);
-					}
-					},
-					Err(e) => {
-						eprintln!("Error receiving message: {e}");
-					}
+						message_count, greeting.language, greeting.sender, greeting.payload.text);
 				}
 			}
 		} => {}

@@ -15,7 +15,8 @@ use std::time::Duration;
 
 use bincode::{Decode, Encode};
 use mqtt_typed_client::{
-	BincodeSerializer, MqttClient, MqttClientConfig, QoS, SessionPolicy,
+	BincodeSerializer, MqttClient, MqttClientConfig, QoS, ReceiveEvent,
+	SessionPolicy,
 };
 use mqtt_typed_client_macros::mqtt_topic;
 
@@ -106,7 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// === 6. RECEIVE FROM SUBSCRIPTION ===
 	// Wait for message
-	if let Some(Ok(temp_data)) = subscriber.receive().await {
+	if let Some(ReceiveEvent::Message(temp_data)) = subscriber.receive().await {
 		println!("=== Received Configuration Demo ===");
 		println!("  Location: {}", temp_data.location);
 		println!("  Sensor ID: {}", temp_data.sensor_id);

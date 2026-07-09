@@ -16,7 +16,7 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use mqtt_typed_client_core::{MqttClient, MqttClientConfig, BincodeSerializer};
+//! use mqtt_typed_client_core::{MqttClient, MqttClientConfig, BincodeSerializer, ReceiveEvent};
 //! use serde::{Deserialize, Serialize};
 //! use bincode::{Encode, Decode};
 //!
@@ -53,10 +53,18 @@
 //!     publisher.publish(&data).await?;
 //!
 //!     // Receive data
-//!     if let Some((topic, result)) = subscriber.receive().await {
-//!         match result {
-//!             Ok(sensor_data) => println!("Received from {}: {:?}", topic, sensor_data),
-//!             Err(e) => eprintln!("Deserialization error: {:?}", e),
+//!     if let Some(event) = subscriber.receive().await {
+//!         match event {
+//!             ReceiveEvent::Message((topic, sensor_data)) => {
+//!                 println!("Received from {}: {:?}", topic, sensor_data)
+//!             }
+//!             ReceiveEvent::DecodeFailed((topic, e)) => {
+//!                 eprintln!("Deserialization error at {}: {:?}", topic, e)
+//!             }
+//!             ReceiveEvent::Lagged { missed } => {
+//!                 eprintln!("Lagged: {missed} messages dropped")
+//!             }
+//!             _ => {}
 //!         }
 //!     }
 //!
@@ -156,7 +164,7 @@ pub use message_serializer::RonSerializer;
 pub use mqtt_topic_engine::QoS;
 // === Advanced API ===
 // Advanced subscription configuration
-pub use routing::SubscriptionConfig;
+pub use routing::{ReceiveEvent, SubscriptionConfig};
 // The backend's rustls stack, so a `rustls::ClientConfig` for
 // `Transport::Tls(..)` can be built without a version-matched rustls
 // dependency of your own. The rustls major version tracks the backend's TLS
@@ -229,8 +237,8 @@ pub mod advanced {
 		SubscriptionId, TopicRouterError, limits, validation,
 	};
 	pub use crate::{
-		CacheStrategy, MqttPublisher, MqttSubscriber, SubscriptionConfig,
-		TopicError, TopicPatternPath,
+		CacheStrategy, MqttPublisher, MqttSubscriber, ReceiveEvent,
+		SubscriptionConfig, TopicError, TopicPatternPath,
 	};
 }
 

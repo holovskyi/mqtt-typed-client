@@ -9,7 +9,9 @@
 mod shared;
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, JsonSerializer, MqttClient};
+use mqtt_typed_client::{
+	BincodeSerializer, JsonSerializer, MqttClient, ReceiveEvent,
+};
 use mqtt_typed_client_macros::mqtt_topic;
 use serde::{Deserialize, Serialize};
 
@@ -92,44 +94,52 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\nWaiting for messages...");
 
 	tokio::select! {
-		Some(result) = modern_sub.receive() => {
-			match result {
-				Ok(msg) => {
+		Some(event) = modern_sub.receive() => {
+			match event {
+				ReceiveEvent::Message(msg) => {
 					println!("✓ Received modern sensor {}: value={}, timestamp={}",
 						msg.sensor_id, msg.payload.value, msg.payload.timestamp);
 				}
-				Err(e) => println!("✗ Failed to deserialize modern data: {e:?}"),
+				ReceiveEvent::DecodeFailed(e) => println!("✗ Failed to deserialize modern data: {e:?}"),
+				ReceiveEvent::Lagged { missed } => println!("… modern lagged: {missed} dropped"),
+				_ => {}
 			}
 		}
-		Some(result) = legacy_sub.receive() => {
-			match result {
-				Ok(msg) => {
+		Some(event) = legacy_sub.receive() => {
+			match event {
+				ReceiveEvent::Message(msg) => {
 					println!("✓ Received legacy device {}: message='{}', count={}",
 						msg.device_id, msg.payload.message, msg.payload.count);
 				}
-				Err(e) => println!("✗ Failed to deserialize legacy data: {e:?}"),
+				ReceiveEvent::DecodeFailed(e) => println!("✗ Failed to deserialize legacy data: {e:?}"),
+				ReceiveEvent::Lagged { missed } => println!("… legacy lagged: {missed} dropped"),
+				_ => {}
 			}
 		}
 	}
 
 	// Wait for second message
 	tokio::select! {
-		Some(result) = modern_sub.receive() => {
-			match result {
-				Ok(msg) => {
+		Some(event) = modern_sub.receive() => {
+			match event {
+				ReceiveEvent::Message(msg) => {
 					println!("✓ Received modern sensor {}: value={}, timestamp={}",
 						msg.sensor_id, msg.payload.value, msg.payload.timestamp);
 				}
-				Err(e) => println!("✗ Failed to deserialize modern data: {e:?}"),
+				ReceiveEvent::DecodeFailed(e) => println!("✗ Failed to deserialize modern data: {e:?}"),
+				ReceiveEvent::Lagged { missed } => println!("… modern lagged: {missed} dropped"),
+				_ => {}
 			}
 		}
-		Some(result) = legacy_sub.receive() => {
-			match result {
-				Ok(msg) => {
+		Some(event) = legacy_sub.receive() => {
+			match event {
+				ReceiveEvent::Message(msg) => {
 					println!("✓ Received legacy device {}: message='{}', count={}",
 						msg.device_id, msg.payload.message, msg.payload.count);
 				}
-				Err(e) => println!("✗ Failed to deserialize legacy data: {e:?}"),
+				ReceiveEvent::DecodeFailed(e) => println!("✗ Failed to deserialize legacy data: {e:?}"),
+				ReceiveEvent::Lagged { missed } => println!("… legacy lagged: {missed} dropped"),
+				_ => {}
 			}
 		}
 	}

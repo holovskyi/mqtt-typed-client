@@ -99,12 +99,12 @@ pub async fn run_example() -> Result<()> {
 				// Handle messages from wildcard subscription
 				msg_result = subscriber_all.receive() => {
 					match msg_result {
-						Some(Ok(temp_msg)) => {
+						Some(ReceiveEvent::Message(temp_msg)) => {
 							message_count += 1;
 							println!("[ALL-SENSORS] Received from: {}", temp_msg.topic.topic_path());
-							println!("   Location: {} | Sensor: {} | Device: {}", 
+							println!("   Location: {} | Sensor: {} | Device: {}",
 								temp_msg.location, temp_msg.sensor_type, temp_msg.device_id);
-							println!("   Data: temp={}°C, humidity={:?}%, battery={:?}%\n", 
+							println!("   Data: temp={}°C, humidity={:?}%, battery={:?}%\n",
 								temp_msg.payload.temperature,
 								temp_msg.payload.humidity,
 								temp_msg.payload.battery_level);
@@ -113,9 +113,13 @@ pub async fn run_example() -> Result<()> {
 								break;
 							}
 						},
-						Some(Err(e)) => {
-							eprintln!("Wildcard subscription error: {e}");
+						Some(ReceiveEvent::DecodeFailed(e)) => {
+							eprintln!("Wildcard subscription decode error: {e}");
 						},
+						Some(ReceiveEvent::Lagged { missed }) => {
+							eprintln!("[ALL-SENSORS] lagged: {missed} messages dropped");
+						},
+						Some(_) => {},
 						None => {
 							println!("Wildcard subscription ended");
 							break;
@@ -125,13 +129,17 @@ pub async fn run_example() -> Result<()> {
 				// Handle messages from specific device subscription
 				msg_result = subscriber_specific.receive() => {
 					match msg_result {
-						Some(Ok(temp_msg)) => {
+						Some(ReceiveEvent::Message(temp_msg)) => {
 							println!("[DEVICE-370] Specific device message: {}", temp_msg.topic.topic_path());
 							println!("   This would only trigger for device_id=370\n");
 						},
-						Some(Err(e)) => {
-							eprintln!("Specific subscription error: {e}");
+						Some(ReceiveEvent::DecodeFailed(e)) => {
+							eprintln!("Specific subscription decode error: {e}");
 						},
+						Some(ReceiveEvent::Lagged { missed }) => {
+							eprintln!("[DEVICE-370] lagged: {missed} messages dropped");
+						},
+						Some(_) => {},
 						None => {
 							println!("Specific subscription ended");
 							break;

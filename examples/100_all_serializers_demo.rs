@@ -9,7 +9,7 @@ use bincode::{Decode, Encode};
 use mqtt_typed_client::{
 	BincodeSerializer, CborSerializer, FlexbuffersSerializer, JsonSerializer,
 	MessagePackSerializer, MessageSerializer, MqttClient, PostcardSerializer,
-	ProtobufSerializer, RonSerializer,
+	ProtobufSerializer, ReceiveEvent, RonSerializer,
 };
 use serde::{Deserialize, Serialize};
 
@@ -88,25 +88,25 @@ where
 
 	// Wait for message and verify deserialization
 	println!("   Waiting for message...");
-	if let Some((topic_match, result)) = subscriber.receive().await {
-		match result {
-			| Ok(received_message) => {
-				println!(
-					"   Received from {}: {} (id: {})",
-					topic_match.topic_path(),
-					received_message.text,
-					received_message.id
-				);
-				println!("{name} (serialize + deserialize successful)");
-			}
-			| Err(e) => {
-				println!("{name} (deserialization error: {e:?})");
-				return Err(format!("Deserialization failed: {e:?}").into());
-			}
+	match subscriber.receive().await {
+		| Some(ReceiveEvent::Message((topic_match, received_message))) => {
+			println!(
+				"   Received from {}: {} (id: {})",
+				topic_match.topic_path(),
+				received_message.text,
+				received_message.id
+			);
+			println!("{name} (serialize + deserialize successful)");
 		}
-	} else {
-		println!("{name} (no message received)");
-		return Err("No message received".into());
+		| Some(ReceiveEvent::DecodeFailed((_topic, e))) => {
+			println!("{name} (deserialization error: {e:?})");
+			return Err(format!("Deserialization failed: {e:?}").into());
+		}
+		// Lag notice, future event kind, or closed subscription — no message.
+		| Some(_) | None => {
+			println!("{name} (no message received)");
+			return Err("No message received".into());
+		}
 	}
 
 	connection.shutdown().await?;

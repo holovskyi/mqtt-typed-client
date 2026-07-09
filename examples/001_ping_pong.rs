@@ -27,7 +27,9 @@ mod shared;
 use std::time::Duration;
 
 use bincode::{Decode, Encode};
-use mqtt_typed_client::{BincodeSerializer, MqttClient, MqttClientError};
+use mqtt_typed_client::{
+	BincodeSerializer, MqttClient, MqttClientError, ReceiveEvent,
+};
 use mqtt_typed_client_macros::mqtt_topic;
 use rand::{Rng, rng};
 
@@ -95,10 +97,12 @@ async fn run_player(
 		topic_client.publish(other_player, &ping_message).await?;
 	}
 
-	// Main game loop: receive messages and respond
-	while let Some(result) = subscriber.receive().await {
-		match result {
-			| Ok(response) => {
+	// Main game loop: receive messages and respond.
+	// Full match over every ReceiveEvent variant so a decode failure or a
+	// backpressure lag notice doesn't silently end the loop.
+	while let Some(event) = subscriber.receive().await {
+		match event {
+			| ReceiveEvent::Message(response) => {
 				println!("{player:>10} received: {:?}", response.payload);
 
 				if response.payload.is_game_over() {
@@ -116,10 +120,13 @@ async fn run_player(
 					break;
 				}
 			}
-			| Err(err) => {
+			| ReceiveEvent::DecodeFailed(err) => {
 				eprintln!("{player:>10} deserialization error: {err:?}");
-				continue;
 			}
+			| ReceiveEvent::Lagged { missed } => {
+				eprintln!("{player:>10} lagged: {missed} messages dropped");
+			}
+			| _ => {}
 		}
 	}
 

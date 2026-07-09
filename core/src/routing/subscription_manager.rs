@@ -880,4 +880,51 @@ mod tests {
 		assert!(actor.parked.is_empty());
 		assert!(actor.topic_router.get_topic_by_id(&id).is_err());
 	}
+
+	// With drops recorded while a message sits buffered, the low-level subscriber
+	// surfaces them as a `Lagged` event ahead of that message, and advances its
+	// watermark so each burst is reported exactly once (no phantom repeat).
+	#[tokio::test]
+	async fn subscriber_recv_surfaces_lag_before_messages() {
+		use crate::ReceiveEvent;
+
+		let mut actor = make_actor::<String>();
+		let (id, rx, dropped) =
+			add_sub(&mut actor, 4, Duration::from_secs(5), 10);
+		let mut subscriber = Subscriber::new(
+			rx,
+			actor.unsubscribe_tx.clone(),
+			id,
+			Arc::clone(&dropped),
+		);
+
+		send(&mut actor, "A").await; // buffered, ready to deliver
+		dropped.fetch_add(3, Ordering::Relaxed); // simulate 3 backpressure drops
+
+		// Lag is reported first, before the buffered message.
+		assert!(matches!(
+			subscriber.recv().await,
+			Some(ReceiveEvent::Lagged { missed: 3 })
+		));
+		match subscriber.recv().await {
+			| Some(ReceiveEvent::Message((_topic, payload))) => {
+				assert_eq!(payload.as_str(), "A")
+			}
+			| _ => panic!("expected the buffered message A"),
+		}
+
+		// A fresh burst is reported once more; the previous delta is not repeated.
+		dropped.fetch_add(2, Ordering::Relaxed);
+		send(&mut actor, "B").await;
+		assert!(matches!(
+			subscriber.recv().await,
+			Some(ReceiveEvent::Lagged { missed: 2 })
+		));
+		match subscriber.recv().await {
+			| Some(ReceiveEvent::Message((_topic, payload))) => {
+				assert_eq!(payload.as_str(), "B")
+			}
+			| _ => panic!("expected the buffered message B"),
+		}
+	}
 }

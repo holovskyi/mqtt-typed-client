@@ -5,7 +5,8 @@ use std::{marker::PhantomData, sync::Arc};
 use thiserror::Error;
 
 use crate::{
-	MessageSerializer, MqttSubscriber, topic::topic_match::TopicMatch,
+	MessageSerializer, MqttSubscriber, ReceiveEvent,
+	topic::topic_match::TopicMatch,
 };
 // use {
 // 	BincodeSerializer, MessageSerializer, MqttClient, TypedSubscriber,
@@ -77,28 +78,34 @@ where
 		}
 	}
 
-	/// Receives and converts the next MQTT message into structured type.
+	/// Receives and converts the next MQTT stream event into the structured type.
+	///
+	/// Returns `None` when the subscription is closed. `Message` is a fully
+	/// decoded value; a deserialization or topic-parameter failure becomes
+	/// `DecodeFailed`; dropped-message notices are forwarded as `Lagged`.
 	pub async fn receive(
 		&mut self,
 	) -> Option<
-		Result<
+		ReceiveEvent<
 			MessageType,
 			MessageConversionError<SerializerType::DeserializeError>,
 		>,
 	> {
-		if let Some((topic_match, payload_result)) = self.inner.receive().await
-		{
-			let result = match payload_result {
-				| Ok(payload) => {
-					MessageType::from_mqtt_message(topic_match, payload)
-				}
-				| Err(err) => Err(
+		match self.inner.receive().await? {
+			| ReceiveEvent::Message((topic_match, payload)) => Some(
+				match MessageType::from_mqtt_message(topic_match, payload) {
+					| Ok(message) => ReceiveEvent::Message(message),
+					| Err(err) => ReceiveEvent::DecodeFailed(err),
+				},
+			),
+			| ReceiveEvent::DecodeFailed((_topic, err)) => {
+				Some(ReceiveEvent::DecodeFailed(
 					MessageConversionError::PayloadDeserializationError(err),
-				),
-			};
-			Some(result)
-		} else {
-			None
+				))
+			}
+			| ReceiveEvent::Lagged { missed } => {
+				Some(ReceiveEvent::Lagged { missed })
+			}
 		}
 	}
 
