@@ -103,7 +103,7 @@ where F: MessageSerializer<T>
 				payload,
 			)
 			.await
-			.map_err(MqttClientError::from)
+			.map_err(MqttClientError::from_backend_client_error)
 	}
 
 	/// Clear retained message for this topic
@@ -119,6 +119,6 @@ where F: MessageSerializer<T>
 				Vec::new(),
 			)
 			.await
-			.map_err(MqttClientError::from)
+			.map_err(MqttClientError::from_backend_client_error)
 	}
 }

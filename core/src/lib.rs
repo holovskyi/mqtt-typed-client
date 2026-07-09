@@ -239,6 +239,11 @@ pub mod advanced {
 /// ```
 pub mod errors {
 
+	// Client and connection errors
+	pub use crate::client::{
+		BackendError, ClientOperationError, ConnectReasonCode,
+		ConnectionEstablishmentError,
+	};
 	// High-level routing errors
 	pub use crate::routing::SubscriptionError;
 	// Topic-related errors - specific types for advanced usage

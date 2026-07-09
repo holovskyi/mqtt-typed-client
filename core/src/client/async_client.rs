@@ -12,7 +12,7 @@ use super::config::MqttClientConfig;
 use super::error::MqttClientError;
 use super::publisher::MqttPublisher;
 use super::subscriber::MqttSubscriber;
-use crate::client::error::ConnectionEstablishmentError;
+use crate::client::error::{ConnectReasonCode, ConnectionEstablishmentError};
 use crate::connection::MqttConnection;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::subscription_manager::SubscriptionConfig;
@@ -107,7 +107,7 @@ where F: Default + Clone + Send + Sync + 'static
 						debug!(code = ?code, "MQTT connection rejected by broker");
 						return Err(
 							ConnectionEstablishmentError::BrokerRejected {
-								code,
+								code: ConnectReasonCode::from_v4(code),
 							},
 						);
 					}
@@ -117,8 +117,8 @@ where F: Default + Clone + Send + Sync + 'static
 				}
 				| Err(connection_err) => {
 					debug!(error = %connection_err, "MQTT connection error during bootstrap phase");
-					return Err(ConnectionEstablishmentError::Network(
-						Box::new(connection_err),
+					return Err(ConnectionEstablishmentError::from_backend(
+						connection_err,
 					));
 				}
 			}

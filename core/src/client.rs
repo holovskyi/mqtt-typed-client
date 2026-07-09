@@ -19,7 +19,10 @@ pub mod subscription_builder;
 // Re-export commonly used types for convenience
 pub use async_client::MqttClient;
 pub use config::{ClientSettings, MqttClientConfig};
-pub use error::MqttClientError;
+pub use error::{
+	BackendError, ClientOperationError, ConnectReasonCode,
+	ConnectionEstablishmentError, MqttClientError,
+};
 pub use last_will::TypedLastWill;
 pub use publisher::MqttPublisher;
 pub use subscriber::MqttSubscriber;
