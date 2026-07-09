@@ -63,6 +63,17 @@
   Decision pending; revisit after the 0.3 receive-API shape (lag/deserialize
   surfacing) settles.
 
+- [ ] **Migrate to edition 2024** (housekeeping, a future release)
+  `core`, `macros`, and the workspace root are on edition 2021 but already
+  carry MSRV 1.85.1 — which is exactly what edition 2024 requires — so the
+  usual "stay on 2021 for a lower MSRV" reason no longer applies to them and
+  the migration cost is near zero. No 2024 feature is needed today, so this is
+  pure housekeeping (`cargo fix --edition` + review the temporary-scope / RPIT
+  capture semantic changes), deferred to a future release. Keep
+  `mqtt-topic-engine` on edition 2021 deliberately: it publishes standalone
+  with MSRV 1.82, and a low MSRV has value for embedded/standalone consumers
+  (2024 would force it up to 1.85).
+
 - [ ] **Create minimal library version for embedded devices**  
   Possibly with no_std mode support.
 

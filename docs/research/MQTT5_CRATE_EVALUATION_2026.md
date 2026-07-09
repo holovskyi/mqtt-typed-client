@@ -27,12 +27,18 @@ migrate outright; do not build the full dual-backend abstraction yet.**
   academic papers in-repo (MQTT-over-QUIC). Test story is stronger than
   rumqttc's.
 - License MIT OR Apache-2.0 — compatible. MSRV 1.88 (high; would drag ours up).
-- **Client and broker in one crate, no feature gate** (`lib.rs` has
-  unconditional `pub mod broker;`): every consumer compiles argon2, hyper(+
+- **Client and broker in one crate — FIXED 2026-07-09.** Was: `lib.rs` had
+  unconditional `pub mod broker;`, so every consumer compiled argon2, hyper(+
   rustls, JWKS), regex, toml, serde_json, flume, parking_lot; `quinn` (QUIC)
-  and `tokio-tungstenite` are on by default. Much heavier dep tree than
-  rumqttc. `mqtt5-protocol` is separately `no_std`-capable (relevant to our
-  no_std direction); the client itself needs tokio full.
+  and `tokio-tungstenite` on by default. We filed issue #100; author (fabracht)
+  responded same day with PR #101 gating the broker behind a `broker` cargo
+  feature (default-on, so existing consumers unaffected). Ships as `mqtt5`
+  0.36.0. We verified branch `gate-broker-feature` against a client-only build
+  (`default-features = false`): `cargo tree` drops **158 → 111 unique crates**,
+  the whole broker subtree is gone (argon2, hyper, hyper-rustls, regex, toml no
+  longer appear), and `cargo check` is clean. The <1-day turnaround is itself a
+  positive maintenance signal. `mqtt5-protocol` is separately `no_std`-capable
+  (relevant to our no_std direction); the client itself needs tokio full.
 - TLS is rustls-only (ring). No native-tls option.
 
 ## Capabilities (source-verified)
@@ -103,7 +109,9 @@ ack-related doc line.
   0.x library to another solo 0.x library compounds churn.
 - Cheap probe: file an issue asking for client/broker feature separation — the
   author responds to external issues within days; the response itself is a
-  maintenance signal.
+  maintenance signal. DONE 2026-07-09: issue #100 → PR #101 same day, broker
+  gated, client-only tree verified (158 → 111 crates). Probe passed; forced
+  broker deps are no longer a blocker as of 0.36.0.
 - Re-evaluate in 6–12 months: still maintained + client/broker split + some
   adoption → a v5-only `mqtt5` backend behind a cargo feature becomes a
   credible 0.4+ option. For ack semantics on our current stack, the decided

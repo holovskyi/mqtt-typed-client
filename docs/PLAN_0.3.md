@@ -220,8 +220,11 @@ feature is welcome any time (independent of all of the above).
 
 - eagle's response to mqtt-typed-client-next#1 (coordination, QoS-downgrade
   PR, release cadence).
-- LabOverWire/mqtt-lib#100 response (mqtt5 client/broker split — 0.4+ signal
-  only).
+- LabOverWire/mqtt-lib#100 — RESOLVED 2026-07-09: author opened PR #101 same
+  day, broker gated behind `broker` feature (default-on), ships as mqtt5
+  0.36.0. Verified client-only build (158→111 crates, broker subtree gone,
+  cargo check clean). 0.4+ signal = positive. TODO: post a thank-you comment
+  confirming the test (draft ready; not yet posted).
 - bytebeamio/rumqtt reports filed 2026-07-09 (both bugs verified on main @
   e886a78): issue #1056 + PR #1058 (collision-in-clean fix, v4+v5, tests;
   fork branch holovskyi/rumqtt:fix-clean-collision-livelock), issue #1057
