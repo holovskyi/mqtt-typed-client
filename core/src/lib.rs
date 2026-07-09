@@ -123,6 +123,7 @@
 // Core modules
 pub mod client;
 pub mod connection;
+pub mod connection_state;
 pub mod message_meta;
 pub mod message_serializer;
 pub mod routing;
@@ -146,6 +147,8 @@ pub use client::{
 	SubscriptionBuilder,
 };
 pub use connection::MqttConnection;
+// Observable connection lifecycle state
+pub use connection_state::{ConnectionState, DisconnectReason};
 // Per-message metadata
 pub use message_meta::{MessageMeta, Mqtt5Meta};
 // Message serialization
@@ -218,9 +221,10 @@ pub mod prelude {
 	#[cfg(feature = "ron")]
 	pub use crate::RonSerializer;
 	pub use crate::{
-		ClientSettings, ConnectionOptions, MessageSerializer, MqttClient,
-		MqttClientConfig, MqttClientError, MqttConnection, QoS, Result,
-		SessionPolicy, SubscriptionBuilder, Transport, TypedLastWill,
+		ClientSettings, ConnectionOptions, ConnectionState, DisconnectReason,
+		MessageSerializer, MqttClient, MqttClientConfig, MqttClientError,
+		MqttConnection, QoS, Result, SessionPolicy, SubscriptionBuilder,
+		Transport, TypedLastWill,
 	};
 }
 

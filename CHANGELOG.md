@@ -63,12 +63,23 @@ WITHOUT another breaking release. Migration map:
 - Arc-adaptive reserved fields in `#[mqtt_topic]`: `topic` and `meta` accept
   either the bare type (`TopicMatch` / `MessageMeta`, handed to you owned) or the
   shared `Arc<...>` (zero-copy — the recommended default).
+- Connection state observability: `MqttClient::connection_state() ->
+  watch::Receiver<ConnectionState>` reports the lifecycle
+  (`Connected { session_present }` / `Reconnecting { attempt }` /
+  `Disconnected { reason }`, terminal). `ConnectionState`/`DisconnectReason` are
+  own `#[non_exhaustive]` protocol-neutral enums (v5 fields land additively).
 
 ### Fixed
 - Slow-consumer message reordering: a message parked for a slow subscriber could
   be overtaken by a later message delivered directly. Delivery is now strictly
   FIFO per subscriber — at most one in-flight send, with later messages queued
   behind it (buffer → grace → drop policy; drops never reorder).
+- Zombie consumers on terminal event-loop death: when the event loop exited on
+  its own (broker DISCONNECT, or too many consecutive errors) the subscriber
+  channels were never closed, so every consumer parked on `receive().await`
+  forever — cleanup only ran on an explicit `MqttConnection::shutdown()`.
+  Terminal death now runs the same cleanup, so `receive()` yields `None` and
+  consumer loops terminate.
 
 ### Changed (BREAKING)
 - `SubscriptionConfig` is now `#[non_exhaustive]` (MQTT 5 subscribe options

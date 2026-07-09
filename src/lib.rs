@@ -240,6 +240,26 @@ pub mod examples {
 		//! ```
 	}
 
+	pub mod example_010_connection_state {
+		//! # Connection State Observability Example
+		//!
+		//! Watching the connection lifecycle via
+		//! `MqttClient::connection_state()` — a `watch` channel of
+		//! `Connected` / `Reconnecting` / `Disconnected` states. A background
+		//! task logs transitions and reacts to the terminal `Disconnected`.
+		//!
+		//! ## Usage
+		//! ```bash
+		//! cargo run --example 010_connection_state
+		//! ```
+		//!
+		//! ## Source Code
+		//!
+		//! ```ignore
+		#![doc = include_str!("../examples/010_connection_state.rs")]
+		//! ```
+	}
+
 	pub mod example_100_all_serializers_demo {
 		//! # Complete Serializer Test Suite
 		//!

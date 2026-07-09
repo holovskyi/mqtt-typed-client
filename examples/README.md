@@ -25,6 +25,7 @@ Jump directly to any example:
 - **[007_custom_patterns.rs]** - Custom Topic Patterns
 - **[008_modular_example.rs]** - Modular Architecture
 - **[009_message_metadata.rs]** - Message Metadata
+- **[010_connection_state.rs]** - Connection State Observability
 - **[100_all_serializers_demo.rs]** - Complete Serializer Test Suite
 - **[102_multi_serializer_macro.rs]** - Per-Topic Custom Serializers
 
@@ -229,6 +230,19 @@ modular_example/
   `Arc<...>` (zero-copy, recommended for hot paths)
 
 **Topic pattern:** `telemetry/{device}`
+
+### <a id="010_connection_staters---connection-state-observability"></a>**[010_connection_state.rs]** - Connection State Observability
+**What it demonstrates:**
+- `MqttClient::connection_state()`: a `watch` channel of the connection lifecycle
+- The `ConnectionState` enum (`Connected` / `Reconnecting` / `Disconnected`) and
+  the `DisconnectReason` for terminal states
+- A background watcher task that logs transitions and reacts to the terminal
+  `Disconnected` (matching on the `#[non_exhaustive]` reason)
+
+**Usage:**
+```bash
+cargo run --example 010_connection_state
+```
 
 ### <a id="100_all_serializers_demors---complete-serializer-test-suite"></a>**[100_all_serializers_demo.rs]** - Complete Serializer Test Suite
 **What it demonstrates:**
@@ -436,5 +450,6 @@ here. Must be a full absolute GitHub URL (no link transform on docs.rs).
 [007_custom_patterns.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/007_custom_patterns.rs
 [008_modular_example.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/008_modular_example.rs
 [009_message_metadata.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/009_message_metadata.rs
+[010_connection_state.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/010_connection_state.rs
 [100_all_serializers_demo.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/100_all_serializers_demo.rs
 [102_multi_serializer_macro.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/102_multi_serializer_macro.rs

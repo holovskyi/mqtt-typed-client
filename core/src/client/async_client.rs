@@ -5,6 +5,7 @@ use bytes::Bytes;
 use rumqttc::Packet::{self, Disconnect, Publish};
 use rumqttc::{AsyncClient, ConnAck, ConnectReturnCode, EventLoop};
 use rumqttc::{Event::Incoming, Event::Outgoing};
+use tokio::sync::watch;
 use tokio::time;
 use tracing::{debug, error, info, warn};
 
@@ -14,6 +15,7 @@ use super::publisher::MqttPublisher;
 use super::subscriber::MqttSubscriber;
 use crate::client::error::{ConnectReasonCode, ConnectionEstablishmentError};
 use crate::connection::MqttConnection;
+use crate::connection_state::{ConnectionState, DisconnectReason};
 use crate::message_meta::RawMeta;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::subscription_manager::SubscriptionConfig;
@@ -29,6 +31,21 @@ pub struct MqttClient<F> {
 	client: AsyncClient,
 	subscription_manager_handler: SubscriptionManagerHandler<Bytes>,
 	serializer: F,
+	/// Seed handle for the connection-state watch channel. This handle is NEVER
+	/// polled (`changed()`/`borrow_and_update()`), so it stays frozen at the
+	/// initial watch version: every `connection_state()` clone inherits that
+	/// frozen version, so a task subscribing AFTER a terminal transition still
+	/// observes `Disconnected` on its first read. Advancing this handle would
+	/// make late subscribers miss the terminal state.
+	state_rx: watch::Receiver<ConnectionState>,
+}
+
+/// A successfully bootstrapped connection: the polled event loop plus the
+/// `session_present` flag from its CONNACK (used to seed the initial
+/// `ConnectionState::Connected`).
+struct Established {
+	event_loop: EventLoop,
+	session_present: bool,
 }
 
 impl<F> MqttClient<F>
@@ -66,7 +83,10 @@ where F: Default + Clone + Send + Sync + 'static
 
 		let timeout_millis = config.settings.connection_timeout_millis;
 		let connection_timeout = Duration::from_millis(timeout_millis);
-		let connected_event_loop = tokio::time::timeout(
+		let Established {
+			event_loop: connected_event_loop,
+			session_present,
+		} = tokio::time::timeout(
 			connection_timeout,
 			Self::establish_connection(new_event_loop),
 		)
@@ -81,16 +101,23 @@ where F: Default + Clone + Send + Sync + 'static
 			config.settings.unsubscribe_channel_capacity,
 		);
 
+		// Seed the connection-state channel from the bootstrap CONNACK. `connect`
+		// only returns after a successful CONNACK, so `Connected` is always the
+		// correct initial state.
+		let (state_tx, state_rx) =
+			watch::channel(ConnectionState::Connected { session_present });
+
 		// Spawn the event loop in a separate task to handle MQTT messages
 		// The event loop will terminate when it receives a Disconnect packet
 		let handler_clone = handler.clone();
 		let event_loop_handle = tokio::spawn(async move {
-			Self::run(connected_event_loop, handler_clone).await;
+			Self::run(connected_event_loop, handler_clone, state_tx).await;
 		});
 		let fresh_client = Self {
 			client: client.clone(),
 			subscription_manager_handler: handler.clone(),
 			serializer: F::default(),
+			state_rx,
 		};
 		let connection =
 			MqttConnection::new(client, controller, event_loop_handle);
@@ -99,13 +126,19 @@ where F: Default + Clone + Send + Sync + 'static
 
 	async fn establish_connection(
 		mut event_loop: EventLoop,
-	) -> Result<EventLoop, ConnectionEstablishmentError> {
+	) -> Result<Established, ConnectionEstablishmentError> {
 		loop {
 			match event_loop.poll().await {
-				| Ok(Incoming(Packet::ConnAck(ConnAck { code, .. }))) => {
+				| Ok(Incoming(Packet::ConnAck(ConnAck {
+					code,
+					session_present,
+				}))) => {
 					if code == ConnectReturnCode::Success {
 						debug!("MQTT connection established successfully");
-						return Ok(event_loop);
+						return Ok(Established {
+							event_loop,
+							session_present,
+						});
 					} else {
 						debug!(code = ?code, "MQTT connection rejected by broker");
 						return Err(
@@ -133,15 +166,30 @@ where F: Default + Clone + Send + Sync + 'static
 	async fn run(
 		mut event_loop: EventLoop,
 		subscription_manager: SubscriptionManagerHandler<Bytes>,
+		state_tx: watch::Sender<ConnectionState>,
 	) {
+		// Two distinct counters, deliberately NOT merged:
+		//  - `error_count` drives the exponential backoff and the
+		//    `MAX_CONSECUTIVE_ERRORS` termination. It resets only on real
+		//    progress (a delivered message or other notification), NOT on a bare
+		//    reconnect CONNACK — so a broker that keeps accepting then dropping
+		//    the connection still accumulates toward termination with a growing
+		//    backoff, instead of storming reconnects at the 100ms floor forever.
+		//  - `reconnect_attempt` is the observable `Reconnecting { attempt }`
+		//    value: consecutive poll failures since the last successful poll. It
+		//    resets on ANY success (reconnect, message, or notification).
 		let mut error_count = 0;
+		let mut reconnect_attempt = 0;
 		const MAX_CONSECUTIVE_ERRORS: u32 = 10;
 		const INITIAL_RETRY_DELAY: Duration = Duration::from_millis(100);
 		const MAX_RETRY_DELAY: Duration = Duration::from_secs(30);
 
-		// Main processing loop - continues until Disconnect packet is received
-		// No explicit shutdown signal needed - MQTT protocol handles graceful termination
-		loop {
+		// Main processing loop - continues until Disconnect packet is received.
+		// Each `break` yields the terminal `DisconnectReason`, published once
+		// after the loop (single exit point, mirroring the single cleanup trigger).
+		// State publishes are best-effort: `send` only errors once every
+		// `MqttClient` (holding a receiver) is dropped.
+		let reason = loop {
 			match event_loop.poll().await {
 				| Ok(Incoming(Packet::ConnAck(ConnAck {
 					session_present: false,
@@ -151,12 +199,16 @@ where F: Default + Clone + Send + Sync + 'static
 						"MQTT reconnected without session, resubscribing to \
 						 all topics"
 					);
+					reconnect_attempt = 0;
 					let _ = subscription_manager
 						.resubscribe_all()
 						.await
 						.inspect_err(|err| {
 							error!(error = ?err, "Failed to resubscribe to topics");
 						});
+					let _ = state_tx.send(ConnectionState::Connected {
+						session_present: false,
+					});
 				}
 				| Ok(Incoming(Packet::ConnAck(ConnAck {
 					session_present: true,
@@ -166,10 +218,15 @@ where F: Default + Clone + Send + Sync + 'static
 						"MQTT reconnected with session preserved, \
 						 subscriptions maintained by broker"
 					);
+					reconnect_attempt = 0;
+					let _ = state_tx.send(ConnectionState::Connected {
+						session_present: true,
+					});
 				}
 				| Ok(Incoming(Publish(p))) => {
-					// Reset error count on successful message
+					// A delivered message is real progress: reset both counters.
 					error_count = 0;
+					reconnect_attempt = 0;
 
 					debug!(topic = %p.topic, payload_size = p.payload.len(), "Received MQTT message");
 
@@ -188,20 +245,22 @@ where F: Default + Clone + Send + Sync + 'static
 				| Ok(Incoming(Disconnect)) => {
 					info!("Received MQTT Disconnect packet from server");
 					// Server initiated disconnect - terminate gracefully
-					break;
+					break DisconnectReason::BrokerDisconnected {};
 				}
 				| Ok(Outgoing(rumqttc::Outgoing::Disconnect)) => {
 					info!("Sent MQTT Disconnect packet to server");
 					// Client initiated disconnect (via shutdown()) - terminate gracefully
-					break;
+					break DisconnectReason::CleanShutdown;
 				}
 				| Ok(notification) => {
-					// Reset error count on successful notification
+					// A successful poll: reset both counters.
 					error_count = 0;
+					reconnect_attempt = 0;
 					debug!(notification = ?notification, "Received OTHER MQTT notification");
 				}
 				| Err(err) => {
 					error_count += 1;
+					reconnect_attempt += 1;
 					error!(error_count = error_count, error = %err, "MQTT event loop error");
 
 					if error_count >= MAX_CONSECUTIVE_ERRORS {
@@ -211,8 +270,14 @@ where F: Default + Clone + Send + Sync + 'static
 							"Too many consecutive errors, terminating event \
 							 loop"
 						);
-						break;
+						break DisconnectReason::MaxErrorsExceeded {
+							errors: error_count,
+						};
 					}
+
+					let _ = state_tx.send(ConnectionState::Reconnecting {
+						attempt: reconnect_attempt,
+					});
 
 					// Exponential backoff with jitter
 					let delay = INITIAL_RETRY_DELAY
@@ -223,10 +288,15 @@ where F: Default + Clone + Send + Sync + 'static
 					time::sleep(delay).await;
 				}
 			}
-		}
+		};
 		info!("MQTT event loop terminated gracefully");
 		// Event loop naturally terminated after receiving Disconnect packet
 		// This ensures all MQTT messages were properly processed before shutdown
+
+		// Publish the terminal state BEFORE closing the message streams, so a
+		// task watching `connection_state()` can react before its `receive()`
+		// starts yielding `None`.
+		let _ = state_tx.send(ConnectionState::Disconnected { reason });
 
 		// Terminal death (any of the three break paths above) must close the
 		// subscriber channels, otherwise every consumer parks on `receive().await`
@@ -390,7 +460,22 @@ impl<F> MqttClient<F> {
 				.subscription_manager_handler
 				.clone(),
 			serializer,
+			// Serializer-swapped client shares the same connection, so it shares
+			// the same connection-state channel.
+			state_rx: self.state_rx.clone(),
 		}
+	}
+
+	/// Watch the connection lifecycle.
+	///
+	/// Returns an independent [`watch::Receiver`] pre-seeded with the current
+	/// [`ConnectionState`]; all clones observe the same channel. `Disconnected`
+	/// is **terminal** — once observed, `changed()` never fires again, so prefer
+	/// a `loop { rx.changed().await?; if matches!(*rx.borrow(),
+	/// ConnectionState::Disconnected { .. }) { break } }` shape over spinning on
+	/// `changed()`.
+	pub fn connection_state(&self) -> watch::Receiver<ConnectionState> {
+		self.state_rx.clone()
 	}
 }
 
