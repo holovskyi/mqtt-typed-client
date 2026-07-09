@@ -227,6 +227,12 @@ where F: Default + Clone + Send + Sync + 'static
 		info!("MQTT event loop terminated gracefully");
 		// Event loop naturally terminated after receiving Disconnect packet
 		// This ensures all MQTT messages were properly processed before shutdown
+
+		// Terminal death (any of the three break paths above) must close the
+		// subscriber channels, otherwise every consumer parks on `receive().await`
+		// forever. On explicit `MqttConnection::shutdown()` the controller already
+		// tore the actor down, so this is a harmless no-op on a closed channel.
+		subscription_manager.shutdown().await;
 	}
 
 	/// Create typed publisher for specific topic.

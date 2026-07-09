@@ -116,6 +116,11 @@ pub enum Command<T> {
 	Subscribe(Box<SubscribeRequest<T>>),
 	Send(RawMessageType<T>),
 	ResubscribeAll(oneshot::Sender<Result<(), SubscriptionError>>),
+	/// Terminal: break the actor loop and run cleanup. Sent by the event-loop
+	/// task when it dies (any reason), so subscriber channels are closed and
+	/// `receive()` yields `None` instead of hanging — the same cleanup the
+	/// controller's `shutdown_tx` path triggers on `MqttConnection::shutdown()`.
+	Shutdown,
 }
 
 /// Router payload for one subscription: the delivery channel plus the state the
@@ -232,6 +237,10 @@ where T: Send + Sync + 'static
 						},
 						Command::ResubscribeAll(response_tx) => {
 							self.handle_resubscribe_all(response_tx).await;
+						}
+						Command::Shutdown => {
+							info!("SubscriptionManagerActor: Shutdown command received");
+							break;
 						}
 					}
 					} else {
@@ -708,6 +717,16 @@ where T: Send + Sync + 'static
 			.await
 			.map_err(|_| SendError::ChannelClosed)
 	}
+
+	/// Tell the actor to break its loop and run subscription cleanup.
+	///
+	/// Best-effort: a closed command channel means the actor already exited
+	/// (e.g. via the controller's `shutdown_tx` on `MqttConnection::shutdown()`),
+	/// so the send error is expected and ignored. Called by the event-loop task
+	/// on terminal death so consumers get `None` from `receive()`.
+	pub(crate) async fn shutdown(&self) {
+		let _ = self.command_tx.send(Command::Shutdown).await;
+	}
 }
 
 #[cfg(test)]
@@ -741,6 +760,63 @@ mod tests {
 			slow_send_futures: FuturesUnordered::new(),
 			parked: HashMap::new(),
 		}
+	}
+
+	/// Like `make_actor`, but hands back the LIVE command + shutdown senders so a
+	/// test can spawn the real `run()` select loop and drive it through the
+	/// command channel. Keeping `shutdown_tx` alive is essential: a dropped
+	/// oneshot sender makes the `&mut self.shutdown_rx` select arm fire
+	/// immediately, which would exit the loop via the controller path and mask
+	/// the `Command::Shutdown` path under test.
+	fn make_actor_with_channels<T: Send + Sync + 'static>() -> (
+		SubscriptionManagerActor<T>,
+		Sender<Command<T>>,
+		oneshot::Sender<()>,
+	) {
+		let (client, _eventloop) =
+			AsyncClient::new(MqttOptions::new("test", "localhost", 1883), 10);
+		let (command_tx, command_rx) = channel(10);
+		let (unsubscribe_tx, unsubscribe_rx) = channel(10);
+		let (shutdown_tx, shutdown_rx) = oneshot::channel();
+		let actor = SubscriptionManagerActor {
+			topic_router: TopicRouterType::new(),
+			topic_path_cache: LruCache::new(
+				NonZeroUsize::new(10).expect("10 is non-zero"),
+			),
+			client,
+			command_rx,
+			unsubscribe_tx,
+			unsubscribe_rx,
+			shutdown_rx,
+			slow_send_futures: FuturesUnordered::new(),
+			parked: HashMap::new(),
+		};
+		(actor, command_tx, shutdown_tx)
+	}
+
+	// The terminal `Command::Shutdown` must break the actor loop and run cleanup,
+	// closing each subscriber's delivery channel so `receive()` yields `None`
+	// (the zombie-consumer fix). Without cleanup the actor would run forever and
+	// the consumer would park on an empty-but-open channel.
+	#[tokio::test]
+	async fn shutdown_command_closes_subscriber_channels() {
+		let (mut actor, command_tx, _shutdown_tx) =
+			make_actor_with_channels::<String>();
+		let (_id, mut rx, _dropped) =
+			add_sub(&mut actor, 1, Duration::from_secs(5), 10);
+
+		let handle = tokio::spawn(actor.run());
+
+		command_tx
+			.send(Command::Shutdown)
+			.await
+			.expect("actor alive to receive shutdown");
+
+		handle.await.expect("actor task joins after shutdown");
+		assert!(
+			rx.recv().await.is_none(),
+			"delivery channel must be closed after cleanup"
+		);
 	}
 
 	/// Registers a subscription directly on the router and returns its id, the
