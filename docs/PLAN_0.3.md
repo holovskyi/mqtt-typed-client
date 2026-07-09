@@ -41,6 +41,8 @@ pub struct MessageMeta {
     pub qos: QoS,
     pub retain: bool,
     pub dup: bool,
+    pub lagged: u64,             // messages dropped for THIS subscription since
+                                 // the previous delivered one (see §5)
     pub v5: Option<Mqtt5Meta>,   // None on v4; ALWAYS present, never cfg-gated
 }
 
@@ -57,6 +59,12 @@ pub struct Mqtt5Meta { /* user_properties, content_type, correlation_data,
   `"a/{meta}/b"`): explicit compile error + attribute escape hatch. Audit how
   `topic`/`payload` collisions behave today (suspected silent bug).
 - Stop discarding `p.retain/qos/dup` in async_client.rs.
+- `meta.lagged` is the **push** backpressure-drop notification (broadcast-style,
+  see §5): the actor stamps each delivered message with the number dropped for
+  that subscription since the previous delivery, and resets the per-subscription
+  delta. Zero-cost for users who don't declare `meta`; the cumulative
+  `dropped_messages()` counter (shipped in §5) remains the pull path and the
+  only signal at the low-level `Subscriber` (which has no `MessageMeta`).
 
 ### 3. Ack surfacing
 
@@ -81,14 +89,38 @@ pub struct Mqtt5Meta { /* user_properties, content_type, correlation_data,
 - (Stretch) `ReconnectPolicy` as a config value; watch channel is its
   prerequisite either way.
 
-### 5. Backpressure: fix + document only (design doc, no implementation)
+### 5. Backpressure: ordering fix + knobs + drop notification
 
-- Fix the slow-consumer **ordering bug** in
-  core/src/routing/subscription_manager.rs (message B can overtake message A
-  parked in a slow-send task).
-- Make the hardcoded 500 / 100 / 2s knobs configurable via
-  `SubscriptionConfig`; document the buffer→grace→drop policy; expose drop
-  visibility (counter or event).
+- **DONE (2026-07-09):** fixed the slow-consumer **ordering bug** in
+  core/src/routing/subscription_manager.rs (a parked message could be overtaken
+  by a later one) — per-subscriber FIFO, one in-flight slow send, rest queued
+  behind it. Made the hardcoded 500 / 100 / 2s knobs configurable via
+  `SubscriptionConfig` (`channel_capacity` / `max_parked_messages` /
+  `slow_send_timeout` + builder methods). Exposed **pull** drop visibility as
+  `dropped_messages() -> u64` on all subscriber types.
+
+- **Drop-notification design decision (locked):** the drop is *local* — between
+  our routing actor and the user's consumer, NOT the network. We cannot and do
+  not notify the network publisher (no such mechanism in MQTT 3.1.1; MQTT 5
+  Receive Maximum is the closest lever and only bounds the broker for QoS≥1).
+  Who we *can* notify is the local consumer. Two paths:
+  - **pull** — cumulative `dropped_messages()` counter (shipped above); the
+    metrics path and the only signal at the low-level `Subscriber`.
+  - **push** — a `lagged: u64` field on `MessageMeta` (see §2), broadcast-style:
+    each delivered message carries the count dropped since the previous one.
+    Rejected the faithful `broadcast::Lagged` return-type port — it is invasive
+    across the three receive layers, forces lag-handling on every consumer,
+    conflicts with the existing `Result<_, ConversionError>` shape, and only
+    half-addresses QoS≥1 (rumqttc has already auto-acked). The `MessageMeta`
+    field gives the same push semantics zero-cost and rides the metadata
+    machinery §2 builds anyway. **Implementation lands with §2.**
+
+- **QoS≥1 caveat (why this matters):** rumqttc auto-acks incoming QoS≥1 publishes
+  in its event loop *before* they reach our channel, so a backpressure drop
+  silently breaks the delivery guarantee (the broker considers it delivered).
+  Visibility (above) is the 0.3 mitigation; the real fix is manual-acks +
+  Receive Maximum in 0.4.
+
 - Full manual-acks/Receive-Maximum design → separate doc, implementation 0.4+.
 
 ### 6. Backend switch to rumqttc-v4-next (decision: adopt-with-mitigations)
@@ -122,7 +154,8 @@ feature is welcome any time (independent of all of the above).
    `channel_capacity`/`slow_send_timeout`/`max_parked_messages` on
    `SubscriptionConfig` (+ builder methods); `dropped_messages()` on the
    subscriber types. Plan-critic + code-critic passed.
-3. MessageMeta (§2) + macro work. **← NEXT**
+3. MessageMeta (§2) + macro work — includes the `meta.lagged` push
+   drop-notification (backpressure design locked in §5). **← NEXT**
 4. Connection state (§4).
 5. SubAck minimal (§3) on whatever backend is current.
 6. Backend swap (§6) + tracked-notice publish/subscribe API — gated on the
