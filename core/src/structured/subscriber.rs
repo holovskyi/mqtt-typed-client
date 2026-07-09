@@ -101,6 +101,13 @@ where
 			None
 		}
 	}
+
+	/// Number of messages dropped for this subscription because the consumer
+	/// could not keep up. See [`SubscriptionConfig`](crate::SubscriptionConfig)
+	/// for the backpressure policy that governs drops.
+	pub fn dropped_messages(&self) -> u64 {
+		self.inner.dropped_messages()
+	}
 }
 
 /// Extract and parse a topic parameter by wildcard index

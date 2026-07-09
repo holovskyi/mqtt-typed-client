@@ -1,3 +1,6 @@
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use tokio::sync::mpsc::{
 	Receiver, Sender,
 	error::{SendError, TrySendError},
@@ -14,25 +17,38 @@ pub struct Subscriber<T> {
 	receiver: Receiver<MessageType<T>>,
 	unsubscribe_tx: Option<Sender<SubscriptionId>>,
 	id: SubscriptionId,
+	dropped_messages: Arc<AtomicU64>,
 }
 
 impl<T> Subscriber<T> {
 	/// Creates a new subscriber with the given channels.
-	pub fn new(
+	pub(crate) fn new(
 		receiver: Receiver<MessageType<T>>,
 		unsubscribe_tx: Sender<SubscriptionId>,
 		id: SubscriptionId,
+		dropped_messages: Arc<AtomicU64>,
 	) -> Self {
 		Self {
 			receiver,
 			unsubscribe_tx: Some(unsubscribe_tx),
 			id,
+			dropped_messages,
 		}
 	}
 
 	/// Receives the next message from subscription.
 	pub async fn recv(&mut self) -> Option<MessageType<T>> {
 		self.receiver.recv().await
+	}
+
+	/// Number of messages dropped for this subscription because the consumer
+	/// could not keep up (grace-period timeouts and parked-queue overflow).
+	///
+	/// A steadily rising count signals this subscriber is too slow for its
+	/// incoming rate; raise `channel_capacity` / `max_parked_messages` or
+	/// consume faster. See [`SubscriptionConfig`](crate::SubscriptionConfig).
+	pub fn dropped_messages(&self) -> u64 {
+		self.dropped_messages.load(Ordering::Relaxed)
 	}
 
 	/// Unsubscribes from the topic pattern.

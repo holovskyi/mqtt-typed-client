@@ -45,9 +45,8 @@ pub async fn test_main() -> Result<(), Box<dyn std::error::Error>> {
 		.subscribe::<MyData>("hello/typed/+/{id}/some/{hash_content:#}")
 		.await?;
 
-	let config_high_freq = SubscriptionConfig {
-		qos: mqtt_typed_client::QoS::AtLeastOnce,
-	};
+	let mut config_high_freq = SubscriptionConfig::default();
+	config_high_freq.qos = mqtt_typed_client::QoS::AtLeastOnce;
 	let topic = TopicPatternPath::new_from_string(
 		"sensors/+/temperature",
 		CacheStrategy::new(100),

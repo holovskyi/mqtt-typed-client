@@ -49,6 +49,25 @@ WITHOUT another breaking release. Migration map:
   `backend::rumqttc` re-exports the backend crate version-matched.
 - All public error enums are `#[non_exhaustive]`; new `ConnectReasonCode`,
   `BackendError`, `ClientOperationError`, `UrlParseError` types.
+- Configurable per-subscription backpressure: `SubscriptionConfig` gained
+  `channel_capacity`, `slow_send_timeout`, and `max_parked_messages` (were
+  hardcoded 500 / 2s / 100), with matching builder methods
+  `with_channel_capacity` / `with_slow_send_timeout` / `with_max_parked_messages`.
+- Drop visibility: `dropped_messages() -> u64` on the subscriber types reports
+  messages dropped because the consumer could not keep up.
+
+### Fixed
+- Slow-consumer message reordering: a message parked for a slow subscriber could
+  be overtaken by a later message delivered directly. Delivery is now strictly
+  FIFO per subscriber — at most one in-flight send, with later messages queued
+  behind it (buffer → grace → drop policy; drops never reorder).
+
+### Changed (BREAKING)
+- `SubscriptionConfig` is now `#[non_exhaustive]` (MQTT 5 subscribe options
+  arrive additively in 0.4): construct via `SubscriptionConfig::default()` +
+  field assignment or the builder methods, not a struct literal.
+- `Subscriber::new` is now `pub(crate)` (it was never meant to be called
+  directly; subscribers come from `subscribe()`).
 
 ### Changed
 - crates.io `keywords`: replaced the redundant `tokio` with `typed` (identity

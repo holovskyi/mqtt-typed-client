@@ -98,4 +98,10 @@ where
 	pub async fn cancel(self) -> Result<(), SendError<SubscriptionId>> {
 		self.subscriber.unsubscribe().await
 	}
+
+	/// Number of messages dropped for this subscription because the consumer
+	/// could not keep up. See [`Subscriber::dropped_messages`].
+	pub fn dropped_messages(&self) -> u64 {
+		self.subscriber.dropped_messages()
+	}
 }

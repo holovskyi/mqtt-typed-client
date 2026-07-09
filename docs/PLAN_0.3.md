@@ -117,8 +117,12 @@ feature is welcome any time (independent of all of the above).
 
 1. De-leak API (§1) — **DONE 2026-07-09** (see PLAN_0.3_DELEAK.md for the
    commit list and design record).
-2. Ordering-bug fix + backpressure knobs (§5) — self-contained. **← NEXT**
-3. MessageMeta (§2) + macro work.
+2. Ordering-bug fix + backpressure knobs (§5) — **DONE 2026-07-09**.
+   Per-subscriber FIFO (one in-flight slow send, rest queued behind it);
+   `channel_capacity`/`slow_send_timeout`/`max_parked_messages` on
+   `SubscriptionConfig` (+ builder methods); `dropped_messages()` on the
+   subscriber types. Plan-critic + code-critic passed.
+3. MessageMeta (§2) + macro work. **← NEXT**
 4. Connection state (§4).
 5. SubAck minimal (§3) on whatever backend is current.
 6. Backend swap (§6) + tracked-notice publish/subscribe API — gated on the

@@ -1,4 +1,6 @@
 use std::marker::PhantomData;
+use std::num::NonZeroUsize;
+use std::time::Duration;
 
 use arcstr::ArcStr;
 
@@ -95,11 +97,32 @@ where F: Clone
 	}
 
 	/// Set QoS level
-	pub fn with_qos(self, qos: crate::QoS) -> Self {
-		Self {
-			config: SubscriptionConfig { qos },
-			..self
-		}
+	pub fn with_qos(mut self, qos: crate::QoS) -> Self {
+		self.config.qos = qos;
+		self
+	}
+
+	/// Set the subscriber's delivery-channel capacity (buffered messages before
+	/// backpressure kicks in). See [`SubscriptionConfig`] for the full
+	/// buffer → grace → drop policy. Default: 500.
+	pub fn with_channel_capacity(mut self, capacity: NonZeroUsize) -> Self {
+		self.config.channel_capacity = capacity;
+		self
+	}
+
+	/// Set how long a message may wait for a slow consumer before it is dropped
+	/// (the grace period). See [`SubscriptionConfig`]. Default: 2s.
+	pub fn with_slow_send_timeout(mut self, timeout: Duration) -> Self {
+		self.config.slow_send_timeout = timeout;
+		self
+	}
+
+	/// Set how many messages may queue behind an in-flight slow send before the
+	/// newest incoming message is dropped. See [`SubscriptionConfig`].
+	/// Default: 100.
+	pub fn with_max_parked_messages(mut self, max: usize) -> Self {
+		self.config.max_parked_messages = max;
+		self
 	}
 
 	/// Override the default topic pattern with a custom one.
