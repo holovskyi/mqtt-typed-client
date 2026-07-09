@@ -31,6 +31,21 @@
 
 ## Architecture Improvements
 
+- [ ] **Carry the concrete topic into `MessageConversionError`** (post-0.3, DX)
+  On a wildcard/pattern subscription, a payload that fails to deserialize at the
+  structured (macro) layer produces a `MessageConversionError` with no topic —
+  so the user knows the *pattern* (`sensors/+/data`) but not the *concrete*
+  topic (`sensors/broken/data`) the bad message arrived on. The concrete
+  `Arc<TopicMatch>` IS available at the failure site (the mid-level
+  `MqttSubscriber::receive` even exposes it as `ReceiveEvent::DecodeFailed((topic,
+  err))`); the structured layer just drops it when wrapping into
+  `MessageConversionError::PayloadDeserializationError`. Fix properly = thread
+  the topic through ALL `MessageConversionError` variants, including the
+  `TopicParameterMissing`/`TopicParameterParseError` ones constructed inside the
+  macro-generated `from_mqtt_message` — so it touches the `macros/` proc-macro
+  codegen, not just the enum. Deliberately deferred from 0.3 §2b as a
+  self-contained change; workaround today is the mid-level `client.subscribe::<T>`.
+
 - [ ] **Ergonomic consumption APIs on top of the pull loop** (post-0.3)  
   The core primitive stays the pull loop (`receive().await`) — it composes with
   `select!`, cancellation, backpressure, and stack-local state. On top of it,
