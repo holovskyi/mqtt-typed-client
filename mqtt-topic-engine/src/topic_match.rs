@@ -86,6 +86,10 @@ pub enum TopicMatchError {
 /// Holds the matched topic plus the ranges of segments captured by the
 /// pattern's wildcards, accessible by position ([`get_param`](Self::get_param))
 /// or by name ([`get_named_param`](Self::get_named_param)).
+///
+/// `Clone` is cheap: an `Arc` bump for the shared path plus two small inline
+/// vectors of segment ranges (no re-parsing, no string copies).
+#[derive(Clone)]
 pub struct TopicMatch {
 	topic: Arc<TopicPath>,
 	params: SmallVec<[Range<usize>; 3]>,
