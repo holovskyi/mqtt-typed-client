@@ -62,7 +62,7 @@ let (client, connection) = MqttClient::<BincodeSerializer>::connect(
 **Advantages:**
 - ✅ URL-based configuration
 - ✅ Automatic event loop management
-- ✅ Built-in error handling and reconnection
+- ✅ Automatic reconnect with resubscribe (happy path)
 - ✅ Graceful resource cleanup
 
 ## Publishing Messages

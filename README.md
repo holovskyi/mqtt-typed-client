@@ -44,7 +44,7 @@ client.sensor_topic().publish("kitchen", 42, &reading).await?;
 - **Typed parameters** — `{device_id}` can be `u32`, `Uuid`, or your own enum, not just `String`
 - **Automatic routing** — one broker stream fanned out to typed subscribers, no manual `if topic.starts_with(...)`
 - **Pluggable serialization** — Bincode, JSON, MessagePack, CBOR and more behind one trait
-- **Reconnect that keeps subscriptions** — resubscribe on reconnect, graceful shutdown, LWT
+- **Reconnect that keeps subscriptions** — automatic resubscribe on reconnect (happy path), graceful shutdown, LWT
 
 **MSRV**: Rust 1.85.1 (driven by default `bincode` serializer; can be lowered with alternative serializers)
 
