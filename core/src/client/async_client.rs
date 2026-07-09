@@ -313,7 +313,7 @@ impl<F> MqttClient<F> {
 	///
 	/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 	/// // Connect with default Bincode serializer
-	/// let (client, connection) = MqttClient::<BincodeSerializer>::connect("mqtt://localhost").await?;
+	/// let (client, connection) = MqttClient::<BincodeSerializer>::connect("mqtt://localhost?client_id=doc_client").await?;
 	///
 	/// // Use JSON serializer for legacy topics
 	/// let json_client = client.clone_with_serializer::<JsonSerializer>();
@@ -353,7 +353,7 @@ impl<F> MqttClient<F> {
 	/// struct Data { value: f64 }
 	///
 	/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-	/// let (client, connection) = MqttClient::<BincodeSerializer>::connect("mqtt://localhost").await?;
+	/// let (client, connection) = MqttClient::<BincodeSerializer>::connect("mqtt://localhost?client_id=doc_client").await?;
 	///
 	/// // Create custom Bincode configuration
 	/// let custom_config = bincode::config::standard()

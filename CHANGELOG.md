@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed — public API de-leak (BREAKING)
 
-The public API no longer exposes `rumqttc` types anywhere. This is the
+The public API no longer exposes `rumqttc` types, with three documented
+exemptions: the semver-exempt `backend` module (`unstable-backend-api`
+feature), the `rustls` re-export (TLS features), and the engine `QoS`'s
+optional `to_rumqttc()`/`From<rumqttc::QoS>` conversions. This is the
 prerequisite for the planned backend switch and MQTT 5 support (0.4) landing
 WITHOUT another breaking release. Migration map:
 
@@ -23,7 +26,9 @@ WITHOUT another breaking release. Migration map:
 | `.set_transport(Transport::tls_with_config(c))` | `config.connection.transport = Transport::Tls(c.into())` |
 | `.set_inflight(..)`, `.set_max_packet_size(..)`, other backend knobs | `backend_tweak(..)` behind the `unstable-backend-api` feature (SEMVER-EXEMPT) |
 | `from_url` → `rumqttc::OptionError` | `from_url` → `UrlParseError` (own type) |
-| URL params `inflight_num`, `request_channel_capacity_num`, `max_request_batch_num`, `pending_throttle_usecs`, `max_*_packet_size_bytes`, `conn_timeout_secs` | rejected with an explicit error pointing to the escape hatch |
+| URL params `inflight_num`, `request_channel_capacity_num`, `max_request_batch_num`, `pending_throttle_usecs`, `max_*_packet_size_bytes` | rejected with an explicit error pointing to the escape hatch |
+| URL param `conn_timeout_secs` (never actually accepted by rumqttc's grammar) | rejected with a pointer to `ClientSettings.connection_timeout_millis` |
+| native TLS via `set_transport(Transport::Tls(TlsConfiguration::Native))` | not spelled by `Transport::Tls` in 0.3 (rustls only); enable `tls-native` + `unstable-backend-api`, keep `Transport::Tcp` and set the backend transport in `backend_tweak` |
 | `BrokerRejected { code: rumqttc::ConnectReturnCode }` | `BrokerRejected { code: ConnectReasonCode }` (v5-superset enum) |
 | `MqttClientError::ClientOperation(rumqttc::ClientError)` | `ClientOperation(ClientOperationError)` |
 | `Network(Box<rumqttc::ConnectionError>)` | `Network(BackendError)` (opaque, keeps Display + source chain) |

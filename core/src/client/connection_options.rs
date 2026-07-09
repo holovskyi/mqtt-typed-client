@@ -78,6 +78,12 @@ pub enum ProtocolVersion {
 pub enum TlsConfig {
 	/// Backend defaults: rustls with the platform's native root certificates.
 	/// Requires the `tls-rustls` (or `tls-rustls-no-provider`) feature.
+	///
+	/// Caveat: building the default config happens inside the backend and can
+	/// panic at connect time if the platform certificate store is unreadable,
+	/// or (under `tls-rustls-no-provider`) if no process-level rustls crypto
+	/// provider is installed. Supply an explicit [`TlsConfig::Rustls`] to
+	/// stay in full control.
 	#[default]
 	Default,
 	/// A caller-supplied rustls `ClientConfig` (custom roots, client auth, …).
@@ -266,7 +272,6 @@ impl ConnectionOptions {
 			"pending_throttle_usecs",
 			"max_incoming_packet_size_bytes",
 			"max_outgoing_packet_size_bytes",
-			"conn_timeout_secs",
 		];
 
 		let url = url::Url::parse(url)
@@ -339,6 +344,16 @@ impl ConnectionOptions {
 							));
 						}
 					};
+				}
+				| "conn_timeout_secs" => {
+					// Not a backend option at all — the connect timeout lives
+					// in ClientSettings, which a URL cannot carry.
+					return Err(UrlParseError::InvalidParam {
+						name: "conn_timeout_secs".into(),
+						reason: "set ClientSettings.connection_timeout_millis \
+						         instead"
+							.into(),
+					});
 				}
 				| moved if MOVED_TO_ESCAPE_HATCH.contains(&moved) => {
 					return Err(UrlParseError::UnsupportedParam(
@@ -450,13 +465,6 @@ impl ConnectionOptions {
 	}
 
 	fn backend_transport(&self) -> Result<rumqttc::Transport, MqttClientError> {
-		fn missing_feature(what: &str) -> MqttClientError {
-			MqttClientError::ConfigurationValue(format!(
-				"{what} support is not compiled in — enable the corresponding \
-				 feature on mqtt-typed-client"
-			))
-		}
-
 		match &self.transport {
 			| Transport::Tcp => Ok(rumqttc::Transport::Tcp),
 			| Transport::Tls(tls) => {
@@ -473,7 +481,7 @@ impl ConnectionOptions {
 				)))]
 				{
 					let _ = tls;
-					Err(missing_feature("TLS (`tls-rustls`)"))
+					Err(Self::tls_missing_error())
 				}
 			}
 			| Transport::Ws => {
@@ -483,7 +491,11 @@ impl ConnectionOptions {
 				}
 				#[cfg(not(feature = "websocket"))]
 				{
-					Err(missing_feature("WebSocket (`websocket`)"))
+					Err(MqttClientError::ConfigurationValue(
+						"WebSocket support is not compiled in — enable the \
+						 `websocket` feature on mqtt-typed-client"
+							.into(),
+					))
 				}
 			}
 			| Transport::Wss(tls) => {
@@ -497,20 +509,53 @@ impl ConnectionOptions {
 				{
 					Ok(rumqttc::Transport::Wss(Self::rustls_configuration(tls)))
 				}
-				#[cfg(not(all(
+				#[cfg(all(
 					feature = "websocket",
-					any(
+					not(any(
 						feature = "tls-rustls",
 						feature = "tls-rustls-no-provider"
-					)
-				)))]
+					))
+				))]
 				{
 					let _ = tls;
-					Err(missing_feature(
-						"TLS over WebSocket (`websocket` + `tls-rustls`)",
+					Err(Self::tls_missing_error())
+				}
+				#[cfg(not(feature = "websocket"))]
+				{
+					let _ = tls;
+					Err(MqttClientError::ConfigurationValue(
+						"TLS over WebSocket needs the `websocket` feature \
+						 plus `tls-rustls` on mqtt-typed-client"
+							.into(),
 					))
 				}
 			}
+		}
+	}
+
+	#[cfg(not(any(
+		feature = "tls-rustls",
+		feature = "tls-rustls-no-provider"
+	)))]
+	fn tls_missing_error() -> MqttClientError {
+		#[cfg(feature = "tls-native")]
+		{
+			MqttClientError::ConfigurationValue(
+				"`tls-native` compiles native-tls into the backend, but \
+				 `Transport::Tls` maps to rustls only in 0.3 — either enable \
+				 `tls-rustls`, or reach native TLS via the \
+				 `unstable-backend-api` escape hatch (keep Transport::Tcp and \
+				 set the backend transport in backend_tweak)"
+					.into(),
+			)
+		}
+		#[cfg(not(feature = "tls-native"))]
+		{
+			MqttClientError::ConfigurationValue(
+				"TLS support is not compiled in — enable the `tls-rustls` \
+				 feature on mqtt-typed-client"
+					.into(),
+			)
 		}
 	}
 
