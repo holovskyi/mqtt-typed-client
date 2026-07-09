@@ -14,6 +14,7 @@ use super::publisher::MqttPublisher;
 use super::subscriber::MqttSubscriber;
 use crate::client::error::{ConnectReasonCode, ConnectionEstablishmentError};
 use crate::connection::MqttConnection;
+use crate::message_meta::RawMeta;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::subscription_manager::SubscriptionConfig;
 use crate::routing::{SubscriptionManagerActor, SubscriptionManagerHandler};
@@ -172,9 +173,13 @@ where F: Default + Clone + Send + Sync + 'static
 
 					debug!(topic = %p.topic, payload_size = p.payload.len(), "Received MQTT message");
 
-					//let topic = Topic::from(p.topic);
+					let meta = RawMeta {
+						qos: p.qos.into(),
+						retain: p.retain,
+						dup: p.dup,
+					};
 					if let Err(err) = subscription_manager
-						.dispatch_incoming_message(p.topic, p.payload)
+						.dispatch_incoming_message(p.topic, meta, p.payload)
 						.await
 					{
 						error!(error = ?err, "Failed to send data to subscription manager");

@@ -127,11 +127,19 @@ impl CodeGenerator {
 		let param_extractions = self.generate_subscriber_param_extractions();
 		let field_assignments = self.generate_subscriber_field_assignments();
 		let payload_type = self.get_payload_type_token();
+		// Bind `meta` only when the struct declares a `meta` field; otherwise
+		// take it as `_meta` to avoid an unused-variable warning.
+		let meta_param = if self.context.has_meta_field {
+			quote! { meta }
+		} else {
+			quote! { _meta }
+		};
 
 		Ok(quote! {
 			impl<DE> ::mqtt_typed_client_core::FromMqttMessage<#payload_type, DE> for #struct_name {
 				fn from_mqtt_message(
 					topic: ::std::sync::Arc<::mqtt_typed_client_core::topic::topic_match::TopicMatch>,
+					#meta_param: ::std::sync::Arc<::mqtt_typed_client_core::MessageMeta>,
 					payload: #payload_type,
 				) -> ::std::result::Result<Self, ::mqtt_typed_client_core::MessageConversionError<DE>> {
 					#(#param_extractions)*
@@ -549,9 +557,29 @@ impl CodeGenerator {
 			assignments.push(quote! { payload, });
 		}
 
-		// Add topic field if present
+		// Add topic field if present. Arc-adaptive: a bare `TopicMatch` field is
+		// filled via `Arc::unwrap_or_clone` (free when this subscriber is alone,
+		// a deep clone otherwise); an `Arc<TopicMatch>` field moves the shared
+		// Arc in as-is.
 		if self.context.has_topic_field {
-			assignments.push(quote! { topic, });
+			if self.context.topic_field_owned {
+				assignments.push(quote! {
+					topic: ::std::sync::Arc::unwrap_or_clone(topic),
+				});
+			} else {
+				assignments.push(quote! { topic, });
+			}
+		}
+
+		// Add meta field if present (same Arc-adaptive rule as `topic`).
+		if self.context.has_meta_field {
+			if self.context.meta_field_owned {
+				assignments.push(quote! {
+					meta: ::std::sync::Arc::unwrap_or_clone(meta),
+				});
+			} else {
+				assignments.push(quote! { meta, });
+			}
 		}
 
 		assignments

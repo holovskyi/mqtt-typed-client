@@ -220,6 +220,26 @@ pub mod examples {
 		//! ```
 	}
 
+	pub mod example_009_message_metadata {
+		//! # Message Metadata Example
+		//!
+		//! Reading per-message metadata (QoS, retain, dup) and the concrete
+		//! matched topic via the optional `meta` / `topic` fields on a
+		//! `#[mqtt_topic]` struct, including the Arc-adaptive owned vs shared
+		//! field forms.
+		//!
+		//! ## Usage
+		//! ```bash
+		//! cargo run --example 009_message_metadata
+		//! ```
+		//!
+		//! ## Source Code
+		//!
+		//! ```ignore
+		#![doc = include_str!("../examples/009_message_metadata.rs")]
+		//! ```
+	}
+
 	pub mod example_100_all_serializers_demo {
 		//! # Complete Serializer Test Suite
 		//!

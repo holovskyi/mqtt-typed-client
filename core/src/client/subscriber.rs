@@ -6,24 +6,49 @@ use tokio::sync::mpsc::error::SendError;
 use tracing::warn;
 
 use crate::ReceiveEvent;
+use crate::message_meta::MessageMeta;
 use crate::message_serializer::MessageSerializer;
 use crate::routing::Subscriber;
 use crate::topic::SubscriptionId;
 use crate::topic::topic_match::TopicMatch;
 
+/// A successfully delivered message: its decoded payload plus the context that
+/// arrived with it. `topic` and `meta` are shared (`Arc`) across every
+/// subscriber of the same publish; `payload` is this subscriber's own decoded
+/// value.
+#[derive(Debug)]
+pub struct IncomingMessage<T> {
+	/// The concrete topic the message arrived on (wildcards resolved).
+	pub topic: Arc<TopicMatch>,
+	/// Per-message protocol metadata (QoS, retain, dup, …).
+	pub meta: Arc<MessageMeta>,
+	/// The decoded payload.
+	pub payload: T,
+}
+
+/// A message arrived but its payload could not be deserialized. Carries the same
+/// context as [`IncomingMessage`] so a handler can still see which topic (and
+/// with what metadata) failed. The stream continues after this event.
+#[derive(Debug)]
+pub struct DecodeFailure<E> {
+	/// The concrete topic the undecodable message arrived on.
+	pub topic: Arc<TopicMatch>,
+	/// Per-message protocol metadata of the undecodable message.
+	pub meta: Arc<MessageMeta>,
+	/// The deserialization error.
+	pub error: E,
+}
+
 /// A stream event from a typed subscriber (the value yielded by
 /// [`MqttSubscriber::receive`]). Named an *event*, not a message, because it may
 /// also be a [`ReceiveEvent::DecodeFailed`] or [`ReceiveEvent::Lagged`] notice.
 ///
-/// `ReceiveEvent::Message` carries `(topic, value)`; `DecodeFailed` carries
-/// `(topic, error)` so the topic is available even when the payload could not
-/// be deserialized.
+/// `ReceiveEvent::Message` carries an [`IncomingMessage`]; `DecodeFailed`
+/// carries a [`DecodeFailure`] so the topic and metadata are available even when
+/// the payload could not be deserialized.
 pub type SubscriberEvent<T, F> = ReceiveEvent<
-	(Arc<TopicMatch>, T),
-	(
-		Arc<TopicMatch>,
-		<F as MessageSerializer<T>>::DeserializeError,
-	),
+	IncomingMessage<T>,
+	DecodeFailure<<F as MessageSerializer<T>>::DeserializeError>,
 >;
 
 /// Typed MQTT subscriber for topic patterns.
@@ -57,7 +82,7 @@ where
 	pub async fn receive(&mut self) -> Option<SubscriberEvent<T, F>> {
 		loop {
 			match self.subscriber.recv().await? {
-				| ReceiveEvent::Message((topic, bytes)) => {
+				| ReceiveEvent::Message((topic, meta, bytes)) => {
 					// TODO: Flexible mechanism for handling empty payloads (retain clear events)
 					//
 					// Proposed approach:
@@ -86,7 +111,11 @@ where
 					}
 
 					return Some(match self.serializer.deserialize(&bytes) {
-						| Ok(value) => ReceiveEvent::Message((topic, value)),
+						| Ok(value) => ReceiveEvent::Message(IncomingMessage {
+							topic,
+							meta,
+							payload: value,
+						}),
 						| Err(err) => {
 							warn!(
 								topic = %topic.topic_path(),
@@ -94,7 +123,11 @@ where
 								error = ?err,
 								"Failed to deserialize MQTT message payload"
 							);
-							ReceiveEvent::DecodeFailed((topic, err))
+							ReceiveEvent::DecodeFailed(DecodeFailure {
+								topic,
+								meta,
+								error: err,
+							})
 						}
 					});
 				}

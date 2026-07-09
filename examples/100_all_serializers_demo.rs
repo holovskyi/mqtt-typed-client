@@ -89,16 +89,17 @@ where
 	// Wait for message and verify deserialization
 	println!("   Waiting for message...");
 	match subscriber.receive().await {
-		| Some(ReceiveEvent::Message((topic_match, received_message))) => {
+		| Some(ReceiveEvent::Message(msg)) => {
 			println!(
 				"   Received from {}: {} (id: {})",
-				topic_match.topic_path(),
-				received_message.text,
-				received_message.id
+				msg.topic.topic_path(),
+				msg.payload.text,
+				msg.payload.id
 			);
 			println!("{name} (serialize + deserialize successful)");
 		}
-		| Some(ReceiveEvent::DecodeFailed((_topic, e))) => {
+		| Some(ReceiveEvent::DecodeFailed(f)) => {
+			let e = f.error;
 			println!("{name} (deserialization error: {e:?})");
 			return Err(format!("Deserialization failed: {e:?}").into());
 		}

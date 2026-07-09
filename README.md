@@ -291,11 +291,12 @@ async fn main() -> Result<()> {
     publisher.publish(&data).await?;
 
     match subscriber.receive().await {
-        Some(ReceiveEvent::Message((topic, sensor_data))) => {
-            println!("Received from {}: {:?}", topic.topic_path(), sensor_data)
+        Some(ReceiveEvent::Message(msg)) => {
+            println!("Received from {} (qos {:?}): {:?}",
+                msg.topic.topic_path(), msg.meta.qos, msg.payload)
         }
-        Some(ReceiveEvent::DecodeFailed((topic, e))) => {
-            eprintln!("Deserialization error at {}: {:?}", topic.topic_path(), e)
+        Some(ReceiveEvent::DecodeFailed(f)) => {
+            eprintln!("Deserialization error at {}: {:?}", f.topic.topic_path(), f.error)
         }
         Some(ReceiveEvent::Lagged { missed }) => {
             eprintln!("Lagged: {} messages dropped", missed)

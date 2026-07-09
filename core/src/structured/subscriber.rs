@@ -5,8 +5,8 @@ use std::{marker::PhantomData, sync::Arc};
 use thiserror::Error;
 
 use crate::{
-	MessageSerializer, MqttSubscriber, ReceiveEvent,
-	topic::topic_match::TopicMatch,
+	DecodeFailure, IncomingMessage, MessageMeta, MessageSerializer,
+	MqttSubscriber, ReceiveEvent, topic::topic_match::TopicMatch,
 };
 // use {
 // 	BincodeSerializer, MessageSerializer, MqttClient, TypedSubscriber,
@@ -45,9 +45,10 @@ pub enum MessageConversionError<DE> {
 ///
 /// Typically implemented via `#[mqtt_topic]` macro for automatic topic parameter extraction.
 pub trait FromMqttMessage<T, DE> {
-	/// Convert MQTT topic and payload into a structured message
+	/// Convert an MQTT topic, its metadata, and payload into a structured message
 	fn from_mqtt_message(
 		topic: Arc<TopicMatch>,
+		meta: Arc<MessageMeta>,
 		payload: T,
 	) -> Result<Self, MessageConversionError<DE>>
 	where
@@ -92,15 +93,19 @@ where
 		>,
 	> {
 		match self.inner.receive().await? {
-			| ReceiveEvent::Message((topic_match, payload)) => Some(
-				match MessageType::from_mqtt_message(topic_match, payload) {
+			| ReceiveEvent::Message(IncomingMessage {
+				topic,
+				meta,
+				payload,
+			}) => Some(
+				match MessageType::from_mqtt_message(topic, meta, payload) {
 					| Ok(message) => ReceiveEvent::Message(message),
 					| Err(err) => ReceiveEvent::DecodeFailed(err),
 				},
 			),
-			| ReceiveEvent::DecodeFailed((_topic, err)) => {
+			| ReceiveEvent::DecodeFailed(DecodeFailure { error, .. }) => {
 				Some(ReceiveEvent::DecodeFailed(
-					MessageConversionError::PayloadDeserializationError(err),
+					MessageConversionError::PayloadDeserializationError(error),
 				))
 			}
 			| ReceiveEvent::Lagged { missed } => {

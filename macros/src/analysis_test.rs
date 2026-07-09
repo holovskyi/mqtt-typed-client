@@ -342,8 +342,9 @@ fn test_topic_field_validation() {
 		},
 		TypeTestCase {
 			name: "topic_match_without_arc",
+			// Arc-adaptive: a bare `TopicMatch` is accepted (owned form).
 			type_tokens: quote!(TopicMatch),
-			should_be_valid: false,
+			should_be_valid: true,
 		},
 		TypeTestCase {
 			name: "vec_with_topic_match",
@@ -386,9 +387,7 @@ fn test_topic_field_validation() {
 			);
 			let error = result.unwrap_err();
 			assert!(
-				error
-					.to_string()
-					.contains("must be of type Arc<TopicMatch>"),
+				error.to_string().contains("must be of type `TopicMatch`"),
 				"Test '{}': wrong error message: {}",
 				test_case.name,
 				error
@@ -565,7 +564,43 @@ fn test_comprehensive_analysis() {
 				topic: String,
 			},
 			expected_result: AnalysisResult::Error {
-				error_contains: "must be of type Arc<TopicMatch>",
+				error_contains: "must be of type `TopicMatch`",
+			},
+		},
+		AnalysisTestCase {
+			name: "reserved_wildcard_payload_collides",
+			pattern: "data/{payload}",
+			struct_fields: quote! {
+				payload: String,
+			},
+			expected_result: AnalysisResult::Error {
+				error_contains: "reserved field name",
+			},
+		},
+		AnalysisTestCase {
+			name: "reserved_wildcard_meta_collides",
+			pattern: "data/{meta}",
+			struct_fields: quote! {
+				payload: String,
+				meta: MessageMeta,
+			},
+			expected_result: AnalysisResult::Error {
+				error_contains: "reserved field name",
+			},
+		},
+		AnalysisTestCase {
+			// A reserved NAME used as a wildcard without a same-named field is a
+			// plain topic parameter and must keep compiling (narrow scope).
+			name: "reserved_wildcard_without_field_ok",
+			pattern: "logs/{topic}",
+			struct_fields: quote! {
+				payload: String,
+			},
+			expected_result: AnalysisResult::Success {
+				param_count: 1,
+				has_payload: true,
+				has_topic_field: false,
+				param_names: vec!["topic"],
 			},
 		},
 	];
@@ -573,6 +608,57 @@ fn test_comprehensive_analysis() {
 	for test_case in test_cases {
 		run_analysis_test(test_case);
 	}
+}
+
+#[test]
+fn test_meta_field_arc_adaptive() {
+	let pattern = create_topic_pattern("sensors/{id}/data");
+
+	let bare: syn::DeriveInput = parse_quote! {
+		struct S { id: u32, payload: String, meta: MessageMeta }
+	};
+	let ctx = StructAnalysisContext::analyze(&bare, &pattern).unwrap();
+	assert!(ctx.has_meta_field);
+	assert!(ctx.meta_field_owned, "bare MessageMeta is owned");
+
+	let shared: syn::DeriveInput = parse_quote! {
+		struct S { id: u32, payload: String, meta: Arc<MessageMeta> }
+	};
+	let ctx = StructAnalysisContext::analyze(&shared, &pattern).unwrap();
+	assert!(ctx.has_meta_field);
+	assert!(!ctx.meta_field_owned, "Arc<MessageMeta> is shared");
+}
+
+#[test]
+fn test_topic_field_arc_adaptive() {
+	let pattern = create_topic_pattern("sensors/+/data");
+
+	let bare: syn::DeriveInput = parse_quote! {
+		struct S { topic: TopicMatch }
+	};
+	let ctx = StructAnalysisContext::analyze(&bare, &pattern).unwrap();
+	assert!(ctx.has_topic_field);
+	assert!(ctx.topic_field_owned, "bare TopicMatch is owned");
+
+	let shared: syn::DeriveInput = parse_quote! {
+		struct S { topic: Arc<TopicMatch> }
+	};
+	let ctx = StructAnalysisContext::analyze(&shared, &pattern).unwrap();
+	assert!(ctx.has_topic_field);
+	assert!(!ctx.topic_field_owned, "Arc<TopicMatch> is shared");
+}
+
+#[test]
+fn test_invalid_meta_field_type() {
+	let pattern = create_topic_pattern("sensors/+/data");
+	let bad: syn::DeriveInput = parse_quote! {
+		struct S { meta: String }
+	};
+	let err = StructAnalysisContext::analyze(&bad, &pattern).unwrap_err();
+	assert!(
+		err.to_string().contains("must be of type `MessageMeta`"),
+		"unexpected error: {err}"
+	);
 }
 
 #[test]

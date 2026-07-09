@@ -7,6 +7,11 @@
 use mqtt_typed_client_core::topic::topic_pattern_path::TopicPatternPath;
 use syn::{Data, DataStruct, Fields};
 
+/// Field names the macro fills automatically. They are never treated as topic
+/// parameters, and using one as a *named* wildcard while also declaring it as a
+/// field is a hard error (see `reject_reserved_wildcard`).
+pub(crate) const RESERVED_FIELD_NAMES: [&str; 3] = ["payload", "topic", "meta"];
+
 /// Represents a topic parameter with its name and position in the wildcard sequence
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TopicParam {
@@ -100,6 +105,9 @@ impl StructAnalysisContext {
 		Self {
 			payload_type,
 			has_topic_field,
+			topic_field_owned: false,
+			has_meta_field: false,
+			meta_field_owned: false,
 			topic_params,
 		}
 	}
@@ -128,8 +136,16 @@ impl StructAnalysisContext {
 pub struct StructAnalysisContext {
 	/// Type of the payload field, if present
 	pub payload_type: Option<syn::Type>,
-	/// Whether the struct has a topic field of type Arc<TopicMatch>
+	/// Whether the struct has a `topic` field (`TopicMatch` or `Arc<TopicMatch>`)
 	pub has_topic_field: bool,
+	/// When `has_topic_field`: the field was declared as the bare `TopicMatch`
+	/// (owned — codegen emits `Arc::unwrap_or_clone`) rather than
+	/// `Arc<TopicMatch>` (shared — the `Arc` is moved in as-is).
+	pub topic_field_owned: bool,
+	/// Whether the struct has a `meta` field (`MessageMeta` or `Arc<MessageMeta>`)
+	pub has_meta_field: bool,
+	/// As `topic_field_owned`, for the `meta` field.
+	pub meta_field_owned: bool,
 	/// Topic parameters that have corresponding struct fields
 	pub topic_params: Vec<TopicParam>,
 }
@@ -146,17 +162,47 @@ impl StructAnalysisContext {
 
 		let mut payload_type = None;
 		let mut has_topic_field = false;
+		let mut topic_field_owned = false;
+		let mut has_meta_field = false;
+		let mut meta_field_owned = false;
 		// Process each struct field and categorize it
 		for field in struct_fields {
 			let field_name = field.ident.as_ref().unwrap().to_string();
 
 			match field_name.as_str() {
 				| "payload" => {
+					Self::reject_reserved_wildcard(
+						topic_pattern,
+						"payload",
+						input_struct,
+					)?;
 					payload_type = Some(field.ty.clone());
 				}
 				| "topic" => {
-					Self::validate_topic_field_type(&field.ty)?;
+					Self::reject_reserved_wildcard(
+						topic_pattern,
+						"topic",
+						input_struct,
+					)?;
+					topic_field_owned = Self::validate_adaptive_field(
+						&field.ty,
+						"TopicMatch",
+						"topic",
+					)?;
 					has_topic_field = true;
+				}
+				| "meta" => {
+					Self::reject_reserved_wildcard(
+						topic_pattern,
+						"meta",
+						input_struct,
+					)?;
+					meta_field_owned = Self::validate_adaptive_field(
+						&field.ty,
+						"MessageMeta",
+						"meta",
+					)?;
+					has_meta_field = true;
 				}
 				| _ => {
 					// Check if this field corresponds to a topic parameter
@@ -185,7 +231,7 @@ impl StructAnalysisContext {
 				input_struct,
 				format!(
 					"Unknown fields: [{}]. Allowed fields: 'payload', \
-					 'topic', and topic parameters: [{}]",
+					 'topic', 'meta', and topic parameters: [{}]",
 					unknown_fields.join(", "),
 					named_params.join(", ")
 				),
@@ -199,11 +245,15 @@ impl StructAnalysisContext {
 		Ok(Self {
 			payload_type,
 			has_topic_field,
+			topic_field_owned,
+			has_meta_field,
+			meta_field_owned,
 			topic_params,
 		})
 	}
 
-	/// Extract field name to type mappings, excluding special fields (payload, topic)
+	/// Extract field name to type mappings, excluding the reserved fields the
+	/// macro fills itself (`payload`, `topic`, `meta`).
 	fn extract_field_types(
 		fields: &syn::punctuated::Punctuated<syn::Field, syn::Token![,]>,
 	) -> Result<std::collections::HashMap<String, syn::Type>, syn::Error> {
@@ -212,7 +262,7 @@ impl StructAnalysisContext {
 		for field in fields {
 			if let Some(ident) = &field.ident {
 				let field_name = ident.to_string();
-				if field_name != "payload" && field_name != "topic" {
+				if !RESERVED_FIELD_NAMES.contains(&field_name.as_str()) {
 					field_types.insert(field_name, field.ty.clone());
 				}
 			}
@@ -243,54 +293,86 @@ impl StructAnalysisContext {
 		}
 	}
 
-	/// Validate that a topic field has the correct type: `Arc<TopicMatch>`
-	///
-	/// Performs syntactic analysis of the type to ensure it matches exactly
-	/// `Arc<TopicMatch>` or `std::sync::Arc<mqtt_typed_client_core::topic::topic_match::TopicMatch>`.
-	fn validate_topic_field_type(ty: &syn::Type) -> Result<(), syn::Error> {
-		if !Self::is_arc_topic_match_type(ty) {
+	/// Reject a reserved field name that is *also* used as a named wildcard in
+	/// the pattern (the silent-misbind bug: the field would steal the payload /
+	/// topic slot while the wildcard loses its value). Narrow by design — a
+	/// `{topic}` wildcard with no `topic` field is a perfectly good param, so
+	/// this only fires from a reserved-field match arm, where the field exists.
+	fn reject_reserved_wildcard(
+		topic_pattern: &TopicPatternPath,
+		name: &str,
+		span_src: &syn::DeriveInput,
+	) -> Result<(), syn::Error> {
+		let collides = topic_pattern
+			.iter()
+			.filter(|item| item.is_wildcard())
+			.filter_map(|item| item.param_name())
+			.any(|param_name| param_name == name);
+
+		if collides {
 			return Err(syn::Error::new_spanned(
-				ty,
-				"Field 'topic' must be of type Arc<TopicMatch>. Import it as: \
-				 use std::sync::Arc; use \
-				 mqtt_typed_client_core::topic::topic_match::TopicMatch;",
+				span_src,
+				format!(
+					"topic pattern uses `{{{name}}}` as a named wildcard, but \
+					 `{name}` is a reserved field name that the macro fills \
+					 automatically (payload, topic, meta). Rename the \
+					 wildcard, e.g. `{{{name}_id}}`."
+				),
 			));
 		}
 		Ok(())
 	}
 
-	/// Check if a type syntactically matches `Arc<TopicMatch>`
-	///
-	/// Performs syntactic analysis to validate topic field type.
-	/// Handles various import styles but may not catch all edge cases.
-	fn is_arc_topic_match_type(ty: &syn::Type) -> bool {
-		match ty {
-			| syn::Type::Path(type_path) => {
-				// Look for the last segment being "Arc"
-				if let Some(arc_segment) = type_path.path.segments.last() {
-					if arc_segment.ident == "Arc" {
-						// Check if Arc has angle-bracketed generic arguments
-						if let syn::PathArguments::AngleBracketed(args) =
-							&arc_segment.arguments
-						{
-							// Look for the first generic argument being TopicMatch
-							if let Some(syn::GenericArgument::Type(
-								syn::Type::Path(inner_path),
-							)) = args.args.first()
-							{
-								// Check if the inner type ends with TopicMatch
-								if let Some(inner_segment) =
-									inner_path.path.segments.last()
-								{
-									return inner_segment.ident == "TopicMatch";
-								}
-							}
-						}
-					}
-				}
-			}
-			| _ => return false,
+	/// Validate an Arc-adaptive reserved field (`topic`/`meta`): it must be the
+	/// bare `inner` type or `Arc<inner>`. Returns `true` when it is owned (bare),
+	/// so codegen can emit `Arc::unwrap_or_clone`; `false` for the shared `Arc`.
+	fn validate_adaptive_field(
+		ty: &syn::Type,
+		inner: &str,
+		field: &str,
+	) -> Result<bool, syn::Error> {
+		if Self::is_arc_of(ty, inner) {
+			Ok(false)
+		} else if Self::is_plain_type(ty, inner) {
+			Ok(true)
+		} else {
+			Err(syn::Error::new_spanned(
+				ty,
+				format!(
+					"Field '{field}' must be of type `{inner}` or \
+					 `Arc<{inner}>`."
+				),
+			))
 		}
-		false
+	}
+
+	/// Check if a type syntactically matches `Arc<inner>` (any import style for
+	/// `Arc`, inner matched by its last path segment).
+	fn is_arc_of(ty: &syn::Type, inner: &str) -> bool {
+		let syn::Type::Path(type_path) = ty else {
+			return false;
+		};
+		let Some(arc_segment) = type_path.path.segments.last() else {
+			return false;
+		};
+		if arc_segment.ident != "Arc" {
+			return false;
+		}
+		let syn::PathArguments::AngleBracketed(args) = &arc_segment.arguments
+		else {
+			return false;
+		};
+		matches!(
+			args.args.first(),
+			Some(syn::GenericArgument::Type(syn::Type::Path(inner_path)))
+				if inner_path.path.segments.last()
+					.is_some_and(|s| s.ident == inner)
+		)
+	}
+
+	/// Check if a type is the bare `name` (matched by its last path segment).
+	fn is_plain_type(ty: &syn::Type, name: &str) -> bool {
+		matches!(ty, syn::Type::Path(p)
+			if p.path.segments.last().is_some_and(|s| s.ident == name))
 	}
 }

@@ -31,13 +31,14 @@ use tracing::{debug, error, info, warn};
 
 use super::error::{SendError, SubscriptionError};
 use super::subscriber::Subscriber;
+use crate::message_meta::{MessageMeta, RawMeta};
 use crate::topic::{
 	SubscriptionId, TopicPatternPath, TopicRouter,
 	topic_match::{TopicMatch, TopicPath},
 };
 
-pub type RawMessageType<T> = (String, T);
-pub type MessageType<T> = (Arc<TopicMatch>, Arc<T>);
+pub type RawMessageType<T> = (String, RawMeta, T);
+pub type MessageType<T> = (Arc<TopicMatch>, Arc<MessageMeta>, Arc<T>);
 
 /// Default per-subscriber channel capacity (buffered messages before backpressure).
 const DEFAULT_CHANNEL_CAPACITY: NonZeroUsize =
@@ -545,7 +546,10 @@ where T: Send + Sync + 'static
 		}
 	}
 
-	async fn handle_send(&mut self, (topic_str, data): RawMessageType<T>) {
+	async fn handle_send(
+		&mut self,
+		(topic_str, raw_meta, data): RawMessageType<T>,
+	) {
 		let topic_arcstr = ArcStr::from(topic_str);
 		// First level cache: TopicPath creation from string (this actor's cache)
 		let topic_path = match self.topic_path_cache.get(&topic_arcstr) {
@@ -569,6 +573,13 @@ where T: Send + Sync + 'static
 			MessageType<T>,
 		)> = Vec::new();
 		let data = Arc::new(data);
+		// Built once per publish and shared (like the payload Arc) across every
+		// subscriber of this topic.
+		let meta = Arc::new(MessageMeta::new(
+			raw_meta.qos,
+			raw_meta.retain,
+			raw_meta.dup,
+		));
 		for (id, (topic_patern, _qos), entry) in subscribers {
 			let topic_match =
 				match topic_patern.try_match(Arc::clone(&topic_path)) {
@@ -583,7 +594,7 @@ where T: Send + Sync + 'static
 						continue;
 					}
 				};
-			let message = (topic_match, Arc::clone(&data));
+			let message = (topic_match, Arc::clone(&meta), Arc::clone(&data));
 
 			// A slow send is already in flight for this subscriber: queue behind
 			// it to preserve order instead of racing it via try_send.
@@ -689,10 +700,11 @@ where T: Send + Sync + 'static
 	pub(crate) async fn dispatch_incoming_message(
 		&self,
 		topic: String,
+		meta: RawMeta,
 		data: T,
 	) -> Result<(), SendError> {
 		self.command_tx
-			.send(Command::Send((topic, data)))
+			.send(Command::Send((topic, meta, data)))
 			.await
 			.map_err(|_| SendError::ChannelClosed)
 	}
@@ -762,8 +774,13 @@ mod tests {
 	}
 
 	async fn send(actor: &mut SubscriptionManagerActor<String>, payload: &str) {
+		let meta = RawMeta {
+			qos: QoS::AtLeastOnce,
+			retain: false,
+			dup: false,
+		};
 		actor
-			.handle_send((PATTERN.to_string(), payload.to_string()))
+			.handle_send((PATTERN.to_string(), meta, payload.to_string()))
 			.await;
 	}
 
@@ -779,7 +796,7 @@ mod tests {
 	}
 
 	fn payload(msg: &MessageType<String>) -> &str {
-		msg.1.as_str()
+		msg.2.as_str()
 	}
 
 	// A slow consumer must never receive messages out of order, even though the
@@ -907,7 +924,7 @@ mod tests {
 			Some(ReceiveEvent::Lagged { missed: 3 })
 		));
 		match subscriber.recv().await {
-			| Some(ReceiveEvent::Message((_topic, payload))) => {
+			| Some(ReceiveEvent::Message((_topic, _meta, payload))) => {
 				assert_eq!(payload.as_str(), "A")
 			}
 			| _ => panic!("expected the buffered message A"),
@@ -921,7 +938,7 @@ mod tests {
 			Some(ReceiveEvent::Lagged { missed: 2 })
 		));
 		match subscriber.recv().await {
-			| Some(ReceiveEvent::Message((_topic, payload))) => {
+			| Some(ReceiveEvent::Message((_topic, _meta, payload))) => {
 				assert_eq!(payload.as_str(), "B")
 			}
 			| _ => panic!("expected the buffered message B"),

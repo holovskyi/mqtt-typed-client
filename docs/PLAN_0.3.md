@@ -70,18 +70,24 @@ magic-name field `meta` + Arc-adaptive field type + reserve-and-error.
   physically arrive as a shared `Arc<_>` in the fan-out. `payload` and `{param}`
   are always freshly-owned per subscriber (deserialize / `FromStr`), so there is
   nothing to share and no Arc option for them.
-- **Reserve-and-error (collision policy, uniform for all three names).** Today a
+- **Reserve-and-error (collision policy, NARROW scope — Fork 2).** Today a
   pattern like `data/{payload}` with a `payload` field silently mis-binds (the
   field steals the body, the wildcard loses its value — no error). Fix: a hard
-  compile error, checked at the *pattern* level (top of `analyze()`, before
-  field categorisation), if any reserved name (`payload`/`topic`/`meta`) is used
-  as a named wildcard. `RESERVED_FIELD_NAMES` const reused in the
-  `extract_field_types` exclusion (must now also exclude `meta`). Anonymous `+`
-  wildcards can never collide (`param_name()` is `None`). Error text lists the
+  compile error **only when a reserved name is used as a named wildcard AND is
+  also a struct field of that name** — i.e. exactly the silent-misbind bug. The
+  check lives INSIDE the reserved-field match arms (`analysis.rs:153-160`), where
+  the field is known to exist: each arm scans the pattern for a same-named
+  wildcard (mirror of the `is_topic_param` scan at `:163-167`) and errors if
+  found. It is NOT a pattern-level pre-check — "is it also a field" is unknowable
+  before categorisation. A bare `{topic}` wildcard with no `topic` field keeps
+  compiling as a normal param (do NOT break it). `RESERVED_FIELD_NAMES` const
+  drives the `extract_field_types` exclusion (must now also exclude `meta`).
+  Anonymous `+` never collides (`param_name()` is `None`). Error text lists the
   three roles + suggests renaming the wildcard (e.g. `{meta_id}`).
-- **Breaking note for CHANGELOG:** unlike `{payload}`/`{topic}` (already
-  silently broken, so erroring costs nothing), `{meta}` as a wildcard *works
-  today* — reserving it is a real (if near-zero-probability) semver break. One
+- **Breaking note for CHANGELOG:** with narrow scope the break is only "reserved
+  name used as BOTH a wildcard and a same-named field." For `payload`/`topic`
+  that already silently mis-binds (erroring costs nothing). For `meta` it *works
+  today* (meta-as-plain-param) — a real (near-zero-probability) semver break. One
   CHANGELOG line; acceptable pre-1.0 with a loud error + trivial rename.
 - **Escape-hatch attribute (`#[mqtt_meta] other: MessageMeta`) DEFERRED** as
   YAGNI: the user controls the pattern and can always rename a wildcard. Add
@@ -99,6 +105,179 @@ magic-name field `meta` + Arc-adaptive field type + reserve-and-error.
   `ReceiveEvent::Lagged` variant on the `receive()` return (see §5 / step 2b),
   landed before this section. `MessageMeta` is only per-message protocol
   metadata.
+
+**Implementation plan (phases a → b → c; critic-passed 2026-07-09 round 1).**
+Grounded in the current tree (post §1/§2b/§5). Symbols verified present. Two
+design forks resolved after the first critic pass (see "Resolved forks" below).
+
+*Phase (a) — core plumbing.*
+
+1. **Define the types** (new module, e.g. `core/src/message_meta.rs`;
+   re-export at crate root next to `TopicMatch`/`ReceiveEvent`):
+   ```rust
+   #[non_exhaustive]
+   #[derive(Debug, Clone)]
+   pub struct MessageMeta {
+       /// QoS of the delivered PUBLISH *packet* — NOT the subscription's
+       /// granted QoS. With overlapping filters on one client the broker sends
+       /// one packet at the highest matching granted QoS, so a QoS-0 subscriber
+       /// can observe a higher value here (S4).
+       pub qos: QoS,            // protocol-neutral QoS (mqtt_topic_engine::QoS), per §1
+       pub retain: bool,
+       pub dup: bool,
+       pub v5: Option<Mqtt5Meta>,  // always None in 0.3
+   }
+
+   #[non_exhaustive]
+   #[derive(Debug, Clone)]
+   pub struct Mqtt5Meta {}         // empty stub in 0.3; fields land with the v5 backend
+   ```
+   - `#[non_exhaustive]` on both (LOCKED — reversibility argument confirmed:
+     removing it later only relaxes, adding it later is breaking, so shipping
+     WITH it is the conservative choice).
+   - `Clone` required for the bare-type macro path (`Arc::unwrap_or_clone`).
+   - `pub(crate) fn MessageMeta::v4(qos, retain, dup)` for the hot path.
+   - **N5 (LOCKED):** ALSO a public `pub fn MessageMeta::new(qos, retain, dup)
+     -> Self` (v5 = None). `non_exhaustive` otherwise forbids downstream users
+     from constructing a `MessageMeta` in *their own* handler tests; a public
+     ctor stays additive because v5 lives behind `Option`.
+
+2. **Carry the raw metadata through the actor command.** Today
+   `RawMessageType<T> = (String, T)` (`subscription_manager.rs:39`) and
+   `dispatch_incoming_message(topic: String, data: T)` (`:689`) drop everything
+   but topic+payload. Add `RawMeta { qos: QoS, retain: bool, dup: bool }` (map
+   `rumqttc::QoS` → engine `QoS` via the existing `From` at `qos.rs:92`):
+   - `RawMessageType<T> = (String, RawMeta, T)`.
+   - `dispatch_incoming_message(topic, meta: RawMeta, data)` and the
+     `Command::Send` variant carry it.
+
+3. **Build `Arc<MessageMeta>` once per publish in `handle_send`.**
+   (`:548`, beside `let data = Arc::new(data);` at `:571`.) Build
+   `let meta = Arc::new(MessageMeta::v4(qos, retain, dup));` ONCE, then
+   `Arc::clone(&meta)` per subscriber. Mirrors the payload-Arc fan-out.
+
+4. **Widen the internal delivered tuple (routing layer stays a tuple).**
+   `MessageType<T> = (Arc<TopicMatch>, Arc<T>)` (`:40`) →
+   `(Arc<TopicMatch>, Arc<MessageMeta>, Arc<T>)`. Per-subscriber `message` at
+   `:586` becomes `(topic_match, Arc::clone(&meta), Arc::clone(&data))`. Flows
+   transparently through the channel and the low-level `Subscriber::recv`
+   (`routing/subscriber.rs:125`, `ReceiveEvent<MessageType<T>, Infallible>`, no
+   sig edit) and `message()` (`:80`). This tuple is internal (T = `Bytes` at the
+   mid layer) — it is NOT the user-facing shape (see step 5).
+
+5. **Mid layer: named structs, NOT wider tuples (FORK 1, LOCKED → option b).**
+   `MqttSubscriber` is public and user-facing; do NOT widen its arms to tuples.
+   Introduce a happy-path struct and a symmetric failure struct:
+   ```rust
+   #[derive(Debug)]
+   pub struct IncomingMessage<T> {   // NOT non_exhaustive — meant to be destructured
+       pub topic: Arc<TopicMatch>,
+       pub meta: Arc<MessageMeta>,
+       pub payload: T,
+   }
+
+   #[derive(Debug)]
+   pub struct DecodeFailure<E> {     // NOT non_exhaustive; symmetric with above
+       pub topic: Arc<TopicMatch>,
+       pub meta: Arc<MessageMeta>,
+       pub error: E,                 // E = F::DeserializeError at this layer
+   }
+   ```
+   - **SF-1 (LOCKED): NOT `#[non_exhaustive]`.** Unlike `MessageMeta` (field-
+     accessed), these structs EXIST to be destructured; `non_exhaustive` would
+     force downstream `let IncomingMessage { topic, meta, payload, .. }` with a
+     stray `..` and regress vs the old clean tuple destructure. Metadata growth
+     is routed through `MessageMeta` (itself `non_exhaustive`), so these three
+     fields are structurally complete — rely on additive-only discipline instead.
+   - **SF-3 (LOCKED): error arm is a struct too**, `DecodeFailure<F::DeserializeError>`.
+     The Fork-1 argument (a positional tuple makes the next field a breaking
+     change) is symmetric — it applies to the error arm, so mirror it rather than
+     ship a named/positional asymmetry. Meta IS available at the failure point
+     (`client/subscriber.rs:88`).
+   `SubscriberEvent<T, F>` (`client/subscriber.rs:21`) becomes
+   `ReceiveEvent<IncomingMessage<T>, DecodeFailure<F::DeserializeError>>`.
+   `receive()` (`:57`) destructures the low-level `(topic, meta, bytes)`,
+   deserializes `bytes`, and yields `IncomingMessage { .. }` / `DecodeFailure { .. }`.
+   Empty-payload `continue` arm (`:60`, `:80-86`) also updates its destructure;
+   meta is dropped with the skipped retain-clear (correct, no leak).
+   - NOTE meta-on-failure does not reach the typed top layer —
+     `MessageConversionError<DE>` carries no meta, so it is a mid-layer-only
+     affordance.
+
+6. **Top layer: 3-arg trait + destructure the struct.**
+   `FromMqttMessage::from_mqtt_message(topic, meta: Arc<MessageMeta>, payload)`
+   (`structured/subscriber.rs:47`). `MqttTopicSubscriber::receive` (`:86`)
+   destructures `IncomingMessage { topic, meta, payload }` and passes all three.
+
+7. **Stop discarding `p.retain/qos/dup` in `async_client.rs`** (`:169-181`):
+   pass them into `dispatch_incoming_message` via `RawMeta`.
+
+8. **Fix the in-module tests** in `subscription_manager.rs`: the `handle_send`
+   helpers (`:743`, `:766`, `:781` — `payload()` moves `msg.1` → `msg.2`) AND the
+   §2b lag test destructures at `:910`/`:924` must adopt the 3-tuple + `RawMeta`.
+
+*Phase (b) — macro (`macros/src/analysis.rs` + `codegen.rs`).*
+
+1. **Recognise the `meta` magic field.** Add a `"meta"` arm beside
+   `"payload"`/`"topic"` in field categorisation, with a `has_meta_field` flag +
+   its (Arc-adaptive) type.
+2. **Arc-adaptive type for `topic` + `meta`.** Extend the syntactic
+   `is_arc_topic_match_type` into a per-field bare-vs-`Arc<_>` helper. Codegen:
+   `Arc<_>` → move as-is; bare → `Arc::unwrap_or_clone(arc)` (MSRV 1.85.1 ≥ 1.76,
+   confirmed). Applies to `topic`/`meta` only.
+3. **Reserve-and-error — NARROW scope (FORK 2, LOCKED → option a).** Error ONLY
+   when a reserved name (`payload`/`topic`/`meta`) appears as a named wildcard
+   AND as a struct field of the same name — i.e. the actual silent-misbind bug.
+   The check lives INSIDE the reserved-field match arms (`analysis.rs:153-160`),
+   where the field is known present; each arm scans the pattern for a same-named
+   wildcard (mirror of `is_topic_param` at `:163-167`). NOT a pattern-level
+   pre-check (SF-2 — "is it also a field" is unknowable before categorisation).
+   A bare `{topic}` wildcard with no `topic` field keeps compiling as a normal
+   param (`extract_field_types` excludes the name, `analysis.rs:215`; do NOT
+   break it). `RESERVED_FIELD_NAMES` const still drives that exclusion (now incl.
+   `meta`). Anonymous `+` never collides (`param_name()` is `None`). Error text
+   lists the roles + suggests a `{meta_id}`-style rename.
+4. **Codegen wiring** (`codegen.rs`): `generate_from_mqtt_impl` emits the 3rd
+   `meta` arg; `generate_subscriber_field_assignments` pushes `meta,` beside
+   `payload,`/`topic,`. Fully-qualify `MessageMeta` (like `TopicMatch`).
+5. **Tests** (trybuild/UI + a runtime example): narrow-collision errors (name as
+   BOTH wildcard and field) for all three; bare `{topic}`-with-no-field still
+   compiles; bare vs `Arc<MessageMeta>` both compile; no-`meta`-field struct
+   unaffected.
+
+*Phase (c) — examples/docs.*
+
+1. One example reading `message.meta.qos` / `.retain`, showing both bare and
+   `Arc<MessageMeta>` forms.
+2. **CHANGELOG breaking section (expanded per critic B1):**
+   (i) new `MessageMeta` feature; (ii) mid-layer `MqttSubscriber::receive` now
+   yields `IncomingMessage<T>` instead of `(Arc<TopicMatch>, T)` — a REQUIRED
+   migration for direct (non-macro) subscriber users; (iii) `{meta}` reserved as
+   a wildcard when a `meta` field is also present (near-zero probability).
+3. **Migrate every existing mid-layer consumer** (NOT just "an example"):
+   `README.md:294`, `examples/100_all_serializers_demo.rs:92`,
+   `tests/serializers_integration.rs:156`, the `core/src/lib.rs:58` doc example.
+4. Doc the recommended default (`meta: Arc<MessageMeta>` = zero-copy).
+
+**Resolved forks & fixes (two critic passes, 2026-07-09):**
+- **Fork 1 — mid-layer shape:** named `IncomingMessage<T>` struct (and symmetric
+  `DecodeFailure<E>`), NOT tuples. Reason: the surface is broken by §2b already;
+  structs make the next metadata field a non-breaking add and are greppable.
+- **Fork 2 — reserve-and-error scope:** NARROW (error only when a reserved name
+  is both a wildcard and a same-named field). Reason: keeps a bare `{topic}` param
+  that compiles today compiling.
+- **SF-1 (round 2):** `IncomingMessage`/`DecodeFailure` are NOT `#[non_exhaustive]`
+  — they are meant to be destructured; `non_exhaustive` would force a stray `..`
+  and regress the destructure. Metadata grows inside `MessageMeta`, not here.
+- **SF-2 (round 2):** narrow reserve-and-error check lives in the reserved-field
+  match arms, not a pattern-level pre-check (corrected in the prose + phase b).
+- **SF-3 (round 2):** error arm is a struct too (`DecodeFailure`), not a tuple —
+  same anti-fragility argument as Fork 1, applied symmetrically.
+- **S4:** `MessageMeta.qos` documented as the delivered-packet QoS.
+- **`#[non_exhaustive]`:** LOCKED yes on `MessageMeta`/`Mqtt5Meta` (field-accessed;
+  reversibility argument), NO on `IncomingMessage`/`DecodeFailure` (destructured).
+- **`Mqtt5Meta {}` empty stub:** kept; no clippy empty-struct lint fires. Weakly
+  motivated but harmless and reserves the visible shape.
 
 ### 3. Ack surfacing
 

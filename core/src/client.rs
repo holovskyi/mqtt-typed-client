@@ -33,7 +33,7 @@ pub use error::{
 };
 pub use last_will::TypedLastWill;
 pub use publisher::MqttPublisher;
-pub use subscriber::MqttSubscriber;
+pub use subscriber::{DecodeFailure, IncomingMessage, MqttSubscriber};
 pub use subscription_builder::SubscriptionBuilder;
 
 // Connection type is available from the root level

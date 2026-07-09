@@ -55,6 +55,14 @@ WITHOUT another breaking release. Migration map:
   `with_channel_capacity` / `with_slow_send_timeout` / `with_max_parked_messages`.
 - Drop visibility: `dropped_messages() -> u64` on the subscriber types reports
   messages dropped because the consumer could not keep up.
+- Per-message metadata: `MessageMeta` (`qos`, `retain`, `dup`, and a reserved
+  `v5: Option<Mqtt5Meta>` slot, always `None` on MQTT 3.1.1) is now delivered
+  with every message. `#[mqtt_topic]` structs can add an optional `meta` field
+  to receive it; `MessageMeta::new` is public so you can build one in your own
+  tests.
+- Arc-adaptive reserved fields in `#[mqtt_topic]`: `topic` and `meta` accept
+  either the bare type (`TopicMatch` / `MessageMeta`, handed to you owned) or the
+  shared `Arc<...>` (zero-copy — the recommended default).
 
 ### Fixed
 - Slow-consumer message reordering: a message parked for a slow subscriber could
@@ -68,6 +76,20 @@ WITHOUT another breaking release. Migration map:
   field assignment or the builder methods, not a struct literal.
 - `Subscriber::new` is now `pub(crate)` (it was never meant to be called
   directly; subscribers come from `subscribe()`).
+- Mid-layer `MqttSubscriber::receive()` now yields named structs instead of
+  tuples: `ReceiveEvent::Message` carries `IncomingMessage<T> { topic, meta,
+  payload }` (was `(Arc<TopicMatch>, T)`) and `ReceiveEvent::DecodeFailed`
+  carries `DecodeFailure<E> { topic, meta, error }` (was `(Arc<TopicMatch>, E)`).
+  Rewrite direct destructures (`Message((topic, val))` → `Message(msg)` then
+  `msg.payload` etc.). Top-layer `#[mqtt_topic]` users are unaffected.
+- `#[mqtt_topic]` reserves `payload`/`topic`/`meta` as field names: using one as
+  a `{...}` wildcard **while also** declaring the same-named field is now a
+  compile error (narrow — a `{meta}` wildcard with no `meta` field still
+  compiles as a plain parameter). Only `{meta}` + a `meta` field is a new break;
+  `{payload}`/`{topic}` collisions were already silently mis-binding.
+- `FromMqttMessage::from_mqtt_message` gained a `meta: Arc<MessageMeta>` second
+  argument (hand-written impls must add it; macro-generated impls update
+  automatically).
 
 ### Changed
 - crates.io `keywords`: replaced the redundant `tokio` with `typed` (identity

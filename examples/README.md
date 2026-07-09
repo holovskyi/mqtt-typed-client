@@ -24,6 +24,7 @@ Jump directly to any example:
 - **[006_retain_and_clear.rs]** - Retained Messages
 - **[007_custom_patterns.rs]** - Custom Topic Patterns
 - **[008_modular_example.rs]** - Modular Architecture
+- **[009_message_metadata.rs]** - Message Metadata
 - **[100_all_serializers_demo.rs]** - Complete Serializer Test Suite
 - **[102_multi_serializer_macro.rs]** - Per-Topic Custom Serializers
 
@@ -219,6 +220,15 @@ modular_example/
 - **Wildcard subscription:** Receives from all sensors
 - **Filtered subscription:** Only specific device with caching
 - **Data flow:** Real sensor data → MQTT → Multiple typed subscribers
+
+### <a id="009_message_metadatars---message-metadata"></a>**[009_message_metadata.rs]** - Message Metadata
+**What it demonstrates:**
+- The optional `meta` field: per-message QoS, retain, and dup flags
+- The optional `topic` field: the concrete matched topic (wildcards resolved)
+- Arc-adaptive field forms: bare `MessageMeta` / `TopicMatch` (owned) vs
+  `Arc<...>` (zero-copy, recommended for hot paths)
+
+**Topic pattern:** `telemetry/{device}`
 
 ### <a id="100_all_serializers_demors---complete-serializer-test-suite"></a>**[100_all_serializers_demo.rs]** - Complete Serializer Test Suite
 **What it demonstrates:**
@@ -425,5 +435,6 @@ here. Must be a full absolute GitHub URL (no link transform on docs.rs).
 [006_retain_and_clear.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/006_retain_and_clear.rs
 [007_custom_patterns.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/007_custom_patterns.rs
 [008_modular_example.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/008_modular_example.rs
+[009_message_metadata.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/009_message_metadata.rs
 [100_all_serializers_demo.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/100_all_serializers_demo.rs
 [102_multi_serializer_macro.rs]: https://github.com/holovskyi/mqtt-typed-client/blob/main/examples/102_multi_serializer_macro.rs

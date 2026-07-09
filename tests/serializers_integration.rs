@@ -153,12 +153,9 @@ where
 							.await;
 
 							match receive_result {
-								| Ok(Some(ReceiveEvent::Message((
-									_topic_match,
-									received_message,
-								)))) => {
+								| Ok(Some(ReceiveEvent::Message(msg))) => {
 									assert_eq!(
-										received_message, message,
+										msg.payload, message,
 										"{name} serializer: Message mismatch",
 									);
 									println!(
@@ -166,10 +163,8 @@ where
 										 successful (serialize + deserialize)",
 									);
 								}
-								| Ok(Some(ReceiveEvent::DecodeFailed((
-									_topic,
-									e,
-								)))) => {
+								| Ok(Some(ReceiveEvent::DecodeFailed(f))) => {
+									let e = f.error;
 									panic!(
 										"{name} serializer: Deserialization \
 										 failed: {e:?}",

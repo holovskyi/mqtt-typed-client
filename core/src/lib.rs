@@ -55,11 +55,12 @@
 //!     // Receive data
 //!     if let Some(event) = subscriber.receive().await {
 //!         match event {
-//!             ReceiveEvent::Message((topic, sensor_data)) => {
-//!                 println!("Received from {}: {:?}", topic, sensor_data)
+//!             ReceiveEvent::Message(msg) => {
+//!                 println!("Received from {} (qos {:?}): {:?}",
+//!                     msg.topic, msg.meta.qos, msg.payload)
 //!             }
-//!             ReceiveEvent::DecodeFailed((topic, e)) => {
-//!                 eprintln!("Deserialization error at {}: {:?}", topic, e)
+//!             ReceiveEvent::DecodeFailed(f) => {
+//!                 eprintln!("Deserialization error at {}: {:?}", f.topic, f.error)
 //!             }
 //!             ReceiveEvent::Lagged { missed } => {
 //!                 eprintln!("Lagged: {missed} messages dropped")
@@ -122,6 +123,7 @@
 // Core modules
 pub mod client;
 pub mod connection;
+pub mod message_meta;
 pub mod message_serializer;
 pub mod routing;
 /// Structured MQTT subscribers with automatic topic parameter extraction
@@ -139,8 +141,13 @@ pub use client::{
 	SessionPolicy, TlsConfig, Transport, TypedLastWill,
 };
 // High-level typed publishers and subscribers
-pub use client::{MqttPublisher, MqttSubscriber, SubscriptionBuilder};
+pub use client::{
+	DecodeFailure, IncomingMessage, MqttPublisher, MqttSubscriber,
+	SubscriptionBuilder,
+};
 pub use connection::MqttConnection;
+// Per-message metadata
+pub use message_meta::{MessageMeta, Mqtt5Meta};
 // Message serialization
 #[cfg(feature = "bincode-serializer")]
 pub use message_serializer::BincodeSerializer;
