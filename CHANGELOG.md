@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-10
+
 ### Changed — public API de-leak (BREAKING)
 
 The public API no longer exposes `rumqttc` types, with three documented
@@ -179,6 +181,7 @@ WITHOUT another breaking release. Migration map:
 - Subscription builder pattern for flexible configuration
 - Typed client extensions for ergonomic API
 
-[Unreleased]: https://github.com/holovskyi/mqtt-typed-client/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/holovskyi/mqtt-typed-client/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/holovskyi/mqtt-typed-client/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/holovskyi/mqtt-typed-client/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/holovskyi/mqtt-typed-client/releases/tag/v0.1.0

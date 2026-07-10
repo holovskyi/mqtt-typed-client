@@ -1,6 +1,6 @@
 [package]
 name = "mqtt-typed-client-core"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.85.1"
 description = "Type-safe async MQTT client core with automatic topic routing"
@@ -56,12 +56,12 @@ postcard = { version = "1.0", optional = true, features = ["alloc"] }
 prost = { version = "0.12", optional = true }
 ron = { version = "0.8", optional = true }
 flexbuffers = { version = "2.0", optional = true }
-mqtt-topic-engine = { path = "../mqtt-topic-engine", version = "0.1.0", features = ["rumqttc"] }
+mqtt-topic-engine = { path = "../mqtt-topic-engine", version = "0.1.2", features = ["rumqttc"] }
 
 
 # Dev-only: used by tests to exercise the `mqtt_topic` macro against core types.
 # Path-only (NO version) on purpose — `macros` depends on `core`, so a versioned
-# dev-dep would form an unpublishable cycle (core would require macros 0.2.0,
+# dev-dep would form an unpublishable cycle (core would require macros 0.3.0,
 # which is only published AFTER core). Cargo strips path-only dev-deps from the
 # published manifest, so core publishes without needing macros in the index.
 [dev-dependencies]

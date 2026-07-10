@@ -10,7 +10,19 @@ This crate provides the procedural macros for
 user-facing changelog see the
 [workspace CHANGELOG](https://github.com/holovskyi/mqtt-typed-client/blob/main/CHANGELOG.md).
 
-## [Unreleased]
+## [0.3.0] - 2026-07-10
+
+### Added
+- `MessageMeta` support in `#[mqtt_topic]`: structs may declare optional `meta`
+  and `topic` fields; codegen accepts either the bare type (`MessageMeta` /
+  `TopicMatch`, handed to you owned) or the shared `Arc<...>` (zero-copy).
+
+### Changed
+- `payload` / `topic` / `meta` are now reserved field names: using one as a
+  `{...}` wildcard while also declaring the same-named field is a compile error
+  (a `{meta}` wildcard with no `meta` field still compiles as a plain parameter).
+  Generated `from_mqtt_message` impls now thread the `meta: Arc<MessageMeta>`
+  argument automatically.
 
 ## [0.2.0] - 2026-06-27
 

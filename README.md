@@ -53,7 +53,7 @@ client.sensor_topic().publish("kitchen", 42, &reading).await?;
 Add the crate and the few deps the derive example needs:
 ```toml
 [dependencies]
-mqtt-typed-client = "0.2.0"
+mqtt-typed-client = "0.3.0"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 bincode = "2"
@@ -168,7 +168,7 @@ Multiple serialization formats are supported via feature flags:
 Enable additional serializers:
 ```toml
 [dependencies]
-mqtt-typed-client = { version = "0.2.0", features = ["messagepack", "cbor"] }
+mqtt-typed-client = { version = "0.3.0", features = ["messagepack", "cbor"] }
 ```
 
 Custom serializers can be implemented by implementing the `MessageSerializer` trait.

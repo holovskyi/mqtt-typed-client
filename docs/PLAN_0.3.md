@@ -1,10 +1,17 @@
 # 0.3 Release Plan
 
 *Drafted 2026-07-08. Theme: **deepen the delivery guarantees** — metadata,
-ack surfacing, connection observability — and redesign the public API so that
+connection observability — and redesign the public API so that
 MQTT 5 (0.4) and the backend switch land later WITHOUT a second breaking
 release. Everything here is v4/MQTT 3.1.1 functionally; every public type is
 designed v5-first with v4 as the degenerate case.*
+
+**Status note (2026-07-10):** ack surfacing (§3), resubscribe-failure surfacing
+(§2c), and the backend swap (§6) were **DEFERRED TO 0.4** and MOVED OUT of this
+file into [PLAN_0.4.md](./PLAN_0.4.md) — clean addressable SubAck correlation
+needs the next backend, which is not yet on crates.io. 0.3 shipped upstream-only.
+This file is now the historical record of what 0.3 actually delivered
+(§1, §2, §2b, §4, §5 — all DONE).*
 
 *Backing research: [FUTURE_WORK_RESEARCH.md](./FUTURE_WORK_RESEARCH.md) §2
 (ack correlation), [research/RUMQTTC_NEXT_AUDIT_2026.md](./research/RUMQTTC_NEXT_AUDIT_2026.md)
@@ -279,25 +286,10 @@ design forks resolved after the first critic pass (see "Resolved forks" below).
 - **`Mqtt5Meta {}` empty stub:** kept; no clippy empty-struct lint fires. Weakly
   motivated but harmless and reserves the visible shape.
 
-### 3. Ack surfacing
+### 3. Ack surfacing → MOVED to [PLAN_0.4.md](./PLAN_0.4.md) §3
 
-- **SubAck (minimal, backend-independent):** stop dropping
-  `SubAck.return_codes` — surface broker-side subscription rejection and QoS
-  downgrade (log + typed event/error to the subscriber).
-- **Must cover the RECONNECT path, not only `subscribe()`** (from r/rust
-  feedback, verified 2026-07-09). The initial-`subscribe()` surfacing and the
-  resubscribe-after-reconnect surfacing read the same `SubAck.return_codes`;
-  scoping SubAck to `subscribe()` only (as the order-of-work step 6 note below
-  says) leaves the reconnect hole open. Honest resubscribe-failure detection
-  (§2c) *requires* this — so §3-on-the-reconnect-path GATES §2c.
-- **Full correlation (publish → PUBACK/PUBCOMP future, subscribe → granted
-  QoS)** rides on the rumqttc-next backend (`publish_tracked`/`subscribe_tracked`).
-  Public shape: `publish()` returns a future resolving to a v5-shaped result
-  (reason code; `Success` on v4). Design the public API now; wire it when the
-  backend lands (this release if the backend switch happens in 0.3, else 0.4).
-- `PublishOptions` builder (`#[non_exhaustive]`, private fields):
-  qos + retain now; v5 knobs (expiry, user properties, content type) arrive
-  additively in 0.4. Replaces loose (qos, retain) args where public.
+Deferred to 0.4 (needs the `rumqttc-v4-next` backend for clean addressable SubAck
+correlation). Full design lives in PLAN_0.4.md.
 
 ### 4. Connection state observability
 
@@ -406,70 +398,17 @@ impl<M, E> ReceiveEvent<M, E> {
   and — deliberately — old `while let Some(Ok(m))` shapes fail to compile.
 - Keep `dropped_messages()` as the cumulative metrics side channel.
 
-### 2c. Resubscribe-failure surfacing (from r/rust feedback, verified 2026-07-09)
+### 2c. Resubscribe-failure surfacing → MOVED to [PLAN_0.4.md](./PLAN_0.4.md) §2c
 
-**The real reconnect gap — not previously in any plan.** After a session-less
-reconnect we call `resubscribe_all()`, but its result is invisible and never
-acted on. Three stacked defects (`subscription_manager.rs:479-511`,
-`async_client.rs:153-158`):
+Deferred to 0.4 (gated on §3 SubAck surfacing on the reconnect path, which needs
+the next backend). Full three-defect analysis + the `ReceiveEvent::SubscriptionLost`
+design lives in PLAN_0.4.md.
 
-1. **The `Ok` arm is a lie.** rumqttc's `client.subscribe().await == Ok(_)` means
-   "enqueued onto the event-loop channel", NOT "broker accepted". A broker that
-   rejects the subscription (SUBACK `0x80`) or silently downgrades QoS produces
-   `Ok` here. So `failed_topics` only ever catches `ClientError` (channel
-   closed/full) — i.e. the client is already dead. The failure that matters
-   (broker refuses the resubscribe) is completely invisible. **Cannot be fixed
-   without §3 SubAck surfacing on the reconnect path** — that gates this section.
-2. **The error carries no data.** `failed_topics` is collected then discarded;
-   the function returns the unit `SubscriptionError::ResubscribeFailed`. Which
-   topics failed is lost.
-3. **Nobody consumes it.** `async_client.rs` does `.inspect_err(|e| error!(...))`
-   and continues — no retry, no state change, no notification. An affected
-   `Subscriber<T>` looks healthy and simply never receives another message.
+### 6. Backend switch to rumqttc-v4-next → MOVED to [PLAN_0.4.md](./PLAN_0.4.md) §6
 
-**Home: the `ReceiveEvent` enum (§2b), NOT `ConnectionState`.** It is already
-`#[non_exhaustive]`, already carries this class of "stream alive but you lost
-something" event (`Lagged`), is delivered to exactly the affected subscriber,
-and has no external users yet. Add a variant (name a strawman):
-
-```rust
-ReceiveEvent::SubscriptionLost { reason: ... }  // broker refused to restore this subscription
-```
-
-**Mechanical prerequisite:** `get_topics_for_resubscribe()`
-(`mqtt-topic-engine/src/topic_router.rs:278`) returns `HashMap<ArcStr, QoS>` —
-pattern→QoS with NO reverse mapping to the subscriber IDs that must be notified.
-`TopicRouter` has the data (`self.subscriptions`), it just isn't returned.
-Changing that return type **touches `mqtt-topic-engine`** (published standalone
-→ version bump).
-
-**Retry policy (open, lean (a)):** (a) mark the subscription lost + notify;
-(b) bounded retry with backoff then notify. Lean (a) for 0.3 — without SubAck
-confirmation a retry cannot tell success from failure, so it is just a louder
-no-op. At minimum: do not silently continue.
-
-### 6. Backend switch to rumqttc-v4-next (decision: adopt-with-mitigations)
-
-- Swap `rumqttc` → `rumqttc-v4-next` **pinned to an audited git rev / next
-  audited release** (crates.io 0.33.2 lacks audited fixes — see audit doc).
-  Migration recipe validated by the maintainer's port (S–M, ~1 day):
-  builder construction, `Broker::tcp`, `PublishOptions`, `Bytes` topics
-  (reject non-UTF-8, do NOT `from_utf8_lossy`), explicit-transport story for
-  `mqtts://`/`wss://` URLs. MSRV → 1.89, edition 2024 implications.
-- Timing gate: coordinate with "eagle" (mqtt-typed-client-next#1) first; his
-  response may add a QoS-downgrade PR and a crates.io release. If adoption
-  slips, items 1–5 still ship on upstream rumqttc (SubAck-minimal only; full
-  correlation moves to 0.4).
-- `mqtt-topic-engine`'s rumqttc-interop feature gains a `-next` variant so
-  upstream-rumqttc users keep working.
-- This is also what answers the user-facing "what happens to a publish issued
-  mid-outage?" question: inflight QoS 1/2 replay and offline queueing live in
-  rumqttc's `EventLoop`/`state.rs`, and the `-next` audit
-  (`research/RUMQTTC_NEXT_AUDIT_2026.md:25-28`) confirms reconnect retransmission
-  with notice senders preserved + `SessionReset` on session loss. On upstream
-  rumqttc today we cannot honestly state the outcome; §6 makes it answerable. (An
-  own managed offline queue stays out of scope — see the standing negative
-  decision in `research/CLIENT_LIBRARY_LANDSCAPE_2026.md`.)
+Deferred to 0.4 (adopt-with-mitigations; hard blocker = the next backend reaching
+crates.io). Full migration recipe, feature-flag strategy, and fallback ladder
+live in PLAN_0.4.md.
 
 ### Out of scope for 0.3
 
@@ -515,13 +454,9 @@ feature is welcome any time (independent of all of the above).
    own `#[non_exhaustive]` enums; frozen-seed `state_rx` so late subscribers see
    the terminal; two-counter reconnect bookkeeping). Example `010`. Two critic
    passes (plan + code). No `mqtt-topic-engine` change.
-6. SubAck minimal (§3) on whatever backend is current — QoS downgrade surfaces **← NEXT**
-   at `subscribe()` AND on the reconnect/resubscribe path (§3 covers both).
-7. Resubscribe-failure surfacing (§2c) — `ReceiveEvent::SubscriptionLost` on the
-   affected subscriber; gated on step 6 (SubAck on the reconnect path). Touches
-   `mqtt-topic-engine` (return-type change → version bump).
-8. Backend swap (§6) + tracked-notice publish/subscribe API — gated on the
-   eagle coordination outcome; may slip to 0.4 without blocking the release.
+6–8. **DEFERRED TO 0.4** — SubAck surfacing (§3), resubscribe-failure surfacing
+   (§2c), and the backend swap (§6). Moved to [PLAN_0.4.md](./PLAN_0.4.md), which
+   has its own order of work (backend swap first, then §3, then §2c).
 
 ## Open items (external)
 

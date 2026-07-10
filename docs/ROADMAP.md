@@ -6,17 +6,20 @@
 
 ## Core Protocol Enhancements
 
-- [ ] **Add retain, qos, dup flags to incoming message metadata**  
-  Currently these flags are received from rumqttc but discarded in `async_client.rs/Ok(Incoming(Publish(p)))`. Adding them to message metadata will give users full control over message properties and enable proper handling of retained messages. Could be implemented through a `raw_data` field in topic structure similar to the auto-populated `topic: Arc<TopicMatch>` field.
+- [x] **Add retain, qos, dup flags to incoming message metadata** — **DONE (shipped 0.3 as `MessageMeta`)**  
+  Delivered as `MessageMeta` (`qos`, `retain`, `dup`, plus a reserved `v5` slot),
+  available on every message and bindable via an optional `meta` field on
+  `#[mqtt_topic]` structs — the auto-populated `topic: Arc<TopicMatch>` pattern
+  this item anticipated.
 
-- [ ] **Add subscription acknowledgment confirmation**  
+- [ ] **Add subscription acknowledgment confirmation** (0.4)  
   Currently `subscribe()` doesn't analyze subscription results — `SubAck.return_codes`
   (where the broker can reject a subscription or downgrade QoS) are silently dropped.
   Minimal surfacing needs no rumqttc changes; reliable per-request correlation requires
   a fork (source-verified 2026-07-08, see FUTURE_WORK_RESEARCH.md §2 — subscribe pkid
   reuse makes fork-free correlation unsound under load).
 
-- [ ] **Add publish acknowledgment confirmation**  
+- [ ] **Add publish acknowledgment confirmation** (0.4)  
   Currently we don't know when the broker has actually confirmed message publication
   (according to QoS level). Decision: thin fork of rumqttc carrying an ack-notification
   channel (source-verified analysis in FUTURE_WORK_RESEARCH.md §2; a fork-free
